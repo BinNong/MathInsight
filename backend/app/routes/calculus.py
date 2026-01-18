@@ -1,8 +1,36 @@
 from flask import Blueprint, request, jsonify
-import sympy as sp
 from app.services.calculus_service import CalculusService
+from app.utils.math_utils import generate_function_points, get_tangent_line
 
 calculus_bp = Blueprint('calculus', __name__)
+
+
+def validate_request_data(data: dict, required_fields: list = None) -> tuple:
+    """
+    验证请求数据
+
+    Args:
+        data: 请求数据字典
+        required_fields: 必填字段列表
+
+    Returns:
+        (is_valid, error_message)
+    """
+    if not data:
+        return False, 'Request body is required'
+    if required_fields:
+        for field in required_fields:
+            if field not in data:
+                return False, f'Missing required field: {field}'
+    return True, None
+
+
+def safe_float(value, field_name: str) -> tuple:
+    """安全地将值转换为 float"""
+    try:
+        return True, float(value)
+    except (TypeError, ValueError):
+        return False, f'{field_name} must be a number'
 
 
 @calculus_bp.route('/limit/epsilon-delta', methods=['POST'])
@@ -20,10 +48,22 @@ def epsilon_delta_limit():
     }
     """
     data = request.json
+    is_valid, error = validate_request_data(data)
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
+    # Validate numeric fields
+    is_valid, x0 = safe_float(data.get('x0', 2), 'x0')
+    if not is_valid:
+        return jsonify({'success': False, 'error': x0}), 400
+    is_valid, L = safe_float(data.get('L', 4), 'L')
+    if not is_valid:
+        return jsonify({'success': False, 'error': L}), 400
+    is_valid, epsilon = safe_float(data.get('epsilon', 0.5), 'epsilon')
+    if not is_valid:
+        return jsonify({'success': False, 'error': epsilon}), 400
+
     func_str = data.get('function', 'x**2')
-    x0 = float(data.get('x0', 2))
-    L = float(data.get('L', 4))
-    epsilon = float(data.get('epsilon', 0.5))
     domain_range = data.get('domain_range', [-1, 5])
 
     try:
@@ -31,8 +71,10 @@ def epsilon_delta_limit():
             func_str, x0, L, epsilon, domain_range
         )
         return jsonify({'success': True, 'data': result})
+    except (ValueError, sp.SympifyError) as e:
+        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
 
 
 @calculus_bp.route('/derivative/tangent', methods=['POST'])
@@ -48,8 +90,15 @@ def derivative_tangent():
     }
     """
     data = request.json
+    is_valid, error = validate_request_data(data)
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
+    is_valid, x0 = safe_float(data.get('x0', 2), 'x0')
+    if not is_valid:
+        return jsonify({'success': False, 'error': x0}), 400
+
     func_str = data.get('function', 'x**2')
-    x0 = float(data.get('x0', 2))
     domain_range = data.get('domain_range', [0, 4])
 
     try:
@@ -57,8 +106,10 @@ def derivative_tangent():
             func_str, x0, domain_range
         )
         return jsonify({'success': True, 'data': result})
+    except (ValueError, sp.SympifyError) as e:
+        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
 
 
 @calculus_bp.route('/derivative/secant-approximation', methods=['POST'])
@@ -75,8 +126,15 @@ def secant_approximation():
     }
     """
     data = request.json
+    is_valid, error = validate_request_data(data)
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
+    is_valid, x0 = safe_float(data.get('x0', 2), 'x0')
+    if not is_valid:
+        return jsonify({'success': False, 'error': x0}), 400
+
     func_str = data.get('function', 'x**2')
-    x0 = float(data.get('x0', 2))
     h_values = data.get('h_values', [1, 0.5, 0.1, 0.01, 0.001])
     domain_range = data.get('domain_range', [0, 4])
 
@@ -85,8 +143,10 @@ def secant_approximation():
             func_str, x0, h_values, domain_range
         )
         return jsonify({'success': True, 'data': result})
+    except (ValueError, sp.SympifyError) as e:
+        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
 
 
 @calculus_bp.route('/evaluate', methods=['POST'])
@@ -95,14 +155,20 @@ def evaluate_function():
     计算函数在给定点的值
     """
     data = request.json
+    is_valid, error = validate_request_data(data)
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
     func_str = data.get('function', 'x**2')
     x_values = data.get('x_values', [0, 1, 2, 3])
 
     try:
         result = CalculusService.evaluate_function(func_str, x_values)
         return jsonify({'success': True, 'data': result})
+    except (ValueError, sp.SympifyError) as e:
+        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
 
 
 @calculus_bp.route('/limit/compute', methods=['POST'])
@@ -123,14 +189,23 @@ def compute_limit():
     }
     """
     data = request.json
+    is_valid, error = validate_request_data(data)
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
+    is_valid, x0 = safe_float(data.get('x0', 2), 'x0')
+    if not is_valid:
+        return jsonify({'success': False, 'error': x0}), 400
+
     func_str = data.get('function', 'x**2')
-    x0 = float(data.get('x0', 2))
 
     try:
         L = CalculusService.compute_limit(func_str, x0)
         return jsonify({'success': True, 'data': {'L': L}})
+    except (ValueError, sp.SympifyError) as e:
+        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
 
 
 @calculus_bp.route('/derivative/higher', methods=['POST'])
@@ -147,8 +222,15 @@ def higher_derivatives():
     }
     """
     data = request.json
+    is_valid, error = validate_request_data(data)
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
+    is_valid, x0 = safe_float(data.get('x0', 2), 'x0')
+    if not is_valid:
+        return jsonify({'success': False, 'error': x0}), 400
+
     func_str = data.get('function', 'x**3')
-    x0 = float(data.get('x0', 2))
     order = int(data.get('order', 3))
     domain_range = data.get('domain_range', [x0 - 2, x0 + 2])
 
@@ -157,8 +239,10 @@ def higher_derivatives():
             func_str, x0, order, domain_range
         )
         return jsonify({'success': True, 'data': result})
+    except (ValueError, sp.SympifyError) as e:
+        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
 
 
 @calculus_bp.route('/derivative/linear-approximation', methods=['POST'])
@@ -173,11 +257,16 @@ def linear_approximation():
         "domain_range": [0, 4]   # 绘图域范围
     }
     """
-    from app.utils.math_utils import generate_function_points, get_tangent_line
-
     data = request.json
+    is_valid, error = validate_request_data(data)
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
+    is_valid, x0 = safe_float(data.get('x0', 2), 'x0')
+    if not is_valid:
+        return jsonify({'success': False, 'error': x0}), 400
+
     func_str = data.get('function', 'x**2')
-    x0 = float(data.get('x0', 2))
     domain_range = data.get('domain_range', [x0 - 2, x0 + 2])
 
     try:
@@ -208,7 +297,8 @@ def linear_approximation():
                 error_area_x.extend([xv, xv])
                 error_area_y.extend([0, ey])
 
-        f_x0 = float(sp.sympify(func_str).subs(sp.Symbol('x'), x0))
+        from sympy import Symbol
+        f_x0 = float(generate_function_points(func_str, [x0 - 0.001, x0 + 0.001])['y'][1])
         equation = f'y = {slope:.4f}(x - {x0}) + {f_x0:.4f}'
 
         return jsonify({
@@ -233,5 +323,7 @@ def linear_approximation():
                 'domain_range': domain_range
             }
         })
+    except (ValueError, sp.SympifyError) as e:
+        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400

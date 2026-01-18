@@ -2,6 +2,7 @@
 微积分服务模块
 提供极限、导数等可视化计算功能
 """
+from typing import Dict, List, Any, Union
 import sympy as sp
 import numpy as np
 from app.utils.math_utils import (
@@ -18,7 +19,7 @@ class CalculusService:
 
     @staticmethod
     def epsilon_delta_visualization(func_str: str, x0: float, L: float,
-                                     epsilon: float, domain_range: list):
+                                     epsilon: float, domain_range: list) -> Dict[str, Any]:
         """
         生成 ε-δ 极限可视化数据
 
@@ -92,7 +93,7 @@ class CalculusService:
         }
 
     @staticmethod
-    def derivative_visualization(func_str: str, x0: float, domain_range: list):
+    def derivative_visualization(func_str: str, x0: float, domain_range: list) -> Dict[str, Any]:
         """
         生成导数切线可视化数据
 
@@ -163,7 +164,7 @@ class CalculusService:
 
     @staticmethod
     def secant_approximation(func_str: str, x0: float, h_values: list,
-                              domain_range: list):
+                              domain_range: list) -> Dict[str, Any]:
         """
         生成割线逼近切线的动画数据
 
@@ -222,7 +223,7 @@ class CalculusService:
         }
 
     @staticmethod
-    def evaluate_function(func_str: str, x_values: list):
+    def evaluate_function(func_str: str, x_values: list) -> Dict[str, List[float]]:
         """
         计算函数在多个点的值
 
@@ -255,7 +256,7 @@ class CalculusService:
 
     @staticmethod
     def get_higher_derivatives(func_str: str, x0: float, order: int = 3,
-                               domain_range: list = None) -> dict:
+                               domain_range: list = None) -> Dict[str, Any]:
         """
         计算高阶导数
 
@@ -290,7 +291,7 @@ class CalculusService:
                         y_vals.append(None)
                     else:
                         y_vals.append(yv)
-                except:
+                except (TypeError, ValueError, sp.SympifyError):
                     y_vals.append(None)
 
             curves.append({

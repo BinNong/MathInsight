@@ -4,6 +4,15 @@
 import numpy as np
 import sympy as sp
 from typing import List, Dict, Tuple, Any
+import logging
+
+logger = logging.getLogger(__name__)
+
+# 常量定义
+SEARCH_RESOLUTION = 20000
+SEARCH_POINTS = 10000
+MAX_SEARCH_RADIUS = 10
+DEFAULT_DELTA = 0.1
 
 
 def safe_eval(expr: str, x_values: List[float]) -> List[float]:
@@ -107,13 +116,13 @@ def compute_delta_for_epsilon(expr: str, x0: float, L: float, epsilon: float,
         func = sp.sympify(expr)
 
         # 在 x0 两侧搜索最近的不满足条件的点
-        search_range = np.linspace(max(domain_range[0], x0 - 10),
-                                   min(domain_range[1], x0 + 10), 20000)
-        step = (search_range[-1] - search_range[0]) / 20000
+        search_range = np.linspace(max(domain_range[0], x0 - MAX_SEARCH_RADIUS),
+                                   min(domain_range[1], x0 + MAX_SEARCH_RADIUS),
+                                   SEARCH_RESOLUTION)
 
         # 找到左边最近的不满足条件的点
         left_boundary = domain_range[0]
-        for x_test in np.linspace(x0, max(domain_range[0], x0 - 10), 10000):
+        for x_test in np.linspace(x0, max(domain_range[0], x0 - MAX_SEARCH_RADIUS), SEARCH_POINTS):
             f_val = float(func.subs(x, x_test))
             if abs(f_val - L) >= epsilon:
                 left_boundary = x_test
@@ -121,7 +130,7 @@ def compute_delta_for_epsilon(expr: str, x0: float, L: float, epsilon: float,
 
         # 找到右边最近的不满足条件的点
         right_boundary = domain_range[1]
-        for x_test in np.linspace(x0, min(domain_range[1], x0 + 10), 10000):
+        for x_test in np.linspace(x0, min(domain_range[1], x0 + MAX_SEARCH_RADIUS), SEARCH_POINTS):
             f_val = float(func.subs(x, x_test))
             if abs(f_val - L) >= epsilon:
                 right_boundary = x_test
@@ -136,9 +145,10 @@ def compute_delta_for_epsilon(expr: str, x0: float, L: float, epsilon: float,
         if delta_left == 0 and delta_right == domain_range[1] - domain_range[0]:
             return min(1.0, (domain_range[1] - domain_range[0]) / 2)
 
-        return min(delta_left, delta_right) if delta_left > 0 and delta_right > 0 else 0.1
-    except Exception:
-        return 0.1
+        return min(delta_left, delta_right) if delta_left > 0 and delta_right > 0 else DEFAULT_DELTA
+    except Exception as e:
+        logger.warning(f"compute_delta_for_epsilon failed for {expr}: {e}")
+        return DEFAULT_DELTA
 
 
 def generate_function_points(expr: str, domain_range: List[float],
@@ -167,7 +177,7 @@ def generate_function_points(expr: str, domain_range: List[float],
                     y_values.append(None)
                 else:
                     y_values.append(yv)
-            except:
+            except (TypeError, ValueError, sp.SympifyError):
                 y_values.append(None)
 
         return {'x': x_values.tolist(), 'y': y_values}
