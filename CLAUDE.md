@@ -38,7 +38,8 @@ npx playwright test
 frontend/src/
 ├── pages/              # Main page components
 │   ├── EpsilonDeltaLimit.tsx   # ε-δ limit visualization
-│   └── DerivativeTangent.tsx   # Derivative & linear approximation
+│   ├── DerivativeTangent.tsx   # Derivative & linear approximation
+│   └── MatrixTransform.tsx     # 2×2 matrix transformation
 ├── services/           # API calls
 │   └── api.ts
 ├── components/         # Reusable components
@@ -50,11 +51,13 @@ frontend/src/
 ```
 backend/app/
 ├── routes/
-│   └── calculus.py     # Calculus API endpoints
+│   ├── calculus.py         # Calculus API endpoints
+│   └── linear_algebra.py   # Linear algebra API endpoints
 ├── services/
-│   └── calculus_service.py  # Calculus computation
+│   ├── calculus_service.py     # Calculus computation
+│   └── linear_algebra_service.py  # Matrix operations
 └── utils/
-    └── math_utils.py   # Math utility functions
+    └── math_utils.py       # Math utility functions
 ```
 
 ## Implemented Features (MVP Progress)
@@ -63,7 +66,7 @@ backend/app/
 |----|---------|--------|--------|
 | M1 | ε-δ Limit Visualization | Calculus | ✅ Done |
 | M2 | Derivative Enhancement | Calculus | ✅ Done |
-| M3 | Matrix Transformations | Linear Algebra | ⏳ Pending |
+| M3 | Matrix Transformations | Linear Algebra | ✅ Done |
 | M4 | Law of Large Numbers | Probability | ⏳ Pending |
 
 ### M1: ε-δ Limit Visualization
@@ -81,6 +84,14 @@ backend/app/
 - **Magnifier**: Zoom in to observe curve-tangent convergence
 - Supports sin, cos, tan, exp, log, ln, sqrt, etc.
 
+### M3: Matrix Transformations
+- **2×2 Matrix Input**: Numeric input fields and sliders
+- **Real-time Transformation**: Visualize unit circle → ellipse and grid deformation
+- **Preset Templates**: Identity, scale, rotate, shear, reflect, squeeze
+- **Eigenvector Display**: Show invariant directions in transformation
+- **Determinant Info**: Display area scaling ratio and orientation
+- **Basis Vector Tracking**: Show transformed e₁ and e₂ positions
+
 ## API Endpoints
 
 ### Calculus
@@ -91,6 +102,13 @@ backend/app/
 | `/api/calculus/derivative/higher` | POST | Get higher-order derivatives |
 | `/api/calculus/derivative/linear-approximation` | POST | Get linear approximation data |
 | `/api/calculus/epsilon-delta` | POST | Get ε-δ visualization data |
+
+### Linear Algebra
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/linear-algebra/matrix-transform` | POST | Get 2×2 matrix transformation data |
+| `/api/linear-algebra/matrix-presets` | GET | Get preset matrix templates |
 
 ## Design Patterns
 

@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import EpsilonDeltaLimit from './pages/EpsilonDeltaLimit'
 import DerivativeTangent from './pages/DerivativeTangent'
+import MatrixTransform from './pages/MatrixTransform'
+
+type Tab = 'limit' | 'derivative' | 'matrix'
 
 function App() {
-  const [activeTab, setActiveTab] = useState<'limit' | 'derivative'>('limit')
+  const [activeTab, setActiveTab] = useState<Tab>('limit')
 
   return (
     <div className="app-container">
@@ -26,10 +29,17 @@ function App() {
           >
             导数与切线
           </button>
+          <button
+            className={`nav-tab ${activeTab === 'matrix' ? 'active' : ''}`}
+            onClick={() => setActiveTab('matrix')}
+          >
+            矩阵变换
+          </button>
         </nav>
 
         {activeTab === 'limit' && <EpsilonDeltaLimit />}
         {activeTab === 'derivative' && <DerivativeTangent />}
+        {activeTab === 'matrix' && <MatrixTransform />}
       </main>
     </div>
   )
