@@ -3,8 +3,13 @@
 """
 import numpy as np
 import sympy as sp
+from sympy.parsing.sympy_parser import (
+    parse_expr, standard_transformations,
+    implicit_multiplication_application, convert_xor
+)
 from typing import List, Dict, Tuple, Any
 import logging
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +18,69 @@ SEARCH_RESOLUTION = 20000
 SEARCH_POINTS = 10000
 MAX_SEARCH_RADIUS = 10
 DEFAULT_DELTA = 0.1
+
+# 安全的 transformations - 只允许基本数学运算，禁止代码注入
+# convert_xor: 将 ^ 转换为幂运算
+# implicit_multiplication_application: 允许 2x 表示 2*x
+_SAFE_TRANSFORMATIONS = (
+    standard_transformations +
+    (convert_xor, implicit_multiplication_application)
+)
+
+
+def _safe_parse(expr: str) -> sp.Basic:
+    """
+    安全地解析数学表达式，防止代码注入攻击
+
+    使用 parse_expr 代替 sympify，并限制可访问的符号。
+
+    Args:
+        expr: 数学表达式字符串
+
+    Returns:
+        SymPy 表达式对象
+
+    Raises:
+        ValueError: 表达式无法解析或包含非法内容
+    """
+    if not expr or not isinstance(expr, str):
+        raise ValueError("表达式必须是非空字符串")
+
+    expr = expr.strip()
+
+    # 检查可疑模式
+    suspicious_patterns = [
+        '__',      # 双下划线（可能访问特殊属性）
+        'eval(',   # eval 调用
+        'exec(',   # exec 调用
+        'open(',   # 文件操作
+        'S.',      # 访问 SymPy 的 S 对象
+        'lambda:', # 匿名函数
+        ':',       # 字典/切片语法（可疑）
+    ]
+
+    for pattern in suspicious_patterns:
+        if pattern.lower() in expr.lower():
+            raise ValueError(f"表达式包含不允许的内容: {pattern}")
+
+    try:
+        # 使用 local_dict 阻止访问 S 对象和其他危险符号
+        # 允许的变量：x, y, z, t 等常见数学变量
+        local_dict = {
+            'x': sp.Symbol('x'),
+            'y': sp.Symbol('y'),
+            'z': sp.Symbol('z'),
+            't': sp.Symbol('t'),
+        }
+
+        return parse_expr(
+            expr,
+            transformations=_SAFE_TRANSFORMATIONS,
+            local_dict=local_dict,
+            evaluate=True
+        )
+    except Exception as e:
+        raise ValueError(f"无法解析表达式 '{expr}': {str(e)}")
 
 
 def safe_eval(expr: str, x_values: List[float]) -> List[float]:
@@ -29,7 +97,7 @@ def safe_eval(expr: str, x_values: List[float]) -> List[float]:
     x = sp.Symbol('x')
     try:
         # 解析表达式
-        func = sp.sympify(expr)
+        func = _safe_parse(expr)
         # 计算每个点的值
         y_values = [float(func.subs(x, xv)) for xv in x_values]
         return y_values
@@ -43,7 +111,7 @@ def safe_eval_single(expr: str, x_val: float) -> float:
     """
     x = sp.Symbol('x')
     try:
-        func = sp.sympify(expr)
+        func = _safe_parse(expr)
         return float(func.subs(x, x_val))
     except Exception as e:
         raise ValueError(f"无法计算函数值: {expr} at x={x_val}, 错误: {str(e)}")
@@ -61,7 +129,7 @@ def get_derivative(expr: str) -> str:
     """
     x = sp.Symbol('x')
     try:
-        func = sp.sympify(expr)
+        func = _safe_parse(expr)
         derivative = sp.diff(func, x)
         return str(derivative)
     except Exception as e:
@@ -81,7 +149,7 @@ def get_tangent_line(expr: str, x0: float) -> Tuple[float, float]:
     """
     x = sp.Symbol('x')
     try:
-        func = sp.sympify(expr)
+        func = _safe_parse(expr)
         f_x0 = float(func.subs(x, x0))
         derivative = sp.diff(func, x)
         f_prime_x0 = float(derivative.subs(x, x0))
@@ -113,7 +181,7 @@ def compute_delta_for_epsilon(expr: str, x0: float, L: float, epsilon: float,
     """
     try:
         x = sp.Symbol('x')
-        func = sp.sympify(expr)
+        func = _safe_parse(expr)
 
         # 在 x0 两侧搜索最近的不满足条件的点
         search_range = np.linspace(max(domain_range[0], x0 - MAX_SEARCH_RADIUS),
@@ -166,7 +234,7 @@ def generate_function_points(expr: str, domain_range: List[float],
     """
     x = sp.Symbol('x')
     try:
-        func = sp.sympify(expr)
+        func = _safe_parse(expr)
         x_values = np.linspace(domain_range[0], domain_range[1], num_points)
         y_values = []
 
