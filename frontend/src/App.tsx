@@ -2,8 +2,9 @@ import { useState } from 'react'
 import EpsilonDeltaLimit from './pages/EpsilonDeltaLimit'
 import DerivativeTangent from './pages/DerivativeTangent'
 import MatrixTransform from './pages/MatrixTransform'
+import ProbabilitySim from './pages/ProbabilitySim'
 
-type Tab = 'limit' | 'derivative' | 'matrix'
+type Tab = 'limit' | 'derivative' | 'matrix' | 'probability'
 
 function App() {
   const [activeTab, setActiveTab] = useState<Tab>('limit')
@@ -35,11 +36,18 @@ function App() {
           >
             矩阵变换
           </button>
+          <button
+            className={`nav-tab ${activeTab === 'probability' ? 'active' : ''}`}
+            onClick={() => setActiveTab('probability')}
+          >
+            大数定律
+          </button>
         </nav>
 
         {activeTab === 'limit' && <EpsilonDeltaLimit />}
         {activeTab === 'derivative' && <DerivativeTangent />}
         {activeTab === 'matrix' && <MatrixTransform />}
+        {activeTab === 'probability' && <ProbabilitySim />}
       </main>
     </div>
   )

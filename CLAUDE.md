@@ -39,7 +39,8 @@ frontend/src/
 ├── pages/              # Main page components
 │   ├── EpsilonDeltaLimit.tsx   # ε-δ limit visualization
 │   ├── DerivativeTangent.tsx   # Derivative & linear approximation
-│   └── MatrixTransform.tsx     # 2×2 matrix transformation
+│   ├── MatrixTransform.tsx     # 2×2 matrix transformation
+│   └── ProbabilitySim.tsx      # Law of Large Numbers simulation
 ├── services/           # API calls
 │   └── api.ts
 ├── components/         # Reusable components
@@ -52,10 +53,12 @@ frontend/src/
 backend/app/
 ├── routes/
 │   ├── calculus.py         # Calculus API endpoints
-│   └── linear_algebra.py   # Linear algebra API endpoints
+│   ├── linear_algebra.py   # Linear algebra API endpoints
+│   └── probability.py      # Probability API endpoints
 ├── services/
 │   ├── calculus_service.py     # Calculus computation
-│   └── linear_algebra_service.py  # Matrix operations
+│   ├── linear_algebra_service.py  # Matrix operations
+│   └── probability_service.py  # Probability simulations
 └── utils/
     └── math_utils.py       # Math utility functions
 ```
@@ -67,7 +70,7 @@ backend/app/
 | M1 | ε-δ Limit Visualization | Calculus | ✅ Done |
 | M2 | Derivative Enhancement | Calculus | ✅ Done |
 | M3 | Matrix Transformations | Linear Algebra | ✅ Done |
-| M4 | Law of Large Numbers | Probability | ⏳ Pending |
+| M4 | Law of Large Numbers | Probability | ✅ Done |
 
 ### M1: ε-δ Limit Visualization
 - User sets target limit L and ε range
@@ -92,6 +95,14 @@ backend/app/
 - **Determinant Info**: Display area scaling ratio and orientation
 - **Basis Vector Tracking**: Show transformed e₁ and e₂ positions
 
+### M4: Law of Large Numbers
+- **Monte Carlo Experiments**: Coin toss (Bernoulli) and dice roll (discrete uniform)
+- **Real-time Animation**: Visual demonstration of each trial
+- **Convergence Curve**: Plot sample mean converging to expected value
+- **Distribution Histogram**: Real-time frequency display of sample results
+- **Preset Templates**: Fair coin, biased coin, standard dice, custom dice
+- **Adjustable Parameters**: Sample size, animation speed
+
 ## API Endpoints
 
 ### Calculus
@@ -109,6 +120,13 @@ backend/app/
 |----------|--------|-------------|
 | `/api/linear-algebra/matrix-transform` | POST | Get 2×2 matrix transformation data |
 | `/api/linear-algebra/matrix-presets` | GET | Get preset matrix templates |
+
+### Probability
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/probability/lln/simulate` | POST | Run LLN Monte Carlo simulation |
+| `/api/probability/lln/presets` | GET | Get preset experiment configurations |
 
 ## Design Patterns
 

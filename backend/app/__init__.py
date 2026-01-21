@@ -2,6 +2,7 @@ from flask import Flask
 from flask_cors import CORS
 from app.routes.calculus import calculus_bp
 from app.routes.linear_algebra import linear_algebra_bp
+from app.routes.probability import probability_bp
 
 
 def create_app():
@@ -11,6 +12,7 @@ def create_app():
     # Register blueprints
     app.register_blueprint(calculus_bp, url_prefix='/api/calculus')
     app.register_blueprint(linear_algebra_bp, url_prefix='/api/linear-algebra')
+    app.register_blueprint(probability_bp, url_prefix='/api/probability')
 
     @app.route('/api/health')
     def health():

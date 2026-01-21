@@ -124,3 +124,34 @@ export const calculusApi = {
     return response.data
   }
 }
+
+// 大数定律模拟 API
+export interface LLNSimulateRequest {
+  experiment_type: 'coin' | 'dice'
+  p?: number           // 硬币正面概率（仅 coin）
+  min_val?: number     // 最小值（仅 dice）
+  max_val?: number     // 最大值（仅 dice）
+  sample_size: number
+  seed?: number
+}
+
+export interface LLNResultData {
+  experiment_type: string
+  expected_value: number
+  total_samples: number
+  cumulative_means: number[]
+  samples: number[]
+  final_mean: number
+}
+
+export const probabilityApi = {
+  async simulateLLN(data: LLNSimulateRequest) {
+    const response = await axios.post('/api/probability/lln/simulate', data)
+    return response.data
+  },
+
+  async getPresets() {
+    const response = await axios.get('/api/probability/lln/presets')
+    return response.data
+  }
+}
