@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Plot from 'react-plotly.js'
 import { calculusApi, DerivativeRequest, SecantRequest } from '../services/api'
+import { Link } from 'react-router-dom'
 
 // 防抖函数
 function debounce<T extends (...args: any[]) => void>(func: T, wait: number): T {
@@ -609,13 +610,28 @@ export default function DerivativeTangent() {
   }
 
   return (
-    <div className="content-card">
-      <div className="card-header">
-        <h2>导数与切线可视化</h2>
-        <p>理解导数的几何意义：切线斜率 = 割线斜率在 h → 0 时的极限</p>
-      </div>
+    <div className="detail-page">
+      <header className="detail-header">
+        <Link to="/subject/calculus" className="detail-back-button">
+          ← 返回微积分
+        </Link>
+        <div className="breadcrumb">
+          <Link to="/">首页</Link>
+          <span className="breadcrumb-separator">/</span>
+          <Link to="/subject/calculus">微积分</Link>
+          <span className="breadcrumb-separator">/</span>
+          <span>导数与切线</span>
+        </div>
+        <h1 className="detail-title">导数与切线</h1>
+      </header>
 
-      <div className="nav-tabs" style={{ borderBottom: 'none', marginBottom: '1rem' }}>
+      <div className="content-card" style={{ margin: '2rem', maxWidth: '1400px' }}>
+        <div className="card-header">
+          <h2>导数与切线可视化</h2>
+          <p>理解导数的几何意义：切线斜率 = 割线斜率在 h → 0 时的极限</p>
+        </div>
+
+        <div className="nav-tabs" style={{ borderBottom: 'none', marginBottom: '1rem' }}>
         <button
           className={`nav-tab ${activeMode === 'tangent' ? 'active' : ''}`}
           onClick={() => setActiveMode('tangent')}
@@ -926,13 +942,14 @@ export default function DerivativeTangent() {
               ))}
               <div className="info-item" style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
                 <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                  观察：f' 的极值点对应 f 的拐点，f''=0 处为拐点
+                  观察：f&apos; 的极值点对应 f 的拐点，f&apos;&apos;=0 处为拐点
                 </span>
               </div>
             </div>
           )}
         </>
-      )}
+        )}
+      </div>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import Plot from 'react-plotly.js'
-import { linearAlgebraApi, MatrixTransformRequest, MatrixTransformData } from '../services/api'
+import { linearAlgebraApi, MatrixTransformData } from '../services/api'
+import { Link } from 'react-router-dom'
 
 
 interface MatrixValues {
@@ -245,7 +246,7 @@ export default function MatrixTransform() {
       range: [-6, 6],
       zeroline: true,
       showspikes: false,
-      scaleanchor: 'y',
+      scaleanchor: 'y' as const,
       scaleratio: 1
     },
     yaxis: {
@@ -262,13 +263,28 @@ export default function MatrixTransform() {
   }
 
   return (
-    <div className="content-card">
-      <div className="card-header">
-        <h2>2×2 矩阵变换可视化</h2>
-        <p>输入矩阵 [[a, b], [c, d]]，观察对单位圆和网格的变换效果，理解线性变换的几何意义</p>
-      </div>
+    <div className="detail-page">
+      <header className="detail-header">
+        <Link to="/subject/linear-algebra" className="detail-back-button">
+          ← 返回线性代数
+        </Link>
+        <div className="breadcrumb">
+          <Link to="/">首页</Link>
+          <span className="breadcrumb-separator">/</span>
+          <Link to="/subject/linear-algebra">线性代数</Link>
+          <span className="breadcrumb-separator">/</span>
+          <span>矩阵变换</span>
+        </div>
+        <h1 className="detail-title">2×2 矩阵变换可视化</h1>
+      </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1.5rem' }}>
+      <div className="content-card" style={{ margin: '2rem', maxWidth: '1400px' }}>
+        <div className="card-header">
+          <h2>2×2 矩阵变换可视化</h2>
+          <p>输入矩阵 [[a, b], [c, d]]，观察对单位圆和网格的变换效果</p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1.5rem' }}>
         {/* 左侧控制面板 */}
         <div>
           {/* 矩阵输入 */}
@@ -443,7 +459,7 @@ export default function MatrixTransform() {
               <div className="visualization-container">
                 <Plot
                   data={buildPlotData()}
-                  layout={{ ...layout, width: 700, height: 550 }}
+                  layout={{ ...layout, width: 700, height: 550 } as any}
                   config={{ responsive: true, scrollZoom: true }}
                 />
               </div>
@@ -501,6 +517,7 @@ export default function MatrixTransform() {
             </>
           )}
         </div>
+      </div>
       </div>
     </div>
   )

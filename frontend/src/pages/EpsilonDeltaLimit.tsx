@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Plot from 'react-plotly.js'
 import { calculusApi, EpsilonDeltaRequest } from '../services/api'
+import { Link } from 'react-router-dom'
 
 // 防抖函数
 function debounce<T extends (...args: any[]) => void>(func: T, wait: number): T {
@@ -306,13 +307,28 @@ export default function EpsilonDeltaLimit() {
   } : {}
 
   return (
-    <div className="content-card">
-      <div className="card-header">
-        <h2>ε-δ 极限定义可视化</h2>
-        <p>通过交互式图形理解极限的 ε-δ 定义：对于任意 ε {'>'} 0，存在 δ {'>'} 0，使得当 |x - x₀| &lt; δ 时，|f(x) - L| &lt; ε</p>
-      </div>
+    <div className="detail-page">
+      <header className="detail-header">
+        <Link to="/subject/calculus" className="detail-back-button">
+          ← 返回微积分
+        </Link>
+        <div className="breadcrumb">
+          <Link to="/">首页</Link>
+          <span className="breadcrumb-separator">/</span>
+          <Link to="/subject/calculus">微积分</Link>
+          <span className="breadcrumb-separator">/</span>
+          <span>ε-δ 极限可视化</span>
+        </div>
+        <h1 className="detail-title">ε-δ 极限可视化</h1>
+      </header>
 
-      <div className="form-row">
+      <div className="content-card" style={{ margin: '2rem', maxWidth: '1400px' }}>
+        <div className="card-header">
+          <h2>ε-δ 极限定义可视化</h2>
+          <p>通过交互式图形理解极限的 ε-δ 定义</p>
+        </div>
+
+        <div className="form-row">
         <div className="form-group">
           <label>函数 f(x)</label>
           <input
@@ -439,6 +455,7 @@ export default function EpsilonDeltaLimit() {
           </div>
         </>
       )}
+      </div>
     </div>
   )
 }

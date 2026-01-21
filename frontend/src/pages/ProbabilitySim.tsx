@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import Plot from 'react-plotly.js'
 import type { Data } from 'plotly.js'
 import { probabilityApi, LLNSimulateRequest, LLNResultData } from '../services/api'
+import { Link } from 'react-router-dom'
 
 // 预设配置
 interface Preset {
@@ -273,13 +274,28 @@ export default function ProbabilitySim() {
   const yAxisRange = getYAxisRange()
 
   return (
-    <div className="content-card">
-      <div className="card-header">
-        <h2>大数定律可视化</h2>
-        <p>通过蒙特卡洛模拟直观理解大数定律：样本均值随样本量增加逐渐收敛于理论期望</p>
-      </div>
+    <div className="detail-page">
+      <header className="detail-header">
+        <Link to="/subject/probability" className="detail-back-button">
+          ← 返回概率论
+        </Link>
+        <div className="breadcrumb">
+          <Link to="/">首页</Link>
+          <span className="breadcrumb-separator">/</span>
+          <Link to="/subject/probability">概率论与数理统计</Link>
+          <span className="breadcrumb-separator">/</span>
+          <span>大数定律</span>
+        </div>
+        <h1 className="detail-title">大数定律可视化</h1>
+      </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1.5rem' }}>
+      <div className="content-card" style={{ margin: '2rem', maxWidth: '1400px' }}>
+        <div className="card-header">
+          <h2>大数定律可视化</h2>
+          <p>通过蒙特卡洛模拟直观理解大数定律</p>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1.5rem' }}>
         {/* 左侧控制面板 */}
         <div>
           {/* 快速预设 */}
@@ -633,6 +649,7 @@ export default function ProbabilitySim() {
             </p>
           </div>
         </div>
+      </div>
       </div>
     </div>
   )
