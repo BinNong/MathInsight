@@ -1,6 +1,6 @@
 """
 微积分服务模块
-提供极限、导数等可视化计算功能
+提供极限、导数、积分等可视化计算功能
 """
 from typing import Dict, List, Any, Union
 import sympy as sp
@@ -10,7 +10,8 @@ from app.utils.math_utils import (
     get_tangent_line,
     compute_delta_for_epsilon,
     generate_function_points,
-    get_derivative
+    get_derivative,
+    _safe_parse
 )
 
 
@@ -496,4 +497,258 @@ class CalculusService:
             'remainder_bound': remainder_curves,
             'actual_remainder': actual_remainder_curves,
             'domain_range': domain
+        }
+
+    @staticmethod
+    def riemann_sum(func_str: str, a: float, b: float, n: int,
+                    method: str = 'left', domain_range: List[float] = None) -> Dict[str, Any]:
+        """
+        计算黎曼和并生成可视化数据
+
+        Args:
+            func_str: 函数表达式字符串
+            a: 积分下限
+            b: 积分上限
+            n: 分割数量
+            method: 分割方法 ('left', 'right', 'midpoint', 'random')
+            domain_range: 绘图域范围 [x_min, x_max]
+
+        Returns:
+            dict: 包含可视化所需的所有数据
+        """
+        x = sp.Symbol('x')
+        func = _safe_parse(func_str)
+
+        # 计算步长
+        dx = (b - a) / n
+
+        # 根据不同方法选择采样点
+        if method == 'left':
+            sample_points = [a + i * dx for i in range(n)]
+        elif method == 'right':
+            sample_points = [a + (i + 1) * dx for i in range(n)]
+        elif method == 'midpoint':
+            sample_points = [a + (i + 0.5) * dx for i in range(n)]
+        elif method == 'random':
+            np.random.seed(42)  # 保证可复现性
+            sample_points = [a + np.random.uniform(i * dx, (i + 1) * dx) for i in range(n)]
+        else:
+            sample_points = [a + (i + 0.5) * dx for i in range(n)]  # 默认中点法
+
+        # 计算每个矩形的面积
+        heights = []
+        for xi in sample_points:
+            try:
+                h = float(func.subs(x, xi))
+                if np.isnan(h) or np.isinf(h):
+                    h = 0
+                heights.append(h)
+            except (TypeError, ValueError):
+                heights.append(0)
+
+        # 计算黎曼和
+        approximation = sum(h * dx for h in heights)
+
+        # 计算真实积分值（用于误差计算）
+        try:
+            integral = sp.integrate(func, (x, a, b))
+            if integral.is_real:
+                exact_value = float(integral)
+            else:
+                exact_value = None
+        except (sp.TypeError, sp.UndefinedError):
+            exact_value = None
+
+        # 误差
+        error = abs(approximation - exact_value) if exact_value is not None else None
+
+        # 生成矩形数据（用于可视化）
+        rect_x_left = []
+        rect_x_right = []
+        rect_x_mid = []
+        rect_heights = []
+        rect_areas = []
+
+        for i in range(n):
+            x_left = a + i * dx
+            x_right = a + (i + 1) * dx
+            x_mid = (x_left + x_right) / 2
+            h = heights[i] if i < len(heights) else 0
+
+            rect_x_left.append(x_left)
+            rect_x_right.append(x_right)
+            rect_x_mid.append(x_mid)
+            rect_heights.append(h)
+            rect_areas.append(h * dx)
+
+        # 生成主函数曲线
+        plot_domain = domain_range or [a - 0.1 * (b - a), b + 0.1 * (b - a)]
+        function_curve = generate_function_points(func_str, plot_domain, 500)
+
+        # 矩形边界线（用于可视化）
+        rect_lines_x = []
+        rect_lines_y = []
+        for i in range(n):
+            x_left = a + i * dx
+            x_right = a + (i + 1) * dx
+            h = heights[i] if i < len(heights) else 0
+            # 每个矩形添加4个点和闭合线
+            rect_lines_x.extend([x_left, x_left, x_right, x_right, None])
+            rect_lines_y.extend([0, h, h, 0, None])
+
+        return {
+            'function': func_str,
+            'interval': {'a': a, 'b': b},
+            'n': n,
+            'method': method,
+            'rectangles': {
+                'x_left': rect_x_left,
+                'x_right': rect_x_right,
+                'x_mid': rect_x_mid,
+                'height': rect_heights,
+                'area': sum(rect_areas)
+            },
+            'rect_lines': {
+                'x': rect_lines_x,
+                'y': rect_lines_y
+            },
+            'approximation': approximation,
+            'exact_value': exact_value,
+            'error': error,
+            'function_curve': function_curve,
+            'domain_range': plot_domain
+        }
+
+    @staticmethod
+    def numerical_integration_convergence(func_str: str, a: float, b: float,
+                                           n_values: List[int] = None,
+                                           domain_range: List[float] = None) -> Dict[str, Any]:
+        """
+        对比不同数值积分方法的误差收敛速度
+
+        Args:
+            func_str: 函数表达式字符串
+            a: 积分下限
+            b: 积分上限
+            n_values: 要测试的分割数列表
+            domain_range: 绘图域范围
+
+        Returns:
+            dict: 包含各方法的误差收敛数据
+        """
+        if n_values is None:
+            n_values = [4, 8, 16, 32, 64, 128, 256, 512]
+
+        x = sp.Symbol('x')
+        func = _safe_parse(func_str)
+
+        # 计算真实积分值
+        try:
+            integral = sp.integrate(func, (x, a, b))
+            if integral.is_real:
+                exact_value = float(integral)
+            else:
+                exact_value = None
+        except (sp.TypeError, sp.UndefinedError):
+            exact_value = None
+
+        if exact_value is None:
+            # 如果无法计算精确值，使用高分辨率数值积分
+            from scipy.integrate import quad
+            f_numeric = sp.lambdify(x, func, 'numpy')
+            try:
+                exact_value, _ = quad(f_numeric, a, b)
+            except:
+                exact_value = None
+
+        # 定义不同的数值积分方法
+        methods = ['left', 'right', 'midpoint', 'trapezoid', 'simpson']
+
+        results = {}
+
+        for method in methods:
+            errors = []
+            for n in n_values:
+                dx = (b - a) / n
+
+                if method in ['left', 'right', 'midpoint']:
+                    # 矩形法
+                    if method == 'left':
+                        sample_points = np.array([a + i * dx for i in range(n)])
+                    elif method == 'right':
+                        sample_points = np.array([a + (i + 1) * dx for i in range(n)])
+                    else:  # midpoint
+                        sample_points = np.array([a + (i + 0.5) * dx for i in range(n)])
+
+                    # 计算函数值
+                    f_values = []
+                    for xi in sample_points:
+                        try:
+                            fv = float(func.subs(x, xi))
+                            if np.isnan(fv) or np.isinf(fv):
+                                fv = 0
+                            f_values.append(fv)
+                        except:
+                            f_values.append(0)
+
+                    approximation = sum(fv * dx for fv in f_values)
+
+                elif method == 'trapezoid':
+                    # 梯形法
+                    x_points = np.linspace(a, b, n + 1)
+                    y_values = []
+                    for xi in x_points:
+                        try:
+                            yv = float(func.subs(x, xi))
+                            if np.isnan(yv) or np.isinf(yv):
+                                yv = 0
+                            y_values.append(yv)
+                        except:
+                            y_values.append(0)
+                    approximation = np.trapz(y_values, x_points)
+
+                elif method == 'simpson':
+                    # 辛普森法（需要偶数个区间）
+                    n_even = n if n % 2 == 0 else n + 1
+                    if n_even < 4:
+                        n_even = 4
+                    x_points = np.linspace(a, b, n_even + 1)
+                    y_values = []
+                    for xi in x_points:
+                        try:
+                            yv = float(func.subs(x, xi))
+                            if np.isnan(yv) or np.isinf(yv):
+                                yv = 0
+                            y_values.append(yv)
+                        except:
+                            y_values.append(0)
+                    # 手动实现 Simpson 法则
+                    dx = x_points[1] - x_points[0]
+                    approximation = (dx / 3) * (
+                        y_values[0] +
+                        y_values[-1] +
+                        4 * sum(y_values[i] for i in range(1, n_even, 2)) +
+                        2 * sum(y_values[i] for i in range(2, n_even - 1, 2))
+                    )
+
+                error = abs(approximation - exact_value) if exact_value is not None else 0
+                errors.append({'n': n, 'error': error})
+
+            results[method] = {
+                'name': method,
+                'errors': errors
+            }
+
+        # 生成函数曲线用于绘图
+        plot_domain = domain_range or [a - 0.1 * (b - a), b + 0.1 * (b - a)]
+        function_curve = generate_function_points(func_str, plot_domain, 500)
+
+        return {
+            'function': func_str,
+            'interval': {'a': a, 'b': b},
+            'exact_value': exact_value,
+            'methods': results,
+            'n_values': n_values,
+            'function_curve': function_curve,
+            'domain_range': plot_domain
         }

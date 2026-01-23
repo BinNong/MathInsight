@@ -369,3 +369,108 @@ def taylor_visualization():
         return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
     except Exception as e:
         return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+
+
+@calculus_bp.route('/integration/riemann-sum', methods=['POST'])
+def riemann_sum():
+    """
+    计算黎曼和可视化数据
+
+    请求参数:
+    {
+        "function": "x**2",      # 函数表达式
+        "a": 0,                   # 积分下限
+        "b": 1,                   # 积分上限
+        "n": 10,                  # 分割数量
+        "method": "left",         # 分割方法: left, right, midpoint, random
+        "domain_range": [-0.5, 1.5]  # 绘图域范围（可选）
+    }
+    """
+    import sympy as sp
+
+    data = request.json
+    is_valid, error = validate_request_data(data)
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
+    # 验证数值参数
+    is_valid, a = safe_float(data.get('a', 0), 'a')
+    if not is_valid:
+        return jsonify({'success': False, 'error': a}), 400
+    is_valid, b = safe_float(data.get('b', 1), 'b')
+    if not is_valid:
+        return jsonify({'success': False, 'error': b}), 400
+
+    if a >= b:
+        return jsonify({'success': False, 'error': '积分下限必须小于上限'}), 400
+
+    n = int(data.get('n', 10))
+    if n <= 0 or n > 1000:
+        return jsonify({'success': False, 'error': '分割数量必须在 1-1000 之间'}), 400
+
+    func_str = data.get('function', 'x**2')
+    method = data.get('method', 'left')
+    domain_range = data.get('domain_range', None)
+
+    if method not in ['left', 'right', 'midpoint', 'random']:
+        return jsonify({'success': False, 'error': '不支持的分割方法'}), 400
+
+    try:
+        result = CalculusService.riemann_sum(
+            func_str, a, b, n, method, domain_range
+        )
+        return jsonify({'success': True, 'data': result})
+    except (ValueError, sp.SympifyError) as e:
+        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+
+
+@calculus_bp.route('/integration/convergence', methods=['POST'])
+def integration_convergence():
+    """
+    计算数值积分方法的误差收敛数据
+
+    请求参数:
+    {
+        "function": "x**2",      # 函数表达式
+        "a": 0,                   # 积分下限
+        "b": 1,                   # 积分上限
+        "n_values": [4, 8, 16, 32, 64, 128],  # 要测试的分割数列表（可选）
+        "domain_range": [-0.5, 1.5]  # 绘图域范围（可选）
+    }
+    """
+    import sympy as sp
+
+    data = request.json
+    is_valid, error = validate_request_data(data)
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
+    # 验证数值参数
+    is_valid, a = safe_float(data.get('a', 0), 'a')
+    if not is_valid:
+        return jsonify({'success': False, 'error': a}), 400
+    is_valid, b = safe_float(data.get('b', 1), 'b')
+    if not is_valid:
+        return jsonify({'success': False, 'error': b}), 400
+
+    if a >= b:
+        return jsonify({'success': False, 'error': '积分下限必须小于上限'}), 400
+
+    func_str = data.get('function', 'x**2')
+    n_values = data.get('n_values', [4, 8, 16, 32, 64, 128, 256, 512])
+    domain_range = data.get('domain_range', None)
+
+    # 限制最大分割数
+    n_values = [min(n, 1000) for n in n_values]
+
+    try:
+        result = CalculusService.numerical_integration_convergence(
+            func_str, a, b, n_values, domain_range
+        )
+        return jsonify({'success': True, 'data': result})
+    except (ValueError, sp.SympifyError) as e:
+        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400

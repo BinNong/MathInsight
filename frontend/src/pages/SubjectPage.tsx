@@ -42,6 +42,12 @@ const SUBJECTS_DATA: Record<string, SubjectData> = {
         icon: 'd/dx'
       },
       {
+        key: 'riemann',
+        name: '黎曼积分',
+        description: '黎曼和动态构建，可视化积分定义与数值方法误差收敛',
+        icon: '∫'
+      },
+      {
         key: 'taylor',
         name: '泰勒公式',
         description: '泰勒多项式逼近原函数，可视化余项分析',
@@ -116,6 +122,7 @@ function SubjectPage() {
     const routeMap: Record<string, string> = {
       'epsilon-delta': '/limit',
       'derivative': '/derivative',
+      'riemann': '/integration',
       'taylor': '/taylor',
       'matrix': '/matrix',
       'lln': '/probability'

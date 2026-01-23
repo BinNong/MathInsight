@@ -6,6 +6,7 @@ import DerivativeTangent from './pages/DerivativeTangent'
 import MatrixTransform from './pages/MatrixTransform'
 import ProbabilitySim from './pages/ProbabilitySim'
 import TaylorSeries from './pages/TaylorSeries'
+import RiemannIntegral from './pages/RiemannIntegral'
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/taylor" element={<TaylorSeries />} />
           <Route path="/matrix" element={<MatrixTransform />} />
           <Route path="/probability" element={<ProbabilitySim />} />
+          <Route path="/integration" element={<RiemannIntegral />} />
         </Routes>
       </div>
     </BrowserRouter>
