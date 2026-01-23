@@ -3,7 +3,10 @@
     "allow": [
       "Bash(npm run build)",
       "Bash(python -c:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Skill(superpowers:brainstorming)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

@@ -5,6 +5,7 @@ import EpsilonDeltaLimit from './pages/EpsilonDeltaLimit'
 import DerivativeTangent from './pages/DerivativeTangent'
 import MatrixTransform from './pages/MatrixTransform'
 import ProbabilitySim from './pages/ProbabilitySim'
+import TaylorSeries from './pages/TaylorSeries'
 
 function App() {
   return (
@@ -15,6 +16,7 @@ function App() {
           <Route path="/subject/:subjectId" element={<SubjectPage />} />
           <Route path="/limit" element={<EpsilonDeltaLimit />} />
           <Route path="/derivative" element={<DerivativeTangent />} />
+          <Route path="/taylor" element={<TaylorSeries />} />
           <Route path="/matrix" element={<MatrixTransform />} />
           <Route path="/probability" element={<ProbabilitySim />} />
         </Routes>

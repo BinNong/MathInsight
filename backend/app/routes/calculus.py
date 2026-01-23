@@ -327,3 +327,45 @@ def linear_approximation():
         return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
     except Exception as e:
         return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+
+
+@calculus_bp.route('/taylor', methods=['POST'])
+def taylor_visualization():
+    """
+    泰勒公式可视化数据
+
+    请求参数:
+    {
+        "function": "sin(x)",      # 函数表达式
+        "x0": 0,                    # 展开点
+        "max_order": 5,             # 最大阶数（默认5）
+        "domain_range": [-3, 3]     # 绘图域范围
+    }
+    """
+    import sympy as sp
+
+    data = request.json
+    is_valid, error = validate_request_data(data)
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
+    is_valid, x0 = safe_float(data.get('x0', 0), 'x0')
+    if not is_valid:
+        return jsonify({'success': False, 'error': x0}), 400
+
+    func_str = data.get('function', 'sin(x)')
+    max_order = int(data.get('max_order', 5))
+    domain_range = data.get('domain_range', [x0 - 2, x0 + 2])
+
+    # 限制最大阶数，防止计算过慢
+    max_order = min(max_order, 10)
+
+    try:
+        result = CalculusService.taylor_visualization(
+            func_str, x0, max_order, domain_range
+        )
+        return jsonify({'success': True, 'data': result})
+    except (ValueError, sp.SympifyError) as e:
+        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400

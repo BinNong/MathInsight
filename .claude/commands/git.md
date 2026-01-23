@@ -17,6 +17,7 @@
 6. 创建注释 tag：
     - 命令：`git tag -a v{version} -m "Release v{version}"`（若 tag 已存在则改为 `git tag -f` 或先删除再建，需先询问用户）。
 7. 推送分支与 tags：
+   ⚠️如果检测没有远程仓库配置，就不需要推送
     - 推分支：`git push origin {branch}`
     - 推 tags：`git push origin --tags`
 8. 完成后返回结果：分支名、tag 名、推送结果（stdout/stderr）、任何错误提示及下一步建议（例如发布到 CI/CD）。

@@ -309,3 +309,191 @@ class CalculusService:
             'curves': curves,
             'domain_range': domain
         }
+
+    @staticmethod
+    def taylor_visualization(func_str: str, x0: float, max_order: int = 5,
+                             domain_range: list = None) -> Dict[str, Any]:
+        """
+        生成泰勒公式可视化数据
+
+        泰勒公式: Tₙ(x) = f(x₀) + f'(x₀)(x-x₀) + f''(x₀)/2!(x-x₀)² + ... + f⁽ⁿ⁾(x₀)/n!(x-x₀)ⁿ
+
+        Args:
+            func_str: 函数表达式
+            x0: 展开点
+            max_order: 最大阶数（默认5）
+            domain_range: 绘图域 [x_min, x_max]
+
+        Returns:
+            dict: 包含可视化所需的所有数据
+        """
+        x = sp.Symbol('x')
+        func = sp.sympify(func_str)
+        domain = domain_range or [x0 - 2, x0 + 2]
+
+        # 原函数曲线
+        function_curve = generate_function_points(func_str, domain)
+
+        # 计算各阶导数在 x0 处的值
+        derivatives_at_x0 = []
+        for i in range(max_order + 1):
+            if i == 0:
+                expr = func
+                value = float(func.subs(x, x0))
+            else:
+                expr = sp.diff(func, x, i)
+                value = float(expr.subs(x, x0))
+            derivatives_at_x0.append({
+                'order': i,
+                'expr': expr,
+                'value': value
+            })
+
+        # 生成各阶泰勒多项式
+        taylor_polynomials = []
+        colors = ['#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#84cc16', '#f97316', '#6366f1', '#14b8a6']
+
+        for order in range(max_order + 1):
+            # 构建泰勒多项式: Tₙ(x) = Σₖ=₀ⁿ [f⁽ᵏ⁾(x₀)/k!] × (x-x₀)ᵏ
+            taylor_expr = 0
+            taylor_str_terms = []
+            for k in range(order + 1):
+                deriv = derivatives_at_x0[k]
+                coeff = deriv['value'] / sp.factorial(k)
+                term = coeff * (x - x0) ** k
+                taylor_expr += term
+
+                # 构建字符串表示
+                if k == 0:
+                    term_str = f"{deriv['value']:.4f}"
+                elif k == 1:
+                    term_str = f"{deriv['value']:.4f}(x - {x0})"
+                else:
+                    term_str = f"{deriv['value']:.4f}(x - {x0})^{k}"
+
+                # 简化项的显示
+                if coeff == 0:
+                    continue
+                taylor_str_terms.append(term_str)
+
+            taylor_expr_simplified = sp.simplify(taylor_expr)
+
+            # 生成泰勒多项式曲线数据
+            x_vals = np.linspace(domain[0], domain[1], 500)
+            y_vals = []
+            for xv in x_vals:
+                try:
+                    yv = float(taylor_expr_simplified.subs(x, xv))
+                    if np.isnan(yv) or np.isinf(yv):
+                        y_vals.append(None)
+                    else:
+                        y_vals.append(yv)
+                except (TypeError, ValueError, sp.SympifyError):
+                    y_vals.append(None)
+
+            # 构建易读的泰勒公式字符串
+            formula_parts = []
+            for k in range(order + 1):
+                deriv = derivatives_at_x0[k]
+                coeff = deriv['value'] / sp.factorial(k)
+                if abs(coeff) < 1e-10:
+                    continue
+
+                if k == 0:
+                    formula_parts.append(f"{coeff:.4f}")
+                elif k == 1:
+                    if len(formula_parts) == 0:
+                        formula_parts.append(f"{coeff:.4f}(x - {x0})")
+                    else:
+                        formula_parts.append(f"{coeff:+.4f}(x - {x0})")
+                else:
+                    if len(formula_parts) == 0:
+                        formula_parts.append(f"{coeff:.4f}(x - {x0})^{k}")
+                    else:
+                        formula_parts.append(f"{coeff:+.4f}(x - {x0})^{k}")
+
+            formula_str = " + ".join(formula_parts) if formula_parts else "0"
+
+            taylor_polynomials.append({
+                'order': order,
+                'name': f"T{order}(x)",
+                'expression': str(taylor_expr_simplified),
+                'formula': formula_str,
+                'x': x_vals.tolist(),
+                'y': y_vals,
+                'color': colors[order % len(colors)]
+            })
+
+        # 计算余项（拉格朗日余项的估计）
+        # Rₙ(x) = f⁽ⁿ⁺¹⁾(ξ)/(n+1)! × (x-x₀)ⁿ⁺¹, ξ ∈ (x₀, x)
+        # 我们使用区间内 n+1 阶导数的最大值作为估计上界
+        remainder_curves = []
+        for order in range(max_order):
+            if order + 1 > max_order:
+                continue
+
+            # 获取 n+1 阶导数
+            n_plus_1_deriv = derivatives_at_x0[order + 1]['expr']
+
+            # 采样搜索最大值
+            x_search = np.linspace(domain[0], domain[1], 100)
+            max_abs_deriv = 0
+            for xv in x_search:
+                try:
+                    val = abs(float(n_plus_1_deriv.subs(x, xv)))
+                    if val > max_abs_deriv and not (np.isnan(val) or np.isinf(val)):
+                        max_abs_deriv = val
+                except:
+                    pass
+
+            # 计算余项估计
+            remainder_y = []
+            for xv in x_vals:
+                try:
+                    # |Rₙ(x)| ≤ max|f⁽ⁿ⁺¹⁾(ξ)| / (n+1)! × |x-x₀|ⁿ⁺¹
+                    term = max_abs_deriv / sp.factorial(order + 1) * abs(xv - x0) ** (order + 1)
+                    remainder_y.append(float(term))
+                except:
+                    remainder_y.append(None)
+
+            remainder_curves.append({
+                'order': order,
+                'name': f'R{order}(x) 界',
+                'x': x_vals.tolist(),
+                'y': remainder_y
+            })
+
+        # 计算实际的余项（f(x) - Tₙ(x)）
+        actual_remainder_curves = []
+        for order in range(max_order + 1):
+            taylor = taylor_polynomials[order]
+            actual_y = []
+            for i, xv in enumerate(x_vals):
+                f_val = function_curve['y'][i]
+                t_val = taylor['y'][i]
+                if f_val is not None and t_val is not None:
+                    actual_y.append(f_val - t_val)
+                else:
+                    actual_y.append(None)
+
+            actual_remainder_curves.append({
+                'order': order,
+                'name': f'余项 R{order}(x)',
+                'x': x_vals.tolist(),
+                'y': actual_y
+            })
+
+        # 求导点处的函数值
+        f_x0 = float(func.subs(x, x0))
+
+        return {
+            'function': func_str,
+            'x0': x0,
+            'f_x0': f_x0,
+            'max_order': max_order,
+            'original_curve': function_curve,
+            'taylor_polynomials': taylor_polynomials,
+            'remainder_bound': remainder_curves,
+            'actual_remainder': actual_remainder_curves,
+            'domain_range': domain
+        }

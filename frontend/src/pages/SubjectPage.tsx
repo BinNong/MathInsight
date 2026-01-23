@@ -40,6 +40,12 @@ const SUBJECTS_DATA: Record<string, SubjectData> = {
         name: '导数与切线',
         description: '实时绘制切线、法线，动态展示局部线性逼近',
         icon: 'd/dx'
+      },
+      {
+        key: 'taylor',
+        name: '泰勒公式',
+        description: '泰勒多项式逼近原函数，可视化余项分析',
+        icon: 'Σ'
       }
     ]
   },
@@ -110,6 +116,7 @@ function SubjectPage() {
     const routeMap: Record<string, string> = {
       'epsilon-delta': '/limit',
       'derivative': '/derivative',
+      'taylor': '/taylor',
       'matrix': '/matrix',
       'lln': '/probability'
     }

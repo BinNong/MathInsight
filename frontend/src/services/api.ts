@@ -155,3 +155,47 @@ export const probabilityApi = {
     return response.data
   }
 }
+
+// 泰勒公式可视化 API
+export interface TaylorRequest {
+  function: string
+  x0: number
+  max_order?: number
+  domain_range: number[]
+}
+
+export interface TaylorPolynomialData {
+  order: number
+  name: string
+  expression: string
+  formula: string
+  x: number[]
+  y: (number | null)[]
+  color: string
+}
+
+export interface RemainderCurveData {
+  order: number
+  name: string
+  x: number[]
+  y: (number | null)[]
+}
+
+export interface TaylorData {
+  function: string
+  x0: number
+  f_x0: number
+  max_order: number
+  original_curve: { x: number[]; y: (number | null)[] }
+  taylor_polynomials: TaylorPolynomialData[]
+  remainder_bound: RemainderCurveData[]
+  actual_remainder: RemainderCurveData[]
+  domain_range: number[]
+}
+
+export const taylorApi = {
+  async taylor(data: TaylorRequest) {
+    const response = await axios.post('/api/calculus/taylor', data)
+    return response.data
+  }
+}
