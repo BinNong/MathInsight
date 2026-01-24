@@ -7,6 +7,7 @@ import MatrixTransform from './pages/MatrixTransform'
 import ProbabilitySim from './pages/ProbabilitySim'
 import TaylorSeries from './pages/TaylorSeries'
 import RiemannIntegral from './pages/RiemannIntegral'
+import MultivariateFunction from './pages/MultivariateFunction'
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="/matrix" element={<MatrixTransform />} />
           <Route path="/probability" element={<ProbabilitySim />} />
           <Route path="/integration" element={<RiemannIntegral />} />
+          <Route path="/multivariate" element={<MultivariateFunction />} />
         </Routes>
       </div>
     </BrowserRouter>

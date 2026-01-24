@@ -52,6 +52,12 @@ const SUBJECTS_DATA: Record<string, SubjectData> = {
         name: '泰勒公式',
         description: '泰勒多项式逼近原函数，可视化余项分析',
         icon: 'Σ'
+      },
+      {
+        key: 'multivariate',
+        name: '多元函数可视化',
+        description: '3D 曲面图、等高线、偏导数与切平面、梯度场可视化',
+        icon: '∇'
       }
     ]
   },
@@ -124,6 +130,7 @@ function SubjectPage() {
       'derivative': '/derivative',
       'riemann': '/integration',
       'taylor': '/taylor',
+      'multivariate': '/multivariate',
       'matrix': '/matrix',
       'lln': '/probability'
     }

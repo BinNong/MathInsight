@@ -16,7 +16,8 @@ function debounce<T extends (...args: any[]) => void>(func: T, wait: number): T 
 function isValidFunctionExpression(expr: string): boolean {
   if (!expr || expr.trim().length === 0) return false
   const cleaned = expr.trim().replace(/\s+/g, '')
-  const validPattern = /^[\d\.\+\-\*\/\(\)\[\]\{\}xyzXYZ\s,\^aAbBcCdDeEgGiIlLnNoOpPrRsStTuU]+$/i
+  // 验证只包含有效数学字符（字母、数字、运算符、括号等）
+  const validPattern = /^[a-zA-Z0-9\.\+\-\*\/\(\)\[\]\{\}\s,\^\%_]+$/
   if (!validPattern.test(cleaned)) return false
   return /[xXyYzZ]/.test(cleaned)
 }
