@@ -108,53 +108,80 @@ export default function MultivariateFunction() {
       showscale: true
     })
 
-    // 梯度场（3D 箭头网格）
+    // 梯度场（3D 带箭头的向量）
     if (state.showGradient && data.gradient) {
       const { x, y, u, v, magnitude } = data.gradient
-      const coneX: number[] = []
-      const coneY: number[] = []
-      const coneZ: number[] = []
-      const coneU: number[] = []
-      const coneV: number[] = []
-      const coneW: number[] = []
+      const lineX: (number | null)[] = []
+      const lineY: (number | null)[] = []
+      const lineZ: (number | null)[] = []
 
-      for (let i = 0; i < x.length; i++) {
-        for (let j = 0; j < x[i].length; j++) {
+      // 稀疏采样：每隔2个点取一个，分布更广
+      const skip = 2
+
+      for (let i = 0; i < x.length; i += skip) {
+        for (let j = 0; j < x[i].length; j += skip) {
           const px = x[i][j]
           const py = y[i][j]
           const pu = u[i][j]
           const pv = v[i][j]
           const mag = magnitude[i][j]
-
-          // 计算对应的 z 值
           const pz = data.surface.z[i]?.[j] ?? 0
 
           if (mag > 0.001) {
-            // 归一化方向
-            const scale = 0.3 / Math.sqrt(mag)
-            coneX.push(px)
-            coneY.push(py)
-            coneZ.push(pz)
-            coneU.push(pu * scale)
-            coneV.push(pv * scale)
-            coneW.push(0.3) // z方向分量
+            const scale = 0.4 / Math.sqrt(mag)
+            const endX = px + pu * scale
+            const endY = py + pv * scale
+            const zOffset = 0.12 // z方向抬起，使箭头更明显
+            const endZ = pz + zOffset
+
+            // 主线段
+            lineX.push(px, endX, null)
+            lineY.push(py, endY, null)
+            lineZ.push(pz, endZ, null)
+
+            // 箭头头部 - 回退一点再画三角
+            const arrowBaseX = px + pu * scale * 0.7
+            const arrowBaseY = py + pv * scale * 0.7
+            const arrowBaseZ = pz + zOffset * 0.7
+
+            const angle = Math.atan2(pv, pu)
+            const headSize = 0.05
+            const headAngle1 = angle + Math.PI * 0.85
+            const headAngle2 = angle - Math.PI * 0.85
+
+            // 箭头左侧
+            lineX.push(arrowBaseX, arrowBaseX + headSize * Math.cos(headAngle1), null)
+            lineY.push(arrowBaseY, arrowBaseY + headSize * Math.sin(headAngle1), null)
+            lineZ.push(arrowBaseZ, arrowBaseZ, null)
+
+            // 箭头右侧
+            lineX.push(arrowBaseX, arrowBaseX + headSize * Math.cos(headAngle2), null)
+            lineY.push(arrowBaseY, arrowBaseY + headSize * Math.sin(headAngle2), null)
+            lineZ.push(arrowBaseZ, arrowBaseZ, null)
+
+            // 连接箭头顶点
+            lineX.push(arrowBaseX + headSize * Math.cos(headAngle1), endX, null)
+            lineY.push(arrowBaseY + headSize * Math.sin(headAngle1), endY, null)
+            lineZ.push(arrowBaseZ, endZ, null)
+
+            lineX.push(arrowBaseX + headSize * Math.cos(headAngle2), endX, null)
+            lineY.push(arrowBaseY + headSize * Math.sin(headAngle2), endY, null)
+            lineZ.push(arrowBaseZ, endZ, null)
           }
         }
       }
 
-      if (coneX.length > 0) {
+      if (lineX.length > 0) {
         plots.push({
-          type: 'cone',
-          x: coneX,
-          y: coneY,
-          z: coneZ,
-          u: coneU,
-          v: coneV,
-          w: coneW,
-          colorscale: [[0, '#dc2626'], [1, '#dc2626']],
-          showscale: false,
-          sizemode: 'absolute',
-          sizeref: 0.5,
+          type: 'scatter3d',
+          mode: 'lines',
+          x: lineX,
+          y: lineY,
+          z: lineZ,
+          line: {
+            color: '#ff6b35',
+            width: 3
+          },
           name: '梯度场',
           hoverinfo: 'skip'
         })
@@ -230,15 +257,18 @@ export default function MultivariateFunction() {
       hovertemplate: 'x: %{x:.2f}<br>y: %{y:.2f}<br>z: %{z:.2f}<extra></extra>'
     })
 
-    // 梯度场（线段）
+    // 梯度场（带箭头的向量）
     if (state.showGradient && data.gradient) {
       const { x, y, u, v, magnitude } = data.gradient
 
-      const arrowX: number[] = []
-      const arrowY: number[] = []
+      const lineX: (number | null)[] = []
+      const lineY: (number | null)[] = []
 
-      for (let i = 0; i < x.length; i++) {
-        for (let j = 0; j < x[i].length; j++) {
+      // 稀疏采样：每隔2个点取一个，避免箭头过密
+      const skip = 2
+
+      for (let i = 0; i < x.length; i += skip) {
+        for (let j = 0; j < x[i].length; j += skip) {
           const px = x[i][j]
           const py = y[i][j]
           const pu = u[i][j]
@@ -246,9 +276,24 @@ export default function MultivariateFunction() {
           const mag = magnitude[i][j]
 
           if (mag > 0.001) {
-            const scale = 0.15 / Math.sqrt(mag)
-            arrowX.push(px, px + pu * scale, null)
-            arrowY.push(py, py + pv * scale, null)
+            const scale = 0.35 / Math.sqrt(mag)
+            const endX = px + pu * scale
+            const endY = py + pv * scale
+
+            // 线段
+            lineX.push(px, endX, null)
+            lineY.push(py, endY, null)
+
+            // 箭头头部
+            const angle = Math.atan2(pv, pu)
+            const headSize = 0.045
+            const headAngle1 = angle + Math.PI * 0.85
+            const headAngle2 = angle - Math.PI * 0.85
+
+            lineX.push(endX, endX + headSize * Math.cos(headAngle1), null)
+            lineY.push(endY, endY + headSize * Math.sin(headAngle1), null)
+            lineX.push(endX, endX + headSize * Math.cos(headAngle2), null)
+            lineY.push(endY, endY + headSize * Math.sin(headAngle2), null)
           }
         }
       }
@@ -256,9 +301,9 @@ export default function MultivariateFunction() {
       plots.push({
         type: 'scatter',
         mode: 'lines',
-        x: arrowX,
-        y: arrowY,
-        line: { color: '#dc2626', width: 1.5 },
+        x: lineX,
+        y: lineY,
+        line: { color: '#ff6b35', width: 2.5 },
         name: '梯度场',
         hoverinfo: 'skip'
       })
