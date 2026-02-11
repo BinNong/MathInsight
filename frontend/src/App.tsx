@@ -8,6 +8,7 @@ import ProbabilitySim from './pages/ProbabilitySim'
 import TaylorSeries from './pages/TaylorSeries'
 import RiemannIntegral from './pages/RiemannIntegral'
 import MultivariateFunction from './pages/MultivariateFunction'
+import VectorFieldLineIntegrals from './pages/VectorFieldLineIntegrals'
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           <Route path="/probability" element={<ProbabilitySim />} />
           <Route path="/integration" element={<RiemannIntegral />} />
           <Route path="/multivariate" element={<MultivariateFunction />} />
+          <Route path="/vector-field" element={<VectorFieldLineIntegrals />} />
         </Routes>
       </div>
     </BrowserRouter>

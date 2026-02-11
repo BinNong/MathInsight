@@ -58,6 +58,12 @@ const SUBJECTS_DATA: Record<string, SubjectData> = {
         name: '多元函数可视化',
         description: '3D 曲面图、等高线、偏导数与切平面、梯度场可视化',
         icon: '∇'
+      },
+      {
+        key: 'vector-field',
+        name: '向量场与线积分',
+        description: '向量场可视化、流线追踪、线积分计算、格林公式验证',
+        icon: '∮'
       }
     ]
   },
@@ -131,6 +137,7 @@ function SubjectPage() {
       'riemann': '/integration',
       'taylor': '/taylor',
       'multivariate': '/multivariate',
+      'vector-field': '/vector-field',
       'matrix': '/matrix',
       'lln': '/probability'
     }

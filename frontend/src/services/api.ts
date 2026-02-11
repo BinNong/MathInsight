@@ -473,3 +473,200 @@ export const multivariateApi = {
     return response.data
   }
 }
+
+// ============ 向量场与线积分 API ============
+
+export interface VectorFieldRequest {
+  P: string
+  Q: string
+  x_range: number[]
+  y_range: number[]
+  resolution?: number
+}
+
+export interface VectorFieldData {
+  vector_field: {
+    x: number[][]
+    y: number[][]
+    u: number[][]
+    v: number[][]
+    u_norm: number[][]
+    v_norm: number[][]
+    magnitude: number[][]
+  }
+  curl: {
+    values: number[][]
+    expression: string
+  }
+  divergence: {
+    values: number[][]
+    expression: string
+  }
+  field_expressions: {
+    P: string
+    Q: string
+  }
+}
+
+export interface StreamlineRequest {
+  P: string
+  Q: string
+  start_points: number[][]
+  t_span: number[]
+  direction?: 'forward' | 'backward' | 'both'
+}
+
+export interface StreamlineData {
+  streamlines: Array<{
+    start_point: { x: number; y: number }
+    x: number[]
+    y: number[]
+  }>
+}
+
+export interface LineIntegralRequest {
+  P: string
+  Q: string
+  path: {
+    type: 'parametric' | 'segments'
+    x?: string
+    y?: string
+    t_range?: number[]
+    segments?: Array<{
+      x: string | any
+      y: string | any
+      t_range: number[]
+    }>
+  }
+  num_points?: number
+}
+
+export interface LineIntegralData {
+  integral_value: number
+  flux_value: number
+  path: {
+    x: number[]
+    y: number[]
+  }
+  field_data?: {
+    u_field: number[]
+    v_field: number[]
+    u_tangent: number[]
+    v_tangent: number[]
+    tangent_projection: number[]
+    u_normal: number[]
+    v_normal: number[]
+    normal_projection: number[]
+  }
+}
+
+export interface GreensTheoremRequest {
+  P: string
+  Q: string
+  region_type: 'circle' | 'rectangle'
+  region_params?: {
+    radius?: number
+    x_min?: number
+    x_max?: number
+    y_min?: number
+    y_max?: number
+  }
+}
+
+export interface GreensTheoremData {
+  greens_theorem: {
+    left_side: {
+      value: number
+      expression: string
+    }
+    right_side: {
+      value: number
+      integrand: string
+      expression: string
+    }
+    difference: number
+    relative_error: number
+    is_verified: boolean
+  }
+  boundary: {
+    x: number[]
+    y: number[]
+  }
+  region: {
+    type: string
+    params: any
+  }
+}
+
+export interface CurlDivergenceRequest {
+  P: string
+  Q: string
+  x: number
+  y: number
+}
+
+export interface VectorFieldPreset {
+  id: string
+  name: string
+  description: string
+  P: string
+  Q: string
+  potential?: string | null
+}
+
+export interface PathPreset {
+  id: string
+  name: string
+  description: string
+  parametric: any
+  is_closed: boolean
+}
+
+export interface VectorFieldPresetsData {
+  vector_fields: VectorFieldPreset[]
+  paths: PathPreset[]
+}
+
+export const vectorFieldApi = {
+  // 向量场可视化
+  async vectorField(data: VectorFieldRequest) {
+    const response = await axios.post('/api/vector-field/field', data)
+    return response.data
+  },
+
+  // 流线计算
+  async streamline(data: StreamlineRequest) {
+    const response = await axios.post('/api/vector-field/streamline', data)
+    return response.data
+  },
+
+  // 线积分计算
+  async lineIntegral(data: LineIntegralRequest) {
+    const response = await axios.post('/api/vector-field/line-integral', data)
+    return response.data
+  },
+
+  // 格林公式验证
+  async greensTheorem(data: GreensTheoremRequest) {
+    const response = await axios.post('/api/vector-field/greens-theorem', data)
+    return response.data
+  },
+
+  // 通量计算
+  async flux(data: LineIntegralRequest) {
+    const response = await axios.post('/api/vector-field/flux', data)
+    return response.data
+  },
+
+  // 旋度和散度计算
+  async curlDivergence(data: CurlDivergenceRequest) {
+    const response = await axios.post('/api/vector-field/curl-divergence', data)
+    return response.data
+  },
+
+  // 获取预设
+  async getPresets(): Promise<{ success: boolean; data?: VectorFieldPresetsData; error?: string }> {
+    const response = await axios.get('/api/vector-field/presets')
+    return response.data
+  }
+}
