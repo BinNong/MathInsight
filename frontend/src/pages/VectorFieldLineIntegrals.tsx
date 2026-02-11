@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Plot from 'react-plotly.js'
-import { vectorFieldApi, VectorFieldData, LineIntegralData, GreensTheoremData, StreamlineData, VectorFieldPreset, PathPreset } from '../services/api'
+import { vectorFieldApi, VectorFieldData, LineIntegralData, GreensTheoremData, StreamlineData, VectorFieldPreset, PathPreset, ConservativeCheckData, PotentialData, PotentialContourData, PathIndependenceData } from '../services/api'
 import { Link } from 'react-router-dom'
 
 // ============ 常量定义 ============
@@ -12,7 +12,7 @@ const MIN_VECTOR_THRESHOLD = 0.001 // 最小向量阈值
 
 // ============ 类型定义 ============
 
-type VectorFieldMode = 'field' | 'line_integral' | 'greens_theorem' | 'flux'
+type VectorFieldMode = 'field' | 'line_integral' | 'greens_theorem' | 'flux' | 'conservative'
 type PathType = 'circle' | 'ellipse' | 'line_segment' | 'parabola' | 'square'
 type RegionType = 'circle' | 'rectangle'
 
@@ -26,6 +26,7 @@ interface VectorFieldState {
 
   // 可视化选项
   showStreamlines: boolean
+  showContour: boolean  // 保守场模式：显示等值线
 
   // 积分模式
   mode: VectorFieldMode
@@ -44,6 +45,11 @@ interface VectorFieldState {
   // 流线参数
   streamlineStartPoints: string
   streamlineTimeSpan: number
+
+  // 路径无关性参数
+  startPoint: [number, number]
+  endPoint: [number, number]
+  showPathIndependence: boolean
 }
 
 // ============ 默认状态 ============
@@ -55,6 +61,7 @@ const DEFAULT_STATE: VectorFieldState = {
   yRange: [-3, 3],
   resolution: 20,
   showStreamlines: false,
+  showContour: true,
   mode: 'field',
   pathType: 'circle',
   regionType: 'circle',
@@ -64,7 +71,10 @@ const DEFAULT_STATE: VectorFieldState = {
   regionYMin: -1,
   regionYMax: 1,
   streamlineStartPoints: '[[1,0],[0,1],[-1,0],[0,-1]]',
-  streamlineTimeSpan: 3
+  streamlineTimeSpan: 3,
+  startPoint: [0, 0],
+  endPoint: [1, 1],
+  showPathIndependence: false
 }
 
 // Plotly trace 类型
@@ -108,6 +118,10 @@ export default function VectorFieldLineIntegrals() {
   const [lineIntegralData, setLineIntegralData] = useState<LineIntegralData | null>(null)
   const [greensData, setGreensData] = useState<GreensTheoremData | null>(null)
   const [streamlines, setStreamlines] = useState<StreamlineData | null>(null)
+  const [conservativeData, setConservativeData] = useState<ConservativeCheckData | null>(null)
+  const [potentialData, setPotentialData] = useState<PotentialData | null>(null)
+  const [potentialContour, setPotentialContour] = useState<PotentialContourData | null>(null)
+  const [pathIndependenceData, setPathIndependenceData] = useState<PathIndependenceData | null>(null)
   const [presets, setPresets] = useState<{ vector_fields: VectorFieldPreset[]; paths: PathPreset[] } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -237,6 +251,100 @@ export default function VectorFieldLineIntegrals() {
     }
   }, [state.P, state.Q, state.streamlineStartPoints, state.streamlineTimeSpan])
 
+  // 获取保守场判定数据
+  const fetchConservativeCheck = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await vectorFieldApi.checkConservative({
+        P: state.P,
+        Q: state.Q
+      })
+
+      if (response.success) {
+        setConservativeData(response)
+      } else {
+        setError(response.error || '计算失败')
+      }
+    } catch (err) {
+      setError('无法连接到服务器')
+    } finally {
+      setLoading(false)
+    }
+  }, [state.P, state.Q])
+
+  // 获取势函数数据
+  const fetchPotential = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await vectorFieldApi.findPotential({
+        P: state.P,
+        Q: state.Q
+      })
+
+      if (response.success) {
+        setPotentialData(response)
+      } else {
+        setError(response.error || '计算失败')
+      }
+    } catch (err) {
+      setError('无法连接到服务器')
+    } finally {
+      setLoading(false)
+    }
+  }, [state.P, state.Q])
+
+  // 获取势函数等值线数据
+  const fetchPotentialContour = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await vectorFieldApi.potentialContour({
+        P: state.P,
+        Q: state.Q,
+        x_range: state.xRange,
+        y_range: state.yRange,
+        resolution: 50
+      })
+
+      if (response.success) {
+        setPotentialContour(response)
+      } else {
+        setPotentialContour(null)
+      }
+    } catch (err) {
+      setPotentialContour(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [state.P, state.Q, state.xRange, state.yRange])
+
+  // 获取路径无关性验证数据
+  const fetchPathIndependence = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const response = await vectorFieldApi.verifyPathIndependence({
+        P: state.P,
+        Q: state.Q,
+        start_point: state.startPoint,
+        end_point: state.endPoint,
+        num_points: 200
+      })
+
+      if (response.success) {
+        setPathIndependenceData(response)
+      } else {
+        setPathIndependenceData(null)
+      }
+    } catch (err) {
+      setPathIndependenceData(null)
+    } finally {
+      setLoading(false)
+    }
+  }, [state.P, state.Q, state.startPoint, state.endPoint])
+
   // 构建路径配置
   const buildPathConfig = () => {
     const preset = pathPresets.find(p => p.id === state.pathType)
@@ -297,8 +405,23 @@ export default function VectorFieldLineIntegrals() {
         fetchVectorField()
         fetchLineIntegral()
         break
+      case 'conservative':
+        fetchVectorField()
+        fetchConservativeCheck()
+        fetchPotential()
+        if (state.showContour) {
+          fetchPotentialContour()
+        } else {
+          setPotentialContour(null)
+        }
+        if (state.showPathIndependence) {
+          fetchPathIndependence()
+        } else {
+          setPathIndependenceData(null)
+        }
+        break
     }
-  }, [state.mode, state.showStreamlines, state.P, state.Q])
+  }, [state.mode, state.showStreamlines, state.showContour, state.P, state.Q, state.showPathIndependence, state.startPoint, state.endPoint])
 
   const handleStateChange = <K extends keyof VectorFieldState>(key: K, value: VectorFieldState[K]) => {
     setState(prev => ({ ...prev, [key]: value }))
@@ -347,8 +470,13 @@ export default function VectorFieldLineIntegrals() {
         const py = rowY?.[j]
         const pu = uData[i]?.[j]
         const pv = vData[i]?.[j]
-        if (px === undefined || py === undefined || pu === undefined || pv === undefined) continue
-        if (typeof px !== 'number' || typeof py !== 'number' || typeof pu !== 'number' || typeof pv !== 'number') continue
+
+        // 防御性处理：检查是否为有效数字
+        if (typeof px !== 'number' || typeof py !== 'number' ||
+            typeof pu !== 'number' || typeof pv !== 'number' ||
+            isNaN(px) || isNaN(py) || isNaN(pu) || isNaN(pv)) {
+          continue
+        }
 
         if (Math.abs(pu) > MIN_VECTOR_THRESHOLD || Math.abs(pv) > MIN_VECTOR_THRESHOLD) {
           const endX = px + pu * ARROW_SCALE
@@ -390,15 +518,24 @@ export default function VectorFieldLineIntegrals() {
 
     const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
 
-    return streamlines.streamlines.map((streamline, idx) => ({
-      type: 'scatter' as const,
-      mode: 'lines' as const,
-      x: streamline.x,
-      y: streamline.y,
-      line: { color: colors[idx % colors.length], width: 2 },
-      name: `流线 ${idx + 1}`,
-      hovertemplate: `起点: (${streamline.start_point.x}, ${streamline.start_point.y})<extra></extra>`
-    }))
+    return streamlines.streamlines.map((streamline, idx) => {
+      // 防御性处理：清理 NaN 值
+      const cleanX = streamline.x.filter((v: number) => typeof v === 'number' && !isNaN(v))
+      const cleanY = streamline.y.filter((v: number) => typeof v === 'number' && !isNaN(v))
+
+      // 确保 x 和 y 长度一致
+      const minLen = Math.min(cleanX.length, cleanY.length)
+
+      return {
+        type: 'scatter' as const,
+        mode: 'lines' as const,
+        x: cleanX.slice(0, minLen),
+        y: cleanY.slice(0, minLen),
+        line: { color: colors[idx % colors.length], width: 2 },
+        name: `流线 ${idx + 1}`,
+        hovertemplate: `起点: (${streamline.start_point.x}, ${streamline.start_point.y})<extra></extra>`
+      }
+    })
   }, [streamlines])
 
   // 构建路径数据（使用 useMemo 缓存）
@@ -407,12 +544,19 @@ export default function VectorFieldLineIntegrals() {
 
     const plots: PlotlyTrace[] = []
 
+    // 防御性处理：清理路径数据中的 NaN 值
+    const pathX = lineIntegralData.path.x.filter((v: number) => typeof v === 'number' && !isNaN(v))
+    const pathY = lineIntegralData.path.y.filter((v: number) => typeof v === 'number' && !isNaN(v))
+
+    // 确保 x 和 y 长度一致
+    const minLen = Math.min(pathX.length, pathY.length)
+
     // 路径
     plots.push({
       type: 'scatter',
       mode: 'lines',
-      x: lineIntegralData.path.x,
-      y: lineIntegralData.path.y,
+      x: pathX.slice(0, minLen),
+      y: pathY.slice(0, minLen),
       line: { color: '#ef4444', width: 3 },
       name: '路径 C',
       fill: 'toself'
@@ -421,9 +565,8 @@ export default function VectorFieldLineIntegrals() {
     // 向量场沿路径的箭头
     if (lineIntegralData.field_data) {
       const { u_field, v_field } = lineIntegralData.field_data
-      const pathX = lineIntegralData.path.x
-      const pathY = lineIntegralData.path.y
 
+      // 使用之前清理后的路径数据
       const arrowSkip = Math.max(1, Math.floor(pathX.length / PATH_ARROW_SKIP))
       const arrowX: (number | null)[] = []
       const arrowY: (number | null)[] = []
@@ -434,8 +577,15 @@ export default function VectorFieldLineIntegrals() {
         const pu = u_field[i]
         const pv = v_field[i]
 
+        // 防御性处理：检查是否为有效数字
+        if (typeof px !== 'number' || typeof py !== 'number' ||
+            typeof pu !== 'number' || typeof pv !== 'number' ||
+            isNaN(px) || isNaN(py) || isNaN(pu) || isNaN(pv)) {
+          continue
+        }
+
         const mag = Math.sqrt(pu * pu + pv * pv)
-        if (mag > MIN_VECTOR_THRESHOLD) {
+        if (mag > MIN_VECTOR_THRESHOLD && isFinite(mag)) {
           const scale = 0.3
           const endX = px + (pu / mag) * scale
           const endY = py + (pv / mag) * scale
@@ -485,8 +635,197 @@ export default function VectorFieldLineIntegrals() {
     return plots
   }, [vectorFieldData, greensData, buildVectorFieldData])
 
+  // 构建势函数等值线数据（使用 useMemo 缓存）
+  const buildContourData = useMemo((): any[] => {
+    if (!potentialContour || !potentialContour.success) return []
+
+    const plots: any[] = []
+
+    // 防御性处理：确保 z 数据是有效的 2D 数组
+    const zData = potentialContour.z
+    if (!Array.isArray(zData) || zData.length === 0 || !Array.isArray(zData[0])) {
+      return plots
+    }
+
+    // 从后端返回的网格数据中提取 x 和 y 坐标
+    // 后端使用 np.meshgrid 返回的 X 和 Y 是 2D 数组
+    // X[i][j] = x_vals[j], Y[i][j] = y_vals[i]
+    const numRows = zData.length
+    const numCols = zData[0].length
+
+    // 提取 x 坐标（取第一行的所有列）
+    const xCoords: number[] = []
+    if (Array.isArray(potentialContour.x) && potentialContour.x.length > 0) {
+      if (Array.isArray(potentialContour.x[0])) {
+        // x 是 2D 网格数据，取第一行
+        const firstRow = potentialContour.x[0]
+        for (let i = 0; i < firstRow.length; i++) {
+          const val = firstRow[i]
+          if (typeof val === 'number' && !isNaN(val)) {
+            xCoords.push(val)
+          }
+        }
+      } else {
+        // x 是 1D 数据
+        const x1d = potentialContour.x as unknown as number[]
+        for (let i = 0; i < x1d.length; i++) {
+          const val = x1d[i]
+          if (typeof val === 'number' && !isNaN(val)) {
+            xCoords.push(val)
+          }
+        }
+      }
+    }
+
+    // 提取 y 坐标（取第一列的所有行）
+    const yCoords: number[] = []
+    if (Array.isArray(potentialContour.y) && potentialContour.y.length > 0) {
+      if (Array.isArray(potentialContour.y[0])) {
+        // y 是 2D 网格数据，取第一列
+        for (let i = 0; i < potentialContour.y.length; i++) {
+          const val = potentialContour.y[i]?.[0]
+          if (typeof val === 'number' && !isNaN(val)) {
+            yCoords.push(val)
+          }
+        }
+      } else {
+        // y 是 1D 数据
+        const y1d = potentialContour.y as unknown as number[]
+        for (let i = 0; i < y1d.length; i++) {
+          const val = y1d[i]
+          if (typeof val === 'number' && !isNaN(val)) {
+            yCoords.push(val)
+          }
+        }
+      }
+    }
+
+    // 确保 xCoords 和 yCoords 的长度与 zData 维度匹配
+    // 如果提取失败，使用默认值生成坐标
+    const effectiveX = xCoords.length === numCols ? xCoords : Array.from({ length: numCols }, (_, i) => i)
+    const effectiveY = yCoords.length === numRows ? yCoords : Array.from({ length: numRows }, (_, i) => i)
+
+    // 清理 zData 中的 NaN 值
+    const cleanZ = zData.map((row: number[]) =>
+      row.map((v: number) => (typeof v === 'number' && !isNaN(v) ? v : 0))
+    )
+
+    // 等值线数据
+    plots.push({
+      type: 'contour',
+      x: effectiveX,
+      y: effectiveY,
+      z: cleanZ,
+      contours: {
+        coloring: 'lines',
+        showlabels: true,
+        labelfont: { size: 10, color: '#666' }
+      },
+      line: { color: '#8b5cf6', width: 1 },
+      name: '势函数等值线',
+      hoverinfo: 'z'
+    })
+
+    return plots
+  }, [potentialContour])
+
+  // 构建路径无关性图表数据（使用 useMemo 缓存）
+  const buildPathIndependenceData = useMemo((): any[] => {
+    if (!pathIndependenceData || !pathIndependenceData.success) {
+      return []
+    }
+
+    const plots: any[] = []
+
+    // 不同路径的颜色
+    const pathColors = {
+      straight: '#10b981',   // 绿色 - 直线路径
+      broken: '#f59e0b',    // 橙色 - 折线路径
+      parabola: '#8b5cf6'   // 紫色 - 抛物线路径
+    }
+
+    // 绘制各路径
+    if (pathIndependenceData.path_points) {
+      for (const [pathType, points] of Object.entries(pathIndependenceData.path_points)) {
+        if (points && (points.x as number[]).length > 0) {
+          // 清理 NaN 值
+          const cleanX: number[] = []
+          const cleanY: number[] = []
+          for (let i = 0; i < Math.min((points.x as number[]).length, (points.y as number[]).length); i++) {
+            const xVal = points.x[i]
+            const yVal = points.y[i]
+            if (typeof xVal === 'number' && typeof yVal === 'number' && !isNaN(xVal) && !isNaN(yVal)) {
+              cleanX.push(xVal)
+              cleanY.push(yVal)
+            }
+          }
+
+          const pathName = pathIndependenceData.integrals.find(i => i.path_type === pathType)?.path_name || pathType
+          plots.push({
+            type: 'scatter',
+            mode: 'lines',
+            x: cleanX,
+            y: cleanY,
+            line: { color: pathColors[pathType as keyof typeof pathColors] || '#666', width: 2 },
+            name: pathName,
+            hovertemplate: `${pathName}<extra></extra>`
+          })
+        }
+      }
+    }
+
+    // 绘制起点和终点标记
+    if (pathIndependenceData.start_point) {
+      plots.push({
+        type: 'scatter',
+        mode: 'markers',
+        x: [pathIndependenceData.start_point.x],
+        y: [pathIndependenceData.start_point.y],
+        marker: { color: '#10b981', size: 12, symbol: 'circle' },
+        name: '起点',
+        hovertemplate: `起点: (${pathIndependenceData.start_point.x.toFixed(2)}, ${pathIndependenceData.start_point.y.toFixed(2)})<extra></extra>`
+      })
+    }
+
+    if (pathIndependenceData.end_point) {
+      plots.push({
+        type: 'scatter',
+        mode: 'markers',
+        x: [pathIndependenceData.end_point.x],
+        y: [pathIndependenceData.end_point.y],
+        marker: { color: '#ef4444', size: 12, symbol: 'x' },
+        name: '终点',
+        hovertemplate: `终点: (${pathIndependenceData.end_point.x.toFixed(2)}, ${pathIndependenceData.end_point.y.toFixed(2)})<extra></extra>`
+      })
+    }
+
+    return plots
+  }, [pathIndependenceData])
+
+  // 构建保守场模式图表数据（使用 useMemo 缓存）
+  const buildConservativeData = useMemo((): any[] => {
+    const plots: any[] = []
+
+    // 向量场
+    if (vectorFieldData && buildVectorFieldData.length > 0) {
+      plots.push(...buildVectorFieldData)
+    }
+
+    // 等值线
+    if (state.showContour && potentialContour?.success) {
+      plots.push(...buildContourData)
+    }
+
+    // 路径无关性路径
+    if (state.showPathIndependence && pathIndependenceData?.success) {
+      plots.push(...buildPathIndependenceData)
+    }
+
+    return plots
+  }, [vectorFieldData, buildVectorFieldData, state.showContour, buildContourData, state.showPathIndependence, buildPathIndependenceData])
+
   // 构建图表数据（使用 useMemo 缓存）
-  const buildPlotData = useMemo((): PlotlyTrace[] => {
+  const buildPlotData = useMemo((): any[] => {
     switch (state.mode) {
       case 'field':
         const fieldPlots = [...buildVectorFieldData]
@@ -500,10 +839,12 @@ export default function VectorFieldLineIntegrals() {
         return [...buildGreensTheoremData]
       case 'flux':
         return [...buildVectorFieldData, ...buildPathData]
+      case 'conservative':
+        return [...buildConservativeData]
       default:
         return buildVectorFieldData
     }
-  }, [state.mode, state.showStreamlines, buildVectorFieldData, buildStreamlineData, buildPathData, buildGreensTheoremData])
+  }, [state.mode, state.showStreamlines, buildVectorFieldData, buildStreamlineData, buildPathData, buildGreensTheoremData, buildConservativeData])
 
   // 图表布局（使用 useMemo 缓存）
   const layout = useMemo((): any => ({
@@ -574,6 +915,12 @@ export default function VectorFieldLineIntegrals() {
             onClick={() => handleStateChange('mode', 'flux')}
           >
             通量
+          </button>
+          <button
+            className={`btn ${state.mode === 'conservative' ? 'btn-primary' : 'btn-secondary'}`}
+            onClick={() => handleStateChange('mode', 'conservative')}
+          >
+            保守场
           </button>
         </div>
 
@@ -724,6 +1071,75 @@ export default function VectorFieldLineIntegrals() {
               </label>
             </div>
           )}
+
+          {/* 保守场选项 */}
+          {state.mode === 'conservative' && (
+            <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={state.showContour}
+                  onChange={(e) => handleStateChange('showContour', e.target.checked)}
+                />
+                显示势函数等值线
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={state.showPathIndependence}
+                  onChange={(e) => handleStateChange('showPathIndependence', e.target.checked)}
+                />
+                路径无关性验证
+              </label>
+            </div>
+          )}
+
+          {/* 路径无关性参数 */}
+          {state.mode === 'conservative' && state.showPathIndependence && (
+            <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--background)', borderRadius: '8px' }}>
+              <h5 style={{ marginBottom: '0.75rem', fontSize: '0.9rem' }}>路径端点设置</h5>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem' }}>起点 (x, y)</label>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input
+                      type="number"
+                      value={state.startPoint[0]}
+                      onChange={(e) => handleStateChange('startPoint', [parseFloat(e.target.value) || 0, state.startPoint[1]])}
+                      style={{ width: '80px', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '4px' }}
+                      step="0.1"
+                    />
+                    <input
+                      type="number"
+                      value={state.startPoint[1]}
+                      onChange={(e) => handleStateChange('startPoint', [state.startPoint[0], parseFloat(e.target.value) || 0])}
+                      style={{ width: '80px', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '4px' }}
+                      step="0.1"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem' }}>终点 (x, y)</label>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input
+                      type="number"
+                      value={state.endPoint[0]}
+                      onChange={(e) => handleStateChange('endPoint', [parseFloat(e.target.value) || 0, state.endPoint[1]])}
+                      style={{ width: '80px', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '4px' }}
+                      step="0.1"
+                    />
+                    <input
+                      type="number"
+                      value={state.endPoint[1]}
+                      onChange={(e) => handleStateChange('endPoint', [state.endPoint[0], parseFloat(e.target.value) || 0])}
+                      style={{ width: '80px', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '4px' }}
+                      step="0.1"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 错误信息 */}
@@ -823,6 +1239,84 @@ export default function VectorFieldLineIntegrals() {
                 </div>
                 <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', fontWeight: 'bold', color: greensData.greens_theorem.is_verified ? '#10b981' : '#ef4444' }}>
                   {greensData.greens_theorem.is_verified ? '✓ 格林公式验证通过' : '✗ 验证失败（可能由于数值误差）'}
+                </p>
+              </div>
+            )}
+
+            {/* 保守场分析结果 */}
+            {conservativeData && state.mode === 'conservative' && (
+              <div className="info-panel" style={{ background: conservativeData.is_conservative ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.05)', borderColor: conservativeData.is_conservative ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)' }}>
+                <h4>保守场判定</h4>
+                <div className="info-item">
+                  <span>旋度 curl(F)</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{conservativeData.curl_expression}</span>
+                </div>
+                <div className="info-item">
+                  <span>旋度值</span>
+                  <span>{conservativeData.curl_value.toFixed(4)}</span>
+                </div>
+                <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', fontWeight: 'bold', color: conservativeData.is_conservative ? '#10b981' : '#ef4444' }}>
+                  {conservativeData.is_conservative ? '✓ 该向量场是保守场' : '✗ 该向量场不是保守场'}
+                </p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                  {conservativeData.is_conservative ? '沿任意闭合路径积分为零' : '旋度不为零，存在环流'}
+                </p>
+              </div>
+            )}
+
+            {/* 势函数结果 */}
+            {potentialData && state.mode === 'conservative' && (
+              <div className="info-panel" style={{ background: potentialData.is_conservative ? 'rgba(139, 92, 246, 0.05)' : undefined, borderColor: potentialData.is_conservative ? 'rgba(139, 92, 246, 0.2)' : undefined }}>
+                <h4>势函数</h4>
+                {potentialData.is_conservative ? (
+                  <>
+                    <div style={{ marginBottom: '0.5rem' }}>
+                      <span style={{ fontFamily: 'monospace', fontSize: '0.9rem', display: 'block', padding: '0.5rem', background: 'var(--background)', borderRadius: '4px' }}>
+                        f(x, y) = {potentialData.potential_function}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      <div>∂f/∂x = {potentialData.grad_x}</div>
+                      <div>∂f/∂y = {potentialData.grad_y}</div>
+                    </div>
+                    <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', color: potentialData.matches_field ? '#10b981' : '#f59e0b' }}>
+                      {potentialData.matches_field ? '✓ 验证通过：∇f = F' : '⚠ 部分验证通过'}
+                    </p>
+                  </>
+                ) : (
+                  <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
+                    {potentialData.error || '该向量场不是保守场，不存在势函数'}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* 路径无关性验证结果 */}
+            {pathIndependenceData && state.mode === 'conservative' && state.showPathIndependence && (
+              <div className="info-panel" style={{ background: pathIndependenceData.is_independent ? 'rgba(16, 185, 129, 0.05)' : pathIndependenceData.is_conservative ? 'rgba(245, 158, 11, 0.05)' : 'rgba(239, 68, 68, 0.05)', borderColor: pathIndependenceData.is_independent ? 'rgba(16, 185, 129, 0.2)' : pathIndependenceData.is_conservative ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)' }}>
+                <h4>路径无关性验证</h4>
+                <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  <div>起点: ({pathIndependenceData.start_point.x.toFixed(2)}, {pathIndependenceData.start_point.y.toFixed(2)})</div>
+                  <div>终点: ({pathIndependenceData.end_point.x.toFixed(2)}, {pathIndependenceData.end_point.y.toFixed(2)})</div>
+                </div>
+                {pathIndependenceData.integrals.map((integral, idx) => (
+                  <div key={idx} className="info-item" style={{ marginBottom: '0.25rem' }}>
+                    <span>{integral.path_name}</span>
+                    <span>{formatNumber(integral.value)}</span>
+                  </div>
+                ))}
+                <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
+                  {pathIndependenceData.differences.map((diff, idx) => (
+                    <div key={idx} style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                      {diff.pair}: Δ = {formatNumber(diff.difference)}
+                    </div>
+                  ))}
+                </div>
+                <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', fontWeight: 'bold', color: pathIndependenceData.is_independent ? '#10b981' : pathIndependenceData.is_conservative ? '#f59e0b' : '#ef4444' }}>
+                  {pathIndependenceData.is_independent ? '✓ 路径无关性验证成功：各路径积分值相等' : pathIndependenceData.is_conservative ? '⚠ 保守场假设下各路径积分应相等' : '✗ 该向量场不是保守场'}
+                </p>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                  {pathIndependenceData.message}
                 </p>
               </div>
             )}

@@ -671,3 +671,389 @@ class VectorFieldService:
             'vector_fields': VectorFieldService.VECTOR_FIELD_PRESETS,
             'paths': VectorFieldService.PATH_PRESETS
         }
+
+    @staticmethod
+    def is_conservative(p_str: str, q_str: str) -> Dict[str, Any]:
+        """
+        检查向量场是否保守
+
+        向量场 F = (P, Q) 是保守场的条件：
+        1. curl(F) = ∂Q/∂x - ∂P/∂y = 0（在单连通区域内）
+
+        Args:
+            p_str: 向量场 x 分量 P(x, y)
+            q_str: 向量场 y 分量 Q(x, y)
+
+        Returns:
+            dict: 包含是否保守、旋度表达式等信息
+        """
+        x, y = sp.symbols('x y')
+        try:
+            P = _safe_parse(p_str)
+            Q = _safe_parse(q_str)
+
+            # 计算旋度 curl(F) = ∂Q/∂x - ∂P/∂y
+            curl_expr = sp.diff(Q, x) - sp.diff(P, y)
+            curl_str = sp.simplify(curl_expr)
+
+            # 判断旋度是否为零
+            is_conservative = sp.simplify(curl_str) == 0
+
+            # 计算典型点的旋度值
+            curl_func = sp.lambdify((x, y), curl_str, 'numpy')
+            test_points = [(0, 0), (1, 1), (-1, -1)]
+            curl_values = []
+            for px, py in test_points:
+                try:
+                    val = curl_func(px, py)
+                    if np.isfinite(val):
+                        curl_values.append(float(val))
+                    else:
+                        curl_values.append(0.0)
+                except:
+                    curl_values.append(0.0)
+
+            return {
+                'success': True,
+                'is_conservative': is_conservative,
+                'curl_expression': str(curl_str),
+                'curl_value': curl_values[0] if curl_values else 0.0,
+                'curl_at_points': curl_values,
+                'message': '该向量场是保守场' if is_conservative else '该向量场不是保守场（旋度不为零）'
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'is_conservative': False
+            }
+
+    @staticmethod
+    def find_potential(p_str: str, q_str: str) -> Dict[str, Any]:
+        """
+        计算势函数 f，使得 F = grad(f) = (∂f/∂x, ∂f/∂y)
+
+        保守场必然存在势函数，通过积分方法求解
+
+        Args:
+            p_str: 向量场 x 分量 P(x, y)
+            q_str: 向量场 y 分量 Q(x, y)
+
+        Returns:
+            dict: 包含势函数表达式、验证结果等
+        """
+        x, y = sp.symbols('x y')
+        try:
+            P = _safe_parse(p_str)
+            Q = _safe_parse(q_str)
+
+            # 首先检查旋度
+            curl_expr = sp.diff(Q, x) - sp.diff(P, y)
+            curl_str = sp.simplify(curl_expr)
+
+            if sp.simplify(curl_str) != 0:
+                return {
+                    'success': True,
+                    'is_conservative': False,
+                    'potential_function': None,
+                    'error': '向量场不是保守场，不存在势函数',
+                    'curl_expression': str(curl_str)
+                }
+
+            # 通过积分求势函数
+            # 步骤1：f(x,y) = ∫ P(x,y) dx + g(y)
+            potential_x = sp.integrate(P, x)
+            # 整合后的势函数关于x的积分
+            # 需要确定一个只与y相关的函数g(y)
+
+            # 步骤2：对y求偏导并与Q比较，确定g(y)
+            # ∂f/∂y = ∂/∂y(∫ P dx) + g'(y) = Q
+            # g'(y) = Q - ∂/∂y(∫ P dx)
+            potential_y = sp.diff(potential_x, y)
+            g_prime = sp.simplify(Q - potential_y)
+
+            # 步骤3：积分求g(y)
+            g_y = sp.integrate(g_prime, y)
+
+            # 步骤4：组合势函数
+            potential = sp.simplify(potential_x + g_y)
+
+            # 尝试简化势函数
+            potential_simplified = sp.simplify(potential)
+
+            # 验证：计算梯度
+            df_dx = sp.diff(potential_simplified, x)
+            df_dy = sp.diff(potential_simplified, y)
+
+            # 检查是否匹配原向量场
+            matches_x = sp.simplify(df_dx - P) == 0
+            matches_y = sp.simplify(df_dy - Q) == 0
+            is_valid = matches_x and matches_y
+
+            # 转换为字符串表示
+            potential_str = str(potential_simplified)
+
+            return {
+                'success': True,
+                'is_conservative': True,
+                'potential_function': potential_str,
+                'grad_x': str(df_dx),
+                'grad_y': str(df_dy),
+                'matches_field': is_valid,
+                'message': f'势函数 f(x,y) = {potential_str}' if is_valid else '无法找到合适的势函数'
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'is_conservative': False,
+                'potential_function': None
+            }
+
+    @staticmethod
+    def compute_potential_contour(
+        p_str: str,
+        q_str: str,
+        x_range: List[float],
+        y_range: List[float],
+        resolution: int = 50
+    ) -> Dict[str, Any]:
+        """
+        计算势函数的等值线数据
+
+        Args:
+            p_str: 向量场 x 分量
+            q_str: 向量场 y 分量
+            x_range: x 范围
+            y_range: y 范围
+            resolution: 网格分辨率
+
+        Returns:
+            dict: 包含等值线数据
+        """
+        try:
+            # 首先计算势函数
+            potential_result = VectorFieldService.find_potential(p_str, q_str)
+
+            if not potential_result.get('success') or not potential_result.get('is_conservative'):
+                return {
+                    'success': False,
+                    'error': '向量场不是保守场，无法计算势函数等值线'
+                }
+
+            potential_str = potential_result.get('potential_function')
+            x, y = sp.symbols('x y')
+            potential = _safe_parse(potential_str)
+
+            # 生成网格
+            x_vals = np.linspace(x_range[0], x_range[1], resolution)
+            y_vals = np.linspace(y_range[0], y_range[1], resolution)
+            X, Y = np.meshgrid(x_vals, y_vals)
+
+            # 计算势函数值
+            potential_func = sp.lambdify((x, y), potential, 'numpy')
+            Z = potential_func(X, Y)
+            Z = np.asarray(Z)
+
+            # 处理 NaN 和 Inf
+            Z = np.where(np.isnan(Z) | np.isinf(Z), 0, Z)
+
+            # 计算等值线（自动选择层级）
+            z_min = np.nanmin(Z)
+            z_max = np.nanmax(Z)
+            levels = np.linspace(z_min, z_max, 15)
+
+            return {
+                'success': True,
+                'potential_function': potential_str,
+                'x': X.tolist(),
+                'y': Y.tolist(),
+                'z': Z.tolist(),
+                'levels': levels.tolist(),
+                'z_range': [float(z_min), float(z_max)]
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+    @staticmethod
+    def verify_path_independence(
+        p_str: str,
+        q_str: str,
+        start_point: List[float],
+        end_point: List[float],
+        num_points: int = 200
+    ) -> Dict[str, Any]:
+        """
+        验证保守场的路径无关性
+
+        沿不同路径计算线积分，比较结果是否相等。
+
+        Args:
+            p_str: 向量场 x 分量
+            q_str: 向量场 y 分量
+            start_point: 起点 [x, y]
+            end_point: 终点 [x, y]
+            num_points: 采样点数
+
+        Returns:
+            dict: 包含各路径积分结果和比较
+        """
+        try:
+            # 首先检查是否是保守场
+            conservative_check = VectorFieldService.is_conservative(p_str, q_str)
+            is_conservative = conservative_check.get('is_conservative', False)
+
+            x_sym, y_sym, t = sp.symbols('x y t')
+            P = _safe_parse(p_str)
+            Q = _safe_parse(q_str)
+
+            def generate_path(path_type: str, **kwargs):
+                """生成参数化路径"""
+                if path_type == 'straight':
+                    x_t = start_point[0] + t * (end_point[0] - start_point[0])
+                    y_t = start_point[1] + t * (end_point[1] - start_point[1])
+                    return x_t, y_t, [0, 1], '直线路径'
+                elif path_type == 'broken':
+                    mid_x = end_point[0]
+                    mid_y = start_point[1]
+                    x_t1 = start_point[0] + t * (mid_x - start_point[0])
+                    y_t1 = start_point[1] + t * (mid_y - start_point[1])
+                    x_t2 = mid_x + t * (end_point[0] - mid_x)
+                    y_t2 = mid_y + t * (end_point[1] - mid_y)
+                    return [(x_t1, y_t1, [0, 1]), (x_t2, y_t2, [0, 1])], '折线路径'
+                elif path_type == 'parabola':
+                    mid_x = (start_point[0] + end_point[0]) / 2
+                    mid_y = max(start_point[1], end_point[1]) + abs(end_point[0] - start_point[0]) / 2
+                    x_t = start_point[0] + t * (end_point[0] - start_point[0])
+                    y_t = start_point[1] + t * (end_point[1] - start_point[1]) + \
+                          2 * t * (1 - t) * (mid_y - (start_point[1] + end_point[1]) / 2)
+                    return x_t, y_t, [0, 1], '抛物线路径'
+                else:
+                    raise ValueError(f"Unknown path type: {path_type}")
+
+            def compute_line_integral(x_t, y_t, t_range, segments=None):
+                """计算路径积分"""
+                if segments:
+                    total = 0.0
+                    for seg_x, seg_y, seg_range in segments:
+                        dx_dt = sp.diff(seg_x, t)
+                        dy_dt = sp.diff(seg_y, t)
+                        integrand = P.subs({x_sym: seg_x, y_sym: seg_y}) * dx_dt + \
+                                   Q.subs({x_sym: seg_x, y_sym: seg_y}) * dy_dt
+                        integrand_func = sp.lambdify(t, integrand, 'numpy')
+                        t_vals = np.linspace(seg_range[0], seg_range[1], num_points)
+                        integral_vals = integrand_func(t_vals)
+                        if not np.isfinite(integral_vals).all():
+                            integral_vals = np.where(np.isfinite(integral_vals), integral_vals, 0)
+                        total += np.trapz(integral_vals, t_vals)
+                    return total
+                else:
+                    dx_dt = sp.diff(x_t, t)
+                    dy_dt = sp.diff(y_t, t)
+                    integrand = P.subs({x_sym: x_t, y_sym: y_t}) * dx_dt + \
+                               Q.subs({x_sym: x_t, y_sym: y_t}) * dy_dt
+                    integrand_func = sp.lambdify(t, integrand, 'numpy')
+                    t_vals = np.linspace(t_range[0], t_range[1], num_points)
+                    integral_vals = integrand_func(t_vals)
+                    if not np.isfinite(integral_vals).all():
+                        integral_vals = np.where(np.isfinite(integral_vals), integral_vals, 0)
+                    return np.trapz(integral_vals, t_vals)
+
+            def get_path_points(path_type: str):
+                """生成路径坐标点"""
+                if path_type == 'straight':
+                    t_vals = np.linspace(0, 1, num_points)
+                    x_pts = start_point[0] + t_vals * (end_point[0] - start_point[0])
+                    y_pts = start_point[1] + t_vals * (end_point[1] - start_point[1])
+                    return list(x_pts), list(y_pts)
+                elif path_type == 'broken':
+                    x1 = np.linspace(start_point[0], end_point[0], num_points // 2)
+                    y1 = np.full_like(x1, start_point[1])
+                    x2 = np.linspace(start_point[0], end_point[0], num_points // 2)
+                    y2 = np.linspace(start_point[1], end_point[1], num_points // 2)
+                    return list(x1) + list(x2[1:]), list(y1) + list(y2[1:])
+                elif path_type == 'parabola':
+                    t_vals = np.linspace(0, 1, num_points)
+                    x_pts = start_point[0] + t_vals * (end_point[0] - start_point[0])
+                    y_pts = start_point[1] + t_vals * (end_point[1] - start_point[1]) + \
+                            2 * t_vals * (1 - t_vals) * (abs(end_point[0] - start_point[0]) / 2)
+                    return list(x_pts), list(y_pts)
+                return [], []
+
+            # 计算各路径积分
+            paths = ['straight', 'broken', 'parabola']
+            integrals = []
+            path_points = {}
+
+            for path_type in paths:
+                if path_type == 'broken':
+                    path_data, name = generate_path(path_type)
+                    segments = path_data
+                    integral = compute_line_integral(None, None, None, segments)
+                else:
+                    x_t, y_t, t_range, name = generate_path(path_type)
+                    integral = compute_line_integral(x_t, y_t, t_range)
+
+                pts_x, pts_y = get_path_points(path_type)
+                path_points[path_type] = {'x': pts_x, 'y': pts_y}
+                integrals.append({
+                    'path_name': name,
+                    'path_type': path_type,
+                    'value': integral
+                })
+
+            # 计算差异
+            values = [abs(in_['value']) for in_ in integrals]
+            max_val = max(values) if values else 1
+            differences = []
+            for i in range(len(integrals)):
+                for j in range(i + 1, len(integrals)):
+                    diff = abs(integrals[i]['value'] - integrals[j]['value'])
+                    differences.append({
+                        'pair': f"{integrals[i]['path_name']} vs {integrals[j]['path_name']}",
+                        'difference': diff
+                    })
+
+            avg_value = sum(values) / len(values) if values else 0
+            relative_errors = []
+            for inte in integrals:
+                if abs(inte['value']) > 1e-10:
+                    rel_err = abs(inte['value'] - avg_value) / abs(avg_value) if avg_value != 0 else 0
+                else:
+                    rel_err = abs(inte['value'] - avg_value)
+                relative_errors.append({
+                    'path': inte['path_name'],
+                    'error': rel_err
+                })
+
+            # 判断是否路径无关
+            tolerance = 1e-6
+            is_independent = is_conservative and all(
+                abs(d['difference']) < tolerance * max(1, max_val) for d in differences
+            )
+
+            return {
+                'success': True,
+                'is_conservative': is_conservative,
+                'start_point': {'x': start_point[0], 'y': start_point[1]},
+                'end_point': {'x': end_point[0], 'y': end_point[1]},
+                'integrals': integrals,
+                'differences': differences,
+                'relative_errors': relative_errors,
+                'path_points': path_points,
+                'is_independent': is_independent,
+                'message': '路径无关性已验证：各路径积分值相等' if is_independent else
+                         '保守场假设下各路径积分应相等' if is_conservative else
+                         '该向量场不是保守场，路径无关性不成立',
+                'curl_expression': conservative_check.get('curl_expression', ''),
+                'curl_value': conservative_check.get('curl_value', None)
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'is_conservative': False
+            }

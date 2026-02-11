@@ -296,3 +296,177 @@ def get_presets():
     """
     result = VectorFieldService.get_presets()
     return jsonify(result)
+
+
+@vector_field_bp.route('/conservative', methods=['POST'])
+def check_conservative():
+    """
+    检查向量场是否保守
+
+    请求参数:
+    {
+        "P": "2*x",
+        "Q": "2*y"
+    }
+
+    返回:
+    {
+        "success": true,
+        "is_conservative": true,
+        "curl_expression": "0",
+        "curl_value": 0,
+        "message": "该向量场是保守场"
+    }
+    """
+    data = request.json
+    is_valid, error = validate_request_data(data, ['P', 'Q'])
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
+    p_str = data.get('P')
+    q_str = data.get('Q')
+
+    try:
+        result = VectorFieldService.is_conservative(p_str, q_str)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+
+
+@vector_field_bp.route('/potential', methods=['POST'])
+def find_potential():
+    """
+    计算势函数
+
+    请求参数:
+    {
+        "P": "2*x",
+        "Q": "2*y"
+    }
+
+    返回:
+    {
+        "success": true,
+        "is_conservative": true,
+        "potential_function": "x**2 + y**2",
+        "grad_x": "2*x",
+        "grad_y": "2*y",
+        "matches_field": true
+    }
+    """
+    data = request.json
+    is_valid, error = validate_request_data(data, ['P', 'Q'])
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
+    p_str = data.get('P')
+    q_str = data.get('Q')
+
+    try:
+        result = VectorFieldService.find_potential(p_str, q_str)
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+
+
+@vector_field_bp.route('/potential-contour', methods=['POST'])
+def potential_contour():
+    """
+    计算势函数等值线数据
+
+    请求参数:
+    {
+        "P": "2*x",
+        "Q": "2*y",
+        "x_range": [-3, 3],
+        "y_range": [-3, 3],
+        "resolution": 50
+    }
+
+    返回:
+    {
+        "success": true,
+        "potential_function": "x**2 + y**2",
+        "x": [...],
+        "y": [...],
+        "z": [...],
+        "levels": [...]
+    }
+    """
+    data = request.json
+    is_valid, error = validate_request_data(data, ['P', 'Q'])
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
+    p_str = data.get('P')
+    q_str = data.get('Q')
+
+    is_valid, x_range = safe_float_list(data.get('x_range', [-3, 3]), 'x_range')
+    if not is_valid:
+        return jsonify({'success': False, 'error': x_range}), 400
+
+    is_valid, y_range = safe_float_list(data.get('y_range', [-3, 3]), 'y_range')
+    if not is_valid:
+        return jsonify({'success': False, 'error': y_range}), 400
+
+    resolution = int(data.get('resolution', 50))
+    resolution = min(max(resolution, 10), 100)
+
+    try:
+        result = VectorFieldService.compute_potential_contour(
+            p_str, q_str, x_range, y_range, resolution
+        )
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+
+
+@vector_field_bp.route('/path-independence', methods=['POST'])
+def path_independence():
+    """
+    验证保守场的路径无关性
+
+    请求参数:
+    {
+        "P": "2*x",
+        "Q": "2*y",
+        "start_point": [0, 0],
+        "end_point": [1, 1],
+        "num_points": 200
+    }
+
+    返回:
+    {
+        "success": true,
+        "is_conservative": true,
+        "integrals": [...],
+        "path_points": {...},
+        "is_independent": true,
+        "message": "路径无关性已验证"
+    }
+    """
+    data = request.json
+    is_valid, error = validate_request_data(data, ['P', 'Q', 'start_point', 'end_point'])
+    if not is_valid:
+        return jsonify({'success': False, 'error': error}), 400
+
+    p_str = data.get('P')
+    q_str = data.get('Q')
+
+    is_valid, start_point = safe_float_list(data.get('start_point', [0, 0]), 'start_point')
+    if not is_valid:
+        return jsonify({'success': False, 'error': start_point}), 400
+
+    is_valid, end_point = safe_float_list(data.get('end_point', [1, 1]), 'end_point')
+    if not is_valid:
+        return jsonify({'success': False, 'error': end_point}), 400
+
+    num_points = int(data.get('num_points', 200))
+
+    try:
+        result = VectorFieldService.verify_path_independence(
+            p_str, q_str, start_point, end_point, num_points
+        )
+        return jsonify(result)
+    except Exception as e:
+        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400

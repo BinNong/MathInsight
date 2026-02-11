@@ -627,6 +627,93 @@ export interface VectorFieldPresetsData {
   paths: PathPreset[]
 }
 
+// ============ 保守场相关接口 ============
+
+export interface ConservativeCheckRequest {
+  P: string
+  Q: string
+}
+
+export interface ConservativeCheckData {
+  success: boolean
+  is_conservative: boolean
+  curl_expression: string
+  curl_value: number
+  curl_at_points: number[]
+  message: string
+  error?: string
+}
+
+export interface PotentialRequest {
+  P: string
+  Q: string
+}
+
+export interface PotentialData {
+  success: boolean
+  is_conservative: boolean
+  potential_function: string | null
+  grad_x: string
+  grad_y: string
+  matches_field: boolean
+  message: string
+  error?: string
+  curl_expression?: string
+}
+
+export interface PotentialContourRequest {
+  P: string
+  Q: string
+  x_range: number[]
+  y_range: number[]
+  resolution?: number
+}
+
+export interface PotentialContourData {
+  success: boolean
+  potential_function: string
+  x: number[][]
+  y: number[][]
+  z: number[][]
+  levels: number[]
+  z_range: number[]
+  error?: string
+}
+
+export interface PathIndependenceRequest {
+  P: string
+  Q: string
+  start_point: [number, number]
+  end_point: [number, number]
+  num_points?: number
+}
+
+export interface PathIndependenceData {
+  success: boolean
+  is_conservative: boolean
+  start_point: { x: number; y: number }
+  end_point: { x: number; y: number }
+  integrals: Array<{
+    path_name: string
+    path_type: string
+    value: number
+  }>
+  differences: Array<{
+    pair: string
+    difference: number
+  }>
+  relative_errors: Array<{
+    path: string
+    error: number
+  }>
+  path_points: Record<string, { x: number[]; y: number[] }>
+  is_independent: boolean
+  message: string
+  curl_expression?: string
+  curl_value?: number
+  error?: string
+}
+
 export const vectorFieldApi = {
   // 向量场可视化
   async vectorField(data: VectorFieldRequest) {
@@ -667,6 +754,30 @@ export const vectorFieldApi = {
   // 获取预设
   async getPresets(): Promise<{ success: boolean; data?: VectorFieldPresetsData; error?: string }> {
     const response = await axios.get('/api/vector-field/presets')
+    return response.data
+  },
+
+  // 保守场判定
+  async checkConservative(data: ConservativeCheckRequest): Promise<ConservativeCheckData> {
+    const response = await axios.post('/api/vector-field/conservative', data)
+    return response.data
+  },
+
+  // 势函数计算
+  async findPotential(data: PotentialRequest): Promise<PotentialData> {
+    const response = await axios.post('/api/vector-field/potential', data)
+    return response.data
+  },
+
+  // 势函数等值线
+  async potentialContour(data: PotentialContourRequest): Promise<PotentialContourData> {
+    const response = await axios.post('/api/vector-field/potential-contour', data)
+    return response.data
+  },
+
+  // 路径无关性验证
+  async verifyPathIndependence(data: PathIndependenceRequest): Promise<PathIndependenceData> {
+    const response = await axios.post('/api/vector-field/path-independence', data)
     return response.data
   }
 }
