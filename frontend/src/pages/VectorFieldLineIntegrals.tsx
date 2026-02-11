@@ -1,7 +1,14 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Plot from 'react-plotly.js'
 import { vectorFieldApi, VectorFieldData, LineIntegralData, GreensTheoremData, StreamlineData, VectorFieldPreset, PathPreset } from '../services/api'
 import { Link } from 'react-router-dom'
+
+// ============ 常量定义 ============
+
+const ARROW_SCALE = 0.5           // 向量场箭头缩放比例
+const ARROW_HEAD_SIZE = 0.03      // 箭头头部大小
+const PATH_ARROW_SKIP = 20        // 路径箭头间隔点数
+const MIN_VECTOR_THRESHOLD = 0.001 // 最小向量阈值
 
 // ============ 类型定义 ============
 
@@ -60,9 +67,23 @@ const DEFAULT_STATE: VectorFieldState = {
   streamlineTimeSpan: 3
 }
 
-// ============ 预设向量场 ============
+// Plotly trace 类型
+type PlotlyTrace = {
+  type: 'scatter'
+  mode: 'lines'
+  x: (number | null)[]
+  y: (number | null)[]
+  line?: { color?: string; width?: number }
+  fill?: string
+  fillcolor?: string
+  name?: string
+  hovertemplate?: string
+  hoverinfo?: string
+}
 
-const VECTOR_FIELD_PRESETS: VectorFieldPreset[] = [
+// ============ 预设默认值（API 数据未加载时的回退）==========
+
+const DEFAULT_VECTOR_FIELD_PRESETS: VectorFieldPreset[] = [
   { id: 'rotational', name: '旋转场', description: 'F = (-y, x)', P: '-y', Q: 'x' },
   { id: 'conservative', name: '保守场', description: 'F = (2x, 2y)', P: '2*x', Q: '2*y' },
   { id: 'radial', name: '辐射场', description: 'F = (x, y)', P: 'x', Q: 'y' },
@@ -71,9 +92,7 @@ const VECTOR_FIELD_PRESETS: VectorFieldPreset[] = [
   { id: 'vortex', name: '涡旋场', description: 'F = (-y/(x²+y²), x/(x²+y²))', P: '-y/(x**2 + y**2 + 0.1)', Q: 'x/(x**2 + y**2 + 0.1)' }
 ]
 
-// ============ 路径预设 ============
-
-const PATH_PRESETS: PathPreset[] = [
+const DEFAULT_PATH_PRESETS: PathPreset[] = [
   { id: 'circle', name: '单位圆', description: 'x=cos(t), y=sin(t)', parametric: { x: 'cos(t)', y: 'sin(t)', t_range: [0, 2 * Math.PI] }, is_closed: true },
   { id: 'ellipse', name: '椭圆', description: 'x=2cos(t), y=sin(t)', parametric: { x: '2*cos(t)', y: 'sin(t)', t_range: [0, 2 * Math.PI] }, is_closed: true },
   { id: 'line_segment', name: '直线段', description: '从(-1,-1)到(1,1)', parametric: { x: 't', y: 't', t_range: [-1, 1] }, is_closed: false },
@@ -103,6 +122,15 @@ export default function VectorFieldLineIntegrals() {
     }
     fetchPresets()
   }, [])
+
+  // 预设数据（使用 API 数据，失败时使用默认值）
+  const vectorFieldPresets = useMemo((): VectorFieldPreset[] => {
+    return presets?.vector_fields || DEFAULT_VECTOR_FIELD_PRESETS
+  }, [presets])
+
+  const pathPresets = useMemo((): PathPreset[] => {
+    return presets?.paths || DEFAULT_PATH_PRESETS
+  }, [presets])
 
   // 获取向量场数据
   const fetchVectorField = useCallback(async () => {
@@ -211,7 +239,7 @@ export default function VectorFieldLineIntegrals() {
 
   // 构建路径配置
   const buildPathConfig = () => {
-    const preset = presets?.paths.find(p => p.id === state.pathType) || PATH_PRESETS.find(p => p.id === state.pathType)
+    const preset = pathPresets.find(p => p.id === state.pathType)
 
     if (state.pathType === 'square') {
       // 正方形路径（多段）
@@ -287,13 +315,13 @@ export default function VectorFieldLineIntegrals() {
 
   // ============ 构建 Plotly 数据 ============
 
-  // 构建向量场箭头
-  const buildVectorFieldData = (): any[] => {
+  // 构建向量场箭头（使用 useMemo 缓存）
+  const buildVectorFieldData = useMemo((): PlotlyTrace[] => {
     if (!vectorFieldData || !vectorFieldData.vector_field) {
       return []
     }
 
-    const plots: any[] = []
+    const plots: PlotlyTrace[] = []
     const { x, y, u, v, u_norm, v_norm } = vectorFieldData.vector_field
 
     // 防御性处理：如果 u_norm/v_norm 无效，使用 u/v
@@ -322,10 +350,9 @@ export default function VectorFieldLineIntegrals() {
         if (px === undefined || py === undefined || pu === undefined || pv === undefined) continue
         if (typeof px !== 'number' || typeof py !== 'number' || typeof pu !== 'number' || typeof pv !== 'number') continue
 
-        if (Math.abs(pu) > 0.001 || Math.abs(pv) > 0.001) {
-          const scale = 0.5
-          const endX = px + pu * scale
-          const endY = py + pv * scale
+        if (Math.abs(pu) > MIN_VECTOR_THRESHOLD || Math.abs(pv) > MIN_VECTOR_THRESHOLD) {
+          const endX = px + pu * ARROW_SCALE
+          const endY = py + pv * ARROW_SCALE
 
           // 主线段
           lineX.push(px, endX, null)
@@ -333,14 +360,13 @@ export default function VectorFieldLineIntegrals() {
 
           // 箭头头部
           const angle = Math.atan2(pv, pu)
-          const headSize = 0.03
           const headAngle1 = angle + Math.PI * 0.85
           const headAngle2 = angle - Math.PI * 0.85
 
-          lineX.push(endX, endX + headSize * Math.cos(headAngle1), null)
-          lineY.push(endY, endY + headSize * Math.sin(headAngle1), null)
-          lineX.push(endX, endX + headSize * Math.cos(headAngle2), null)
-          lineY.push(endY, endY + headSize * Math.sin(headAngle2), null)
+          lineX.push(endX, endX + ARROW_HEAD_SIZE * Math.cos(headAngle1), null)
+          lineY.push(endY, endY + ARROW_HEAD_SIZE * Math.sin(headAngle1), null)
+          lineX.push(endX, endX + ARROW_HEAD_SIZE * Math.cos(headAngle2), null)
+          lineY.push(endY, endY + ARROW_HEAD_SIZE * Math.sin(headAngle2), null)
         }
       }
     }
@@ -356,30 +382,30 @@ export default function VectorFieldLineIntegrals() {
     })
 
     return plots
-  }
+  }, [vectorFieldData])
 
-  // 构建流线数据
-  const buildStreamlineData = (): any[] => {
+  // 构建流线数据（使用 useMemo 缓存）
+  const buildStreamlineData = useMemo((): PlotlyTrace[] => {
     if (!streamlines) return []
 
     const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
 
     return streamlines.streamlines.map((streamline, idx) => ({
-      type: 'scatter',
-      mode: 'lines',
+      type: 'scatter' as const,
+      mode: 'lines' as const,
       x: streamline.x,
       y: streamline.y,
       line: { color: colors[idx % colors.length], width: 2 },
       name: `流线 ${idx + 1}`,
       hovertemplate: `起点: (${streamline.start_point.x}, ${streamline.start_point.y})<extra></extra>`
     }))
-  }
+  }, [streamlines])
 
-  // 构建路径数据
-  const buildPathData = (): any[] => {
+  // 构建路径数据（使用 useMemo 缓存）
+  const buildPathData = useMemo((): PlotlyTrace[] => {
     if (!lineIntegralData) return []
 
-    const plots: any[] = []
+    const plots: PlotlyTrace[] = []
 
     // 路径
     plots.push({
@@ -398,7 +424,7 @@ export default function VectorFieldLineIntegrals() {
       const pathX = lineIntegralData.path.x
       const pathY = lineIntegralData.path.y
 
-      const arrowSkip = Math.max(1, Math.floor(pathX.length / 20))
+      const arrowSkip = Math.max(1, Math.floor(pathX.length / PATH_ARROW_SKIP))
       const arrowX: (number | null)[] = []
       const arrowY: (number | null)[] = []
 
@@ -409,7 +435,7 @@ export default function VectorFieldLineIntegrals() {
         const pv = v_field[i]
 
         const mag = Math.sqrt(pu * pu + pv * pv)
-        if (mag > 0.001) {
+        if (mag > MIN_VECTOR_THRESHOLD) {
           const scale = 0.3
           const endX = px + (pu / mag) * scale
           const endY = py + (pv / mag) * scale
@@ -431,15 +457,15 @@ export default function VectorFieldLineIntegrals() {
     }
 
     return plots
-  }
+  }, [lineIntegralData])
 
-  // 构建格林公式验证数据
-  const buildGreensTheoremData = (): any[] => {
-    const plots: any[] = []
+  // 构建格林公式验证数据（使用 useMemo 缓存）
+  const buildGreensTheoremData = useMemo((): PlotlyTrace[] => {
+    const plots: PlotlyTrace[] = []
 
     // 向量场
     if (vectorFieldData) {
-      plots.push(...buildVectorFieldData())
+      plots.push(...buildVectorFieldData)
     }
 
     // 区域边界
@@ -457,30 +483,30 @@ export default function VectorFieldLineIntegrals() {
     }
 
     return plots
-  }
+  }, [vectorFieldData, greensData, buildVectorFieldData])
 
-  // 构建图表数据
-  const buildPlotData = (): any[] => {
+  // 构建图表数据（使用 useMemo 缓存）
+  const buildPlotData = useMemo((): PlotlyTrace[] => {
     switch (state.mode) {
       case 'field':
-        const fieldPlots = buildVectorFieldData()
+        const fieldPlots = [...buildVectorFieldData]
         if (state.showStreamlines) {
-          fieldPlots.push(...buildStreamlineData())
+          fieldPlots.push(...buildStreamlineData)
         }
         return fieldPlots
       case 'line_integral':
-        return [...buildVectorFieldData(), ...buildPathData()]
+        return [...buildVectorFieldData, ...buildPathData]
       case 'greens_theorem':
-        return buildGreensTheoremData()
+        return [...buildGreensTheoremData]
       case 'flux':
-        return [...buildVectorFieldData(), ...buildPathData()]
+        return [...buildVectorFieldData, ...buildPathData]
       default:
-        return buildVectorFieldData()
+        return buildVectorFieldData
     }
-  }
+  }, [state.mode, state.showStreamlines, buildVectorFieldData, buildStreamlineData, buildPathData, buildGreensTheoremData])
 
-  // 图表布局
-  const layout = {
+  // 图表布局（使用 useMemo 缓存）
+  const layout = useMemo((): any => ({
     title: {
       text: `F(x,y) = (${state.P}, ${state.Q})`,
       font: { size: 14 }
@@ -499,7 +525,7 @@ export default function VectorFieldLineIntegrals() {
     margin: { t: 50, r: 50, b: 50, l: 50 },
     showlegend: true,
     legend: { x: 1.02, y: 1 }
-  }
+  }), [state.P, state.Q, state.xRange, state.yRange])
 
   return (
     <div className="detail-page">
@@ -624,7 +650,7 @@ export default function VectorFieldLineIntegrals() {
               预设向量场
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {VECTOR_FIELD_PRESETS.map((preset) => (
+              {vectorFieldPresets.map((preset) => (
                 <button
                   key={preset.id}
                   className="btn btn-secondary"
@@ -645,7 +671,7 @@ export default function VectorFieldLineIntegrals() {
                 积分路径
               </label>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {PATH_PRESETS.map((preset) => (
+                {pathPresets.map((preset) => (
                   <button
                     key={preset.id}
                     className={`btn ${state.pathType === preset.id ? 'btn-primary' : 'btn-secondary'}`}
@@ -717,8 +743,8 @@ export default function VectorFieldLineIntegrals() {
           {/* Plotly 图表 */}
           <div style={{ background: '#fff', borderRadius: '8px', padding: '0.5rem' }}>
             <Plot
-              data={buildPlotData()}
-              layout={layout as any}
+              data={buildPlotData as any}
+              layout={layout}
               config={{ responsive: true, scrollZoom: true, displayModeBar: true }}
               style={{ width: '100%', height: '600px' }}
             />
