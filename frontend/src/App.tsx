@@ -9,6 +9,9 @@ import TaylorSeries from './pages/TaylorSeries'
 import RiemannIntegral from './pages/RiemannIntegral'
 import MultivariateFunction from './pages/MultivariateFunction'
 import VectorFieldLineIntegrals from './pages/VectorFieldLineIntegrals'
+import VectorField3D from './pages/VectorField3D'
+import SurfaceIntegrals from './pages/SurfaceIntegrals'
+import GaussTheorem from './pages/GaussTheorem'
 
 function App() {
   return (
@@ -25,6 +28,9 @@ function App() {
           <Route path="/integration" element={<RiemannIntegral />} />
           <Route path="/multivariate" element={<MultivariateFunction />} />
           <Route path="/vector-field" element={<VectorFieldLineIntegrals />} />
+          <Route path="/vector-field-3d" element={<VectorField3D />} />
+          <Route path="/surface-integral" element={<SurfaceIntegrals />} />
+          <Route path="/gauss-theorem" element={<GaussTheorem />} />
         </Routes>
       </div>
     </BrowserRouter>

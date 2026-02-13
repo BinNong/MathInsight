@@ -64,6 +64,24 @@ const SUBJECTS_DATA: Record<string, SubjectData> = {
         name: '向量场与线积分',
         description: '向量场可视化、流线追踪、线积分计算、格林公式验证',
         icon: '∮'
+      },
+      {
+        key: 'vector-field-3d',
+        name: '3D向量场',
+        description: '三维向量场可视化、旋度与散度计算、流线追踪',
+        icon: '×'
+      },
+      {
+        key: 'surface-integral',
+        name: '曲面积分',
+        description: '曲面积分计算、通量可视化、法向量分析',
+        icon: '∬'
+      },
+      {
+        key: 'gauss-theorem',
+        name: '高斯定理',
+        description: '高斯散度定理验证、通量与散度的关系',
+        icon: '∭'
       }
     ]
   },
@@ -138,6 +156,9 @@ function SubjectPage() {
       'taylor': '/taylor',
       'multivariate': '/multivariate',
       'vector-field': '/vector-field',
+      'vector-field-3d': '/vector-field-3d',
+      'surface-integral': '/surface-integral',
+      'gauss-theorem': '/gauss-theorem',
       'matrix': '/matrix',
       'lln': '/probability'
     }

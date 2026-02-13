@@ -714,6 +714,216 @@ export interface PathIndependenceData {
   error?: string
 }
 
+// ============ 3D向量场相关接口 ============
+
+export interface VectorField3DRequest {
+  P: string           // x分量表达式
+  Q: string           // y分量表达式
+  R: string           // z分量表达式
+  x_range: number[]
+  y_range: number[]
+  z_range: number[]
+  resolution?: number
+}
+
+export interface VectorField3DData {
+  success: boolean
+  error?: string
+  vector_field?: {
+    x: number[]       // 扁平化数据用于cone图
+    y: number[]
+    z: number[]
+    u: number[]       // P(x,y,z)
+    v: number[]       // Q(x,y,z)
+    w: number[]       // R(x,y,z)
+    u_norm: number[]
+    v_norm: number[]
+    w_norm: number[]
+    magnitude: number[]
+    grid_x: number[][][]
+    grid_y: number[][][]
+    grid_z: number[][][]
+    grid_u: number[][][]
+    grid_v: number[][][]
+    grid_w: number[][][]
+    grid_magnitude: number[][][]
+  }
+  curl: {
+    expression: { x: string; y: string; z: string }
+    value: { x: number; y: number; z: number }
+    values_x: number[][][]
+    values_y: number[][][]
+    values_z: number[][][]
+  }
+  divergence: {
+    expression: string
+    value: number
+    values: number[][][]
+  }
+  field_expressions: { P: string; Q: string; R: string }
+  x_range: number[]
+  y_range: number[]
+  z_range: number[]
+}
+
+export interface Streamline3DRequest {
+  P: string
+  Q: string
+  R: string
+  start_points: number[][]
+  t_span: number[]
+  direction?: 'forward' | 'backward' | 'both'
+}
+
+export interface Streamline3DData {
+  success: boolean
+  error?: string
+  streamlines?: Array<{
+    start_point: { x: number; y: number; z: number }
+    x: number[]
+    y: number[]
+    z: number[]
+    direction: string
+  }>
+  field: { P: string; Q: string; R: string }
+}
+
+export interface CurlDivergence3DRequest {
+  P: string
+  Q: string
+  R: string
+  x?: number
+  y?: number
+  z?: number
+}
+
+export interface CurlDivergence3DData {
+  success: boolean
+  curl: {
+    expression: { x: string; y: string; z: string }
+    value: { x: number; y: number; z: number }
+  }
+  divergence: {
+    expression: string
+    value: number
+  }
+  point: { x: number; y: number; z: number }
+}
+
+export interface VectorField3DPreset {
+  id: string
+  name: string
+  description: string
+  P: string
+  Q: string
+  R: string
+}
+
+// ============ 曲面积分相关接口 ============
+
+export type SurfaceType = 'sphere' | 'cylinder' | 'paraboloid' | 'cone' | 'plane'
+
+export interface SurfacePreset {
+  id: string
+  name: string
+  description: string
+  parametric: {
+    x: string
+    y: string
+    z: string
+    u_range: number[]
+    v_range: number[]
+    params: Record<string, number>
+  }
+}
+
+export interface SurfaceIntegralRequest {
+  P: string
+  Q: string
+  R: string
+  surface_type: SurfaceType
+  surface_params?: Record<string, number>
+  orientation?: 'outward' | 'inward'
+  resolution?: number
+}
+
+export interface SurfaceIntegralData {
+  success: boolean
+  error?: string
+  surface_integral: number
+  surface: {
+    type: SurfaceType
+    name: string
+    x: number[][]
+    y: number[][]
+    z: number[][]
+  }
+  normal: {
+    x: number[][]
+    y: number[][]
+    z: number[][]
+    magnitude: number[][]
+  }
+  field_on_surface?: {
+    P: number[][]
+    Q: number[][]
+    R: number[][]
+  }
+  flux_density: number[][]
+  orientation: string
+  field: { P: string; Q: string; R: string }
+}
+
+// ============ 高斯定理相关接口 ============
+
+export type SolidType = 'sphere' | 'cube' | 'cylinder'
+
+export interface GaussSolidPreset {
+  id: string
+  name: string
+  description: string
+  type: SolidType
+  params: Record<string, number>
+}
+
+export interface GaussTheoremRequest {
+  P: string
+  Q: string
+  R: string
+  solid_type: SolidType
+  solid_params?: Record<string, number>
+  resolution?: number
+}
+
+export interface GaussTheoremData {
+  success: boolean
+  error?: string
+  gauss_theorem: {
+    surface_integral: {
+      value: number
+      expression: string
+    }
+    volume_integral: {
+      value: number
+      expression: string
+    }
+    divergence_expression: string
+    difference: number
+    relative_error: number
+    is_verified: boolean
+    formula: string
+  }
+  solid: {
+    type: SolidType
+    name: string
+    params: Record<string, number>
+    x: any
+    y: any
+    z: any
+  }
+  field: { P: string; Q: string; R: string }
+}
+
 export const vectorFieldApi = {
   // 向量场可视化
   async vectorField(data: VectorFieldRequest) {
@@ -778,6 +988,60 @@ export const vectorFieldApi = {
   // 路径无关性验证
   async verifyPathIndependence(data: PathIndependenceRequest): Promise<PathIndependenceData> {
     const response = await axios.post('/api/vector-field/path-independence', data)
+    return response.data
+  },
+
+  // ============ 3D向量场 API ============
+
+  // 3D向量场可视化
+  async vectorField3d(data: VectorField3DRequest): Promise<VectorField3DData> {
+    const response = await axios.post('/api/vector-field/field-3d', data)
+    return response.data
+  },
+
+  // 3D流线计算
+  async streamline3d(data: Streamline3DRequest): Promise<Streamline3DData> {
+    const response = await axios.post('/api/vector-field/streamline-3d', data)
+    return response.data
+  },
+
+  // 3D旋度和散度计算
+  async curlDivergence3d(data: CurlDivergence3DRequest): Promise<CurlDivergence3DData> {
+    const response = await axios.post('/api/vector-field/curl-divergence-3d', data)
+    return response.data
+  },
+
+  // 获取3D预设向量场
+  async getPresets3d(): Promise<{ success: boolean; vector_fields: VectorField3DPreset[] }> {
+    const response = await axios.get('/api/vector-field/presets-3d')
+    return response.data
+  },
+
+  // ============ 曲面积分 API ============
+
+  // 计算曲面积分
+  async surfaceIntegral(data: SurfaceIntegralRequest): Promise<SurfaceIntegralData> {
+    const response = await axios.post('/api/vector-field/surface-integral', data)
+    return response.data
+  },
+
+  // 获取预设曲面
+  async getSurfacePresets(): Promise<{ success: boolean; surfaces: SurfacePreset[] }> {
+    const response = await axios.get('/api/vector-field/surface-presets')
+    return response.data
+  },
+
+  // ============ 高斯定理 API ============
+
+  // 验证高斯定理
+  async gaussTheorem(data: GaussTheoremRequest): Promise<GaussTheoremData> {
+    const response = await axios.post('/api/vector-field/gauss-theorem', data)
+    return response.data
+  },
+
+  // 获取高斯定理预设立体
+  async getGaussPresets(): Promise<{ success: boolean; solids: GaussSolidPreset[] }> {
+    const response = await axios.get('/api/vector-field/gauss-presets')
     return response.data
   }
 }
