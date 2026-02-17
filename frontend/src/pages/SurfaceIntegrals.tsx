@@ -239,7 +239,7 @@ export default function SurfaceIntegrals() {
     // 显示法向量
     if (state.showNormal && normal) {
       // 采样法向量箭头
-      const skip = Math.max(1, Math.floor(xData.length / 15))
+      const skip = Math.max(1, Math.floor(xData.length / 20))
       const arrowX: number[] = []
       const arrowY: number[] = []
       const arrowZ: number[] = []
@@ -278,8 +278,9 @@ export default function SurfaceIntegrals() {
         u: arrowU,
         v: arrowV,
         w: arrowW,
-        sizemode: 'absolute',
+        sizemode: 'scaled',
         sizeref: 0.5,
+        anchor: 'tip',
         colorscale: [[0, 'rgb(255,0,0)'], [1, 'rgb(255,0,0)']],
         showscale: false,
         name: '法向量 n'
@@ -288,7 +289,8 @@ export default function SurfaceIntegrals() {
 
     // 显示曲面上的向量场
     if (state.showField && field_on_surface) {
-      const skip = Math.max(1, Math.floor(xData.length / 10))
+      // 减少箭头密度
+      const skip = Math.max(1, Math.floor(xData.length / 15))
       const fieldX: number[] = []
       const fieldY: number[] = []
       const fieldZ: number[] = []
@@ -331,8 +333,9 @@ export default function SurfaceIntegrals() {
         u: fieldU,
         v: fieldV,
         w: fieldW,
-        sizemode: 'absolute',
-        sizeref: 0.3,
+        sizemode: 'scaled',
+        sizeref: 0.5,
+        anchor: 'tip',
         colorscale: [[0, 'rgb(0,100,0)'], [1, 'rgb(0,200,0)']],
         showscale: false,
         name: 'F'

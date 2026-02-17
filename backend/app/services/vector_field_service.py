@@ -1775,6 +1775,18 @@ class VectorFieldService:
                 Q_vals = Q_func(X_surf, Y_surf, Z_surf)
                 R_vals = R_func(X_surf, Y_surf, Z_surf)
 
+                # 处理标量返回值（当向量场分量为常量时，如 '0' 或 '1'）
+                P_vals = np.asarray(P_vals)
+                Q_vals = np.asarray(Q_vals)
+                R_vals = np.asarray(R_vals)
+
+                if P_vals.ndim == 0:
+                    P_vals = np.full_like(X_surf, float(P_vals))
+                if Q_vals.ndim == 0:
+                    Q_vals = np.full_like(X_surf, float(Q_vals))
+                if R_vals.ndim == 0:
+                    R_vals = np.full_like(X_surf, float(R_vals))
+
                 # 处理数值问题
                 P_vals = np.where(np.isnan(P_vals) | np.isinf(P_vals), 0, P_vals)
                 Q_vals = np.where(np.isnan(Q_vals) | np.isinf(Q_vals), 0, Q_vals)
