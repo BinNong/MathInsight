@@ -1901,6 +1901,12 @@ class VectorFieldService:
                 U, V = np.meshgrid(u_vals, v_vals)
 
                 flux_density = flux_integrand_func(U, V)
+                # 确保 flux_density 是 numpy 数组（lambdify 可能返回标量）
+                if not isinstance(flux_density, np.ndarray):
+                    flux_density = np.array(flux_density)
+                if flux_density.ndim == 0:
+                    # 标量情况：扩展为与 U, V 相同形状的数组
+                    flux_density = np.full_like(U, float(flux_density))
                 flux_density = np.where(np.isnan(flux_density) | np.isinf(flux_density), 0, flux_density)
 
                 # 计算面积分
