@@ -1957,14 +1957,25 @@ class VectorFieldService:
                 # 立方体的6个面的面积分
                 surface_integral = 0
 
+                # 定义向量场函数
+                P_func = sp.lambdify((x, y, z), P, 'numpy')
+                Q_func = sp.lambdify((x, y, z), Q, 'numpy')
+                R_func = sp.lambdify((x, y, z), R, 'numpy')
+
                 # 定义各面的法向量和参数方程
                 faces = [
-                    {'name': 'x=max', 'x_expr': x_max, 'y': 'y', 'z': 'z', 'nx': 1, 'y_range': [y_min, y_max], 'z_range': [z_min, z_max]},
-                    {'name': 'x=min', 'x_expr': x_min, 'y': 'y', 'z': 'z', 'nx': -1, 'y_range': [y_min, y_max], 'z_range': [z_min, z_max]},
-                    {'name': 'y=max', 'x': 'x', 'y_expr': y_max, 'z': 'z', 'ny': 1, 'x_range': [x_min, x_max], 'z_range': [z_min, z_max]},
-                    {'name': 'y=min', 'x': 'x', 'y_expr': y_min, 'z': 'z', 'ny': -1, 'x_range': [x_min, x_max], 'z_range': [z_min, z_max]},
-                    {'name': 'z=max', 'x': 'x', 'y': 'y', 'z_expr': z_max, 'nz': 1, 'x_range': [x_min, x_max], 'y_range': [y_min, y_max]},
-                    {'name': 'z=min', 'x': 'x', 'y': 'y', 'z_expr': z_min, 'nz': -1, 'x_range': [x_min, x_max], 'y_range': [y_min, y_max]}
+                    # x=max 面: x = x_max, y: y_min~y_max, z: z_min~z_max
+                    {'name': 'x=max', 'x_expr': x_max, 'y_expr': y_max, 'z_expr': z_max, 'nx': 1, 'y_range': [y_min, y_max], 'z_range': [z_min, z_max]},
+                    # x=min 面: x = x_min, y: y_min~y_max, z: z_min~z_max
+                    {'name': 'x=min', 'x_expr': x_min, 'y_expr': y_max, 'z_expr': z_max, 'nx': -1, 'y_range': [y_min, y_max], 'z_range': [z_min, z_max]},
+                    # y=max 面: y = y_max, x: x_min~x_max, z: z_min~z_max
+                    {'name': 'y=max', 'x_expr': x_max, 'y_expr': y_max, 'z_expr': z_max, 'ny': 1, 'x_range': [x_min, x_max], 'z_range': [z_min, z_max]},
+                    # y=min 面: y = y_min, x: x_min~x_max, z: z_min~z_max
+                    {'name': 'y=min', 'x_expr': x_min, 'y_expr': y_min, 'z_expr': z_max, 'ny': -1, 'x_range': [x_min, x_max], 'z_range': [z_min, z_max]},
+                    # z=max 面: z = z_max, x: x_min~x_max, y: y_min~y_max
+                    {'name': 'z=max', 'x_expr': x_max, 'y_expr': y_max, 'z_expr': z_max, 'nz': 1, 'x_range': [x_min, x_max], 'y_range': [y_min, y_max]},
+                    # z=min 面: z = z_min, x: x_min~x_max, y: y_min~y_max
+                    {'name': 'z=min', 'x_expr': x_min, 'y_expr': y_max, 'z_expr': z_min, 'nz': -1, 'x_range': [x_min, x_max], 'y_range': [y_min, y_max]}
                 ]
 
                 from scipy.integrate import tplquad
@@ -1976,7 +1987,7 @@ class VectorFieldService:
                         return 0
 
                 # 体积积分
-                volume_integral, _ = tplquad(
+                volume_integral_val, _ = tplquad(
                     div_func_3d,
                     x_min, x_max,
                     lambda x: y_min, lambda x: y_max,
@@ -2089,6 +2100,12 @@ class VectorFieldService:
                 U, V = np.meshgrid(u_vals, v_vals)
 
                 flux_density = flux_integrand_func(U, V)
+                # 确保 flux_density 是 numpy 数组（lambdify 可能返回标量）
+                if not isinstance(flux_density, np.ndarray):
+                    flux_density = np.array(flux_density)
+                if flux_density.ndim == 0:
+                    # 标量情况：扩展为与 U, V 相同形状的数组
+                    flux_density = np.full_like(U, float(flux_density))
                 flux_density = np.where(np.isnan(flux_density) | np.isinf(flux_density), 0, flux_density)
 
                 du = 2*np.pi / (resolution - 1)
@@ -2142,7 +2159,7 @@ class VectorFieldService:
                     except:
                         return 0
 
-                volume_integral, _ = tplquad(
+                volume_integral_val, _ = tplquad(
                     div_func_3d,
                     z_min, z_max,
                     lambda z: -np.sqrt(max(0, r**2 - z**2)), lambda z: np.sqrt(max(0, r**2 - z**2)),
