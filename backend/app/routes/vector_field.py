@@ -695,7 +695,9 @@ def gauss_theorem():
         )
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': f'计算过程中发生错误: {str(e)}'}), 400
 
 
 @vector_field_bp.route('/gauss-presets', methods=['GET'])

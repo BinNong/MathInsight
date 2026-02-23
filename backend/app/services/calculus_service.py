@@ -124,6 +124,7 @@ class CalculusService:
             normal_slope = float('inf') if slope == 0 else float('-inf')
 
         f_x0 = safe_eval_single(func_str, x0)
+        normal_intercept = 0  # 默认值，在非无穷斜率时会被正确计算
 
         if normal_slope != float('inf') and normal_slope != float('-inf'):
             normal_intercept = f_x0 - normal_slope * x0

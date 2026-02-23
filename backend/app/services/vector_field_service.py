@@ -1908,35 +1908,24 @@ class VectorFieldService:
                 dv = (v_range[1] - v_range[0]) / (resolution - 1)
                 surface_integral = np.trapz(np.trapz(flux_density, v_vals, axis=0), u_vals)
 
-                # 体积积分
-                volume_integral, _ = sp.integrate(
-                    sp.integrate(sp.integrate(div_expr, (x, -sp.sqrt(r**2 - y**2 - z**2), sp.sqrt(r**2 - y**2 - z**2))),
-                    (y, -sp.sqrt(r**2 - z**2), sp.sqrt(r**2 - z**2))),
-                    (z, -r, r)
+                # 体积积分 - 使用数值积分（避免 SymPy 解析积分过慢）
+                rho_vals = np.linspace(0, r, resolution)
+                phi_vals = np.linspace(0, np.pi, resolution)
+                theta_vals = np.linspace(0, 2*np.pi, resolution)
+
+                RHO, PHI, THETA = np.meshgrid(rho_vals, phi_vals, theta_vals, indexing='ij')
+
+                div_vals = div_func(
+                    RHO * np.sin(PHI) * np.cos(THETA),
+                    RHO * np.sin(PHI) * np.sin(THETA),
+                    RHO * np.cos(PHI)
                 )
+                div_vals = np.where(np.isnan(div_vals) | np.isinf(div_vals), 0, div_vals)
 
-                # 尝试数值积分
-                try:
-                    volume_integral_val = float(volume_integral)
-                except:
-                    # 使用数值积分
-                    rho_vals = np.linspace(0, r, resolution)
-                    phi_vals = np.linspace(0, np.pi, resolution)
-                    theta_vals = np.linspace(0, 2*np.pi, resolution)
-
-                    RHO, PHI, THETA = np.meshgrid(rho_vals, phi_vals, theta_vals, indexing='ij')
-
-                    div_vals = div_func(
-                        RHO * np.sin(PHI) * np.cos(THETA),
-                        RHO * np.sin(PHI) * np.sin(THETA),
-                        RHO * np.cos(PHI)
-                    )
-                    div_vals = np.where(np.isnan(div_vals) | np.isinf(div_vals), 0, div_vals)
-
-                    volume_integral_val = np.trapz(
-                        np.trapz(np.trapz(np.abs(div_vals) * RHO**2 * np.sin(PHI),
-                            rho_vals, axis=0), phi_vals, axis=0), theta_vals
-                    )
+                volume_integral_val = np.trapz(
+                    np.trapz(np.trapz(np.abs(div_vals) * RHO**2 * np.sin(PHI),
+                        rho_vals, axis=0), phi_vals, axis=0), theta_vals
+                )
 
                 # 生成球面数据用于可视化
                 u_viz = np.linspace(0, np.pi, resolution)
@@ -2175,8 +2164,9 @@ class VectorFieldService:
                 }
 
             # 计算差异
-            difference = abs(surface_integral - volume_integral)
-            relative_error = difference / (abs(surface_integral) + abs(volume_integral) + 1e-10)
+            difference = float(abs(surface_integral - volume_integral_val))
+            relative_error = float(difference / (abs(surface_integral) + abs(volume_integral_val) + 1e-10))
+            is_verified = bool(relative_error < 0.1)
 
             return {
                 'success': True,
@@ -2186,13 +2176,13 @@ class VectorFieldService:
                         'expression': f'∬_S F·dS = ∬_S (P dydz + Q dzdx + R dxdy)'
                     },
                     'volume_integral': {
-                        'value': float(volume_integral),
+                        'value': float(volume_integral_val),
                         'expression': f'∭_V div(F) dV = ∭_V ({div_expr}) dV'
                     },
                     'divergence_expression': str(div_expr),
-                    'difference': abs(difference),
+                    'difference': difference,
                     'relative_error': relative_error,
-                    'is_verified': relative_error < 0.1,
+                    'is_verified': is_verified,
                     'formula': '∬_S F·dS = ∭_V div(F) dV'
                 },
                 'solid': {
