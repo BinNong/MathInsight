@@ -222,13 +222,15 @@ export default function GaussTheorem() {
     // 显示法向量（在球面上）
     if (state.showSurface && gaussData.gauss_theorem && solid.type === 'sphere') {
       const r = state.solidRadius
-      const skip = 8
-      const arrowX: number[] = []
-      const arrowY: number[] = []
-      const arrowZ: number[] = []
-      const arrowU: number[] = []
-      const arrowV: number[] = []
-      const arrowW: number[] = []
+      const skip = 12
+
+      // 箭头起点和终点
+      const lineX: number[] = []
+      const lineY: number[] = []
+      const lineZ: number[] = []
+
+      // 箭头长度（球面外）
+      const arrowLength = 0.1
 
       for (let i = 0; i < 180; i += skip) {
         for (let j = 0; j < 360; j += skip) {
@@ -240,13 +242,103 @@ export default function GaussTheorem() {
           const pz = r * Math.cos(phi)
 
           // 法向量向外
-          arrowX.push(px)
-          arrowY.push(py)
-          arrowZ.push(pz)
-          arrowU.push(px * 0.15)
-          arrowV.push(py * 0.15)
-          arrowW.push(pz * 0.15)
+          const norm = Math.sqrt(px*px + py*py + pz*pz)
+          const nx = px / norm
+          const ny = py / norm
+          const nz = pz / norm
+
+          // 起点（球面上）
+          lineX.push(px, px + nx * arrowLength, NaN)
+          lineY.push(py, py + ny * arrowLength, NaN)
+          lineZ.push(pz, pz + nz * arrowLength, NaN)
         }
+      }
+
+      plots.push({
+        type: 'scatter3d',
+        mode: 'lines',
+        x: lineX,
+        y: lineY,
+        z: lineZ,
+        line: {
+          color: 'red',
+          width: 3
+        },
+        hoverinfo: 'none',
+        name: '外法向量'
+      })
+
+      // 箭头末端点
+      const pointX: number[] = []
+      const pointY: number[] = []
+      const pointZ: number[] = []
+
+      for (let i = 0; i < 180; i += skip) {
+        for (let j = 0; j < 360; j += skip) {
+          const phi = i * Math.PI / 180
+          const theta = j * Math.PI / 180
+
+          const px = r * Math.sin(phi) * Math.cos(theta)
+          const py = r * Math.sin(phi) * Math.sin(theta)
+          const pz = r * Math.cos(phi)
+
+          const norm = Math.sqrt(px*px + py*py + pz*pz)
+          const nx = px / norm
+          const ny = py / norm
+          const nz = pz / norm
+
+          pointX.push(px + nx * arrowLength)
+          pointY.push(py + ny * arrowLength)
+          pointZ.push(pz + nz * arrowLength)
+        }
+      }
+
+      plots.push({
+        type: 'scatter3d',
+        mode: 'markers',
+        x: pointX,
+        y: pointY,
+        z: pointZ,
+        marker: {
+          color: 'red',
+          size: 3,
+          symbol: 'arrow-up'
+        },
+        hoverinfo: 'none',
+        name: '外法向量'
+      })
+    }
+
+    // 显示法向量（在立方体上）
+    if (state.showSurface && gaussData.gauss_theorem && solid.type === 'cube') {
+      const half = state.solidHalf
+      const arrowX: number[] = []
+      const arrowY: number[] = []
+      const arrowZ: number[] = []
+      const arrowU: number[] = []
+      const arrowV: number[] = []
+      const arrowW: number[] = []
+
+      // 立方体箭头长度（与球体相同）
+      const arrowLength = 0.3
+
+      // 立方体6个面的中心点和法向量
+      const faces = [
+        { cx: half, cy: 0, cz: 0, nx: 1, ny: 0, nz: 0 },   // x=max
+        { cx: -half, cy: 0, cz: 0, nx: -1, ny: 0, nz: 0 }, // x=min
+        { cx: 0, cy: half, cz: 0, nx: 0, ny: 1, nz: 0 },   // y=max
+        { cx: 0, cy: -half, cz: 0, nx: 0, ny: -1, nz: 0 },  // y=min
+        { cx: 0, cy: 0, cz: half, nx: 0, ny: 0, nz: 1 },    // z=max
+        { cx: 0, cy: 0, cz: -half, nx: 0, ny: 0, nz: -1 }   // z=min
+      ]
+
+      for (const face of faces) {
+        arrowX.push(face.cx)
+        arrowY.push(face.cy)
+        arrowZ.push(face.cz)
+        arrowU.push(face.nx * arrowLength)
+        arrowV.push(face.ny * arrowLength)
+        arrowW.push(face.nz * arrowLength)
       }
 
       plots.push({
@@ -257,7 +349,67 @@ export default function GaussTheorem() {
         u: arrowU,
         v: arrowV,
         w: arrowW,
-        sizemode: 'absolute',
+        sizemode: 'scaled',
+        sizeref: 0.5,
+        colorscale: [[0, 'rgb(255,0,0)'], [1, 'rgb(255,0,0)']],
+        showscale: false,
+        name: '外法向量'
+      })
+    }
+
+    // 显示法向量（在圆柱体上）
+    if (state.showSurface && gaussData.gauss_theorem && solid.type === 'cylinder') {
+      const r = state.solidRadius
+      const h = state.solidHeight || 2
+      const h2 = h / 2
+      const arrowX: number[] = []
+      const arrowY: number[] = []
+      const arrowZ: number[] = []
+      const arrowU: number[] = []
+      const arrowV: number[] = []
+      const arrowW: number[] = []
+
+      // 圆柱体箭头长度（与球体相同）
+      const arrowLength = 0.3
+
+      // 圆柱侧面法向量（4个点）
+      const angles = [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2]
+      for (const angle of angles) {
+        const cx = r * Math.cos(angle)
+        const cy = r * Math.sin(angle)
+        arrowX.push(cx)
+        arrowY.push(cy)
+        arrowZ.push(0)
+        arrowU.push(Math.cos(angle) * arrowLength)
+        arrowV.push(Math.sin(angle) * arrowLength)
+        arrowW.push(0)
+      }
+
+      // 顶面中心法向量向上
+      arrowX.push(0)
+      arrowY.push(0)
+      arrowZ.push(h2)
+      arrowU.push(0)
+      arrowV.push(0)
+      arrowW.push(arrowLength)
+
+      // 底面中心法向量向下
+      arrowX.push(0)
+      arrowY.push(0)
+      arrowZ.push(-h2)
+      arrowU.push(0)
+      arrowV.push(0)
+      arrowW.push(-arrowLength)
+
+      plots.push({
+        type: 'cone',
+        x: arrowX,
+        y: arrowY,
+        z: arrowZ,
+        u: arrowU,
+        v: arrowV,
+        w: arrowW,
+        sizemode: 'scaled',
         sizeref: 0.5,
         colorscale: [[0, 'rgb(255,0,0)'], [1, 'rgb(255,0,0)']],
         showscale: false,
@@ -266,7 +418,7 @@ export default function GaussTheorem() {
     }
 
     return plots
-  }, [gaussData, state.showSurface, state.solidRadius])
+  }, [gaussData, state.showSurface, state.solidRadius, state.solidHalf, state.solidHeight])
 
   // 图表布局
   const layout = useMemo((): any => ({
