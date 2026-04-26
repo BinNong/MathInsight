@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 
 interface Subject {
   id: 'calculus' | 'linear-algebra' | 'probability'
@@ -146,6 +146,33 @@ function Home() {
         <footer className="home-footer">
           <p>选择上方学科板块开始探索</p>
         </footer>
+
+        {/* Manim 动画生成快捷入口 */}
+        <div style={{ marginTop: '3rem', textAlign: 'center' }}>
+          <Link
+            to="/manim"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '1rem 2rem',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '12px',
+              color: '#fff',
+              textDecoration: 'none',
+              fontSize: '1.1rem',
+              fontWeight: 'bold',
+              boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)',
+              transition: 'transform 0.2s, box-shadow 0.2s'
+            } as React.CSSProperties}
+          >
+            <span style={{ fontSize: '1.5rem' }}>🎬</span>
+            Manim 动画生成器
+          </Link>
+          <p style={{ color: '#888', marginTop: '0.5rem', fontSize: '0.9rem' }}>
+            使用 AI 生成数学教学动画
+          </p>
+        </div>
       </div>
     </div>
   )

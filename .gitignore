@@ -62,5 +62,8 @@ htmlcov/
 # Claude Code
 .claude/
 
+# Manim generated media
+backend/media/
+
 # Competition materials
 参赛资料/
