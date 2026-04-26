@@ -55,3 +55,9 @@ htmlcov/
 
 # Worktrees
 .worktrees/
+
+# Environment variables
+.env
+
+# Competition materials
+参赛资料/

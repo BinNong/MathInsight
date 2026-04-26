@@ -22,14 +22,32 @@ MathInsight/
 
 ## 快速开始
 
-### 1. 安装后端依赖
+### 1. 配置环境变量
+
+项目使用 `.env` 文件管理环境变量，**该文件不包含在版本控制中**。
+
+进入 `backend` 目录，复制示例文件并填入实际密钥：
+
+```bash
+cd backend
+cp .env.example .env
+```
+
+编辑 `.env` 文件，填入你的 LLM API 密钥（Manim 动画生成功能需要）：
+
+- **Anthropic**（推荐）：配置 `ANTHROPIC_API_KEY` 和 `ANTHROPIC_BASE_URL`
+- **OpenAI**：配置 `OPENAI_API_KEY` 和 `OPENAI_BASE_URL`
+
+> ⚠️ **注意**：`.env` 文件已加入 `.gitignore`，请勿将其提交到版本控制，避免 API 密钥泄露。
+
+### 2. 安装后端依赖
 
 ```bash
 cd backend
 pip install -r requirements.txt
 ```
 
-### 2. 启动后端服务
+### 3. 启动后端服务
 
 ```bash
 cd backend
