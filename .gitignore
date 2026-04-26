@@ -59,5 +59,8 @@ htmlcov/
 # Environment variables
 .env
 
+# Claude Code
+.claude/
+
 # Competition materials
 参赛资料/
