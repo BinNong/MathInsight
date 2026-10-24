@@ -1,1047 +1,139 @@
-import axios from 'axios'
-
-const API_BASE = '/api/calculus'
-
-export interface EpsilonDeltaRequest {
-  function: string
-  x0: number
-  L: number
-  epsilon: number
-  domain_range: number[]
-}
-
-export interface DerivativeRequest {
-  function: string
-  x0: number
-  domain_range: number[]
-}
-
-export interface SecantRequest {
-  function: string
-  x0: number
-  h_values: number[]
-  domain_range: number[]
-}
-
-export interface HigherDerivativeRequest {
-  function: string
-  x0: number
-  order?: number
-  domain_range: number[]
-}
-
-export interface LinearApproximationRequest {
-  function: string
-  x0: number
-  domain_range: number[]
-}
-
-// 矩阵变换 API
-export interface MatrixTransformRequest {
-  matrix: [number, number, number, number]  // [a, b, c, d]
-  show_eigenvectors?: boolean
-  show_determinant?: boolean
-}
-
-// 特征值类型：可以是数字或复数对象
-export type EigenValue = number | { re: number; im: number }
-
-export interface MatrixTransformData {
-  matrix: { a: number; b: number; c: number; d: number }
-  unit_grid: {
-    x_horizontal: number[][]
-    y_horizontal: number[][]
-    x_vertical: number[][]
-    y_vertical: number[][]
-  }
-  transformed_grid: {
-    x_horizontal: number[][]
-    y_horizontal: number[][]
-    x_vertical: number[][]
-    y_vertical: number[][]
-  }
-  unit_circle: { x: number[]; y: number[] }
-  determinant: { value: number; interpretation: string } | null
-  eigenvalues: EigenValue[]
-  eigenvectors?: Array<{ lambda: number; v: number[] }>
-}
-
-export const linearAlgebraApi = {
-  async matrixTransform(data: MatrixTransformRequest) {
-    const response = await axios.post('/api/linear-algebra/matrix-transform', data)
-    return response.data
-  },
-
-  async getPresets() {
-    const response = await axios.get('/api/linear-algebra/matrix-presets')
-    return response.data
-  }
-}
-
-export const calculusApi = {
-  // ε-δ 极限可视化
-  async epsilonDelta(data: EpsilonDeltaRequest) {
-    const response = await axios.post(`${API_BASE}/limit/epsilon-delta`, data)
-    return response.data
-  },
-
-  // 计算极限值 L = lim(x→x0) f(x)
-  async computeLimit(func_str: string, x0: number) {
-    const response = await axios.post(`${API_BASE}/limit/compute`, {
-      function: func_str,
-      x0: x0
-    })
-    return response.data
-  },
-
-  // 导数切线可视化
-  async derivative(data: DerivativeRequest) {
-    const response = await axios.post(`${API_BASE}/derivative/tangent`, data)
-    return response.data
-  },
-
-  // 割线逼近切线
-  async secantApproximation(data: SecantRequest) {
-    const response = await axios.post(`${API_BASE}/derivative/secant-approximation`, data)
-    return response.data
-  },
-
-  // 健康检查
-  async health() {
-    const response = await axios.get(`${API_BASE.replace('/calculus', '')}/health`)
-    return response.data
-  },
-
-  // 高阶导数
-  async higherDerivatives(data: HigherDerivativeRequest) {
-    const response = await axios.post(`${API_BASE}/derivative/higher`, data)
-    return response.data
-  },
-
-  // 局部线性近似
-  async linearApproximation(data: LinearApproximationRequest) {
-    const response = await axios.post(`${API_BASE}/derivative/linear-approximation`, data)
-    return response.data
-  }
-}
-
-// 大数定律模拟 API
-export interface LLNSimulateRequest {
-  experiment_type: 'coin' | 'dice'
-  p?: number           // 硬币正面概率（仅 coin）
-  min_val?: number     // 最小值（仅 dice）
-  max_val?: number     // 最大值（仅 dice）
-  sample_size: number
-  seed?: number
-}
-
-export interface LLNResultData {
-  experiment_type: string
-  expected_value: number
-  total_samples: number
-  cumulative_means: number[]
-  samples: number[]
-  final_mean: number
-}
-
-export const probabilityApi = {
-  async simulateLLN(data: LLNSimulateRequest) {
-    const response = await axios.post('/api/probability/lln/simulate', data)
-    return response.data
-  },
-
-  async getPresets() {
-    const response = await axios.get('/api/probability/lln/presets')
-    return response.data
-  }
-}
-
-// 泰勒公式可视化 API
-export interface TaylorRequest {
-  function: string
-  x0: number
-  max_order?: number
-  domain_range: number[]
-}
-
-export interface TaylorPolynomialData {
-  order: number
-  name: string
-  expression: string
-  formula: string
-  x: number[]
-  y: (number | null)[]
-  color: string
-}
-
-export interface RemainderCurveData {
-  order: number
-  name: string
-  x: number[]
-  y: (number | null)[]
-}
-
-export interface TaylorData {
-  function: string
-  x0: number
-  f_x0: number
-  max_order: number
-  original_curve: { x: number[]; y: (number | null)[] }
-  taylor_polynomials: TaylorPolynomialData[]
-  remainder_bound: RemainderCurveData[]
-  actual_remainder: RemainderCurveData[]
-  domain_range: number[]
-}
-
-export const taylorApi = {
-  async taylor(data: TaylorRequest) {
-    const response = await axios.post('/api/calculus/taylor', data)
-    return response.data
-  }
-}
-
-// 黎曼积分可视化 API
-export interface RiemannSumRequest {
-  function: string
-  a: number           // 积分下限
-  b: number           // 积分上限
-  n: number           // 分割数
-  method: 'left' | 'right' | 'midpoint' | 'random'
-  domain_range?: number[]  // 绘图域范围（可选）
-}
-
-export interface RiemannSumData {
-  function: string
-  interval: { a: number; b: number }
-  n: number
-  method: string
-  rectangles: {
-    x_left: number[]
-    x_right: number[]
-    x_mid: number[]
-    height: number[]
-    area: number
-  }
-  rect_lines: {
-    x: number[]
-    y: number[]
-  }
-  approximation: number
-  exact_value: number | null
-  error: number | null
-  function_curve: { x: number[]; y: (number | null)[] }
-  domain_range: number[]
-}
-
-export interface ConvergenceRequest {
-  function: string
-  a: number           // 积分下限
-  b: number           // 积分上限
-  n_values?: number[] // 要测试的分割数列表
-  domain_range?: number[]  // 绘图域范围（可选）
-}
-
-export interface MethodResult {
-  name: string
-  errors: { n: number; error: number }[]
-}
-
-export interface ConvergenceData {
-  function: string
-  interval: { a: number; b: number }
-  exact_value: number | null
-  methods: Record<string, MethodResult>
-  n_values: number[]
-  function_curve: { x: number[]; y: (number | null)[] }
-  domain_range: number[]
-}
-
-export const integrationApi = {
-  async riemannSum(data: RiemannSumRequest) {
-    const response = await axios.post('/api/calculus/integration/riemann-sum', data)
-    return response.data
-  },
-
-  async convergence(data: ConvergenceRequest) {
-    const response = await axios.post('/api/calculus/integration/convergence', data)
-    return response.data
-  }
-}
-
-// 多元函数可视化 API
-export interface SurfaceRequest {
-  function: string
-  x_range: number[]
-  y_range: number[]
-  resolution?: number
-}
-
-export interface ContourRequest {
-  function: string
-  x_range: number[]
-  y_range: number[]
-  levels?: number
-  resolution?: number
-}
-
-export interface GradientRequest {
-  function: string
-  x_range: number[]
-  y_range: number[]
-  resolution?: number
-}
-
-export interface PartialDerivRequest {
-  function: string
-  x0: number
-  y0: number
-}
-
-export interface GradientDescentRequest {
-  function: string
-  start_x: number
-  start_y: number
-  learning_rate?: number
-  steps?: number
-}
-
-export interface ComputeSurfaceRequest {
-  function: string
-  x_range: number[]
-  y_range: number[]
-  point_x: number
-  point_y: number
-  resolution?: number
-  contour_levels?: number
-  show_gradient?: boolean
-  show_tangent_plane?: boolean
-}
-
-export interface SurfaceData {
-  surface: {
-    x: number[][]
-    y: number[][]
-    z: (number | null)[][]
-  }
-}
-
-export interface ContourData {
-  contour: {
-    x: number[][]
-    y: number[][]
-    z: (number | null)[][]
-    levels: number[]
-  }
-}
-
-export interface GradientData {
-  gradient: {
-    x: number[][]
-    y: number[][]
-    u: number[][]
-    v: number[][]
-    magnitude: number[][]
-  }
-  partial_derivatives: {
-    df_dx: string
-    df_dy: string
-  }
-}
-
-export interface PartialDerivativesData {
-  point: {
-    x: number
-    y: number
-    z: number
-  }
-  partial_derivatives: {
-    df_dx: number
-    df_dy: number
-    df_dx_expr: string
-    df_dy_expr: string
-  }
-  tangent_plane: {
-    x: number[][]
-    y: number[][]
-    z: (number | null)[][]
-    equation: string
-  }
-  gradient: {
-    x: number[]
-    y: number[]
-    z: number[]
-    magnitude: number
-  }
-  gradient_2d: {
-    x: number[]
-    y: number[]
-  }
-}
-
-export interface ComputeSurfaceData {
-  success: boolean
-  surface: {
-    x: number[][]
-    y: number[][]
-    z: (number | null)[][]
-  }
-  contour: {
-    x: number[][]
-    y: number[][]
-    z: (number | null)[][]
-    levels: number[]
-  }
-  gradient: {
-    x: number[][]
-    y: number[][]
-    u: number[][]
-    v: number[][]
-    magnitude: number[][]
-  } | null
-  partial_derivatives: {
-    df_dx: number
-    df_dy: number
-    df_dx_expr: string
-    df_dy_expr: string
-  } | null
-  tangent_plane: {
-    x: number[][]
-    y: number[][]
-    z: (number | null)[][]
-    equation: string
-  } | null
-  point: {
-    x: number
-    y: number
-    z: number
-  }
-  gradient_2d: {
-    x: number[]
-    y: number[]
-  } | null
-  function: string
-  x_range: number[]
-  y_range: number[]
-}
-
-export interface Preset {
-  name: string
-  function: string
-  description: string
-}
-
-export const multivariateApi = {
-  // 3D 曲面数据
-  async surface(data: SurfaceRequest) {
-    const response = await axios.post('/api/multivariate/surface', data)
-    return response.data
-  },
-
-  // 等高线数据
-  async contour(data: ContourRequest) {
-    const response = await axios.post('/api/multivariate/contour', data)
-    return response.data
-  },
-
-  // 梯度场数据
-  async gradient(data: GradientRequest) {
-    const response = await axios.post('/api/multivariate/gradient', data)
-    return response.data
-  },
-
-  // 偏导数和切平面
-  async partialDerivatives(data: PartialDerivRequest) {
-    const response = await axios.post('/api/multivariate/partial-derivatives', data)
-    return response.data
-  },
-
-  // 最速下降路径
-  async gradientDescent(data: GradientDescentRequest) {
-    const response = await axios.post('/api/multivariate/gradient-descent', data)
-    return response.data
-  },
-
-  // 综合计算所有数据
-  async compute(data: ComputeSurfaceRequest) {
-    const response = await axios.post('/api/multivariate/compute', data)
-    return response.data
-  },
-
-  // 获取预设函数
-  async getPresets() {
-    const response = await axios.get('/api/multivariate/presets')
-    return response.data
-  }
-}
-
-// ============ 向量场与线积分 API ============
-
-export interface VectorFieldRequest {
-  P: string
-  Q: string
-  x_range: number[]
-  y_range: number[]
-  resolution?: number
-}
-
-export interface VectorFieldData {
-  vector_field: {
-    x: number[][]
-    y: number[][]
-    u: number[][]
-    v: number[][]
-    u_norm: number[][]
-    v_norm: number[][]
-    magnitude: number[][]
-  }
-  curl: {
-    values: number[][]
-    expression: string
-  }
-  divergence: {
-    values: number[][]
-    expression: string
-  }
-  field_expressions: {
-    P: string
-    Q: string
-  }
-}
-
-export interface StreamlineRequest {
-  P: string
-  Q: string
-  start_points: number[][]
-  t_span: number[]
-  direction?: 'forward' | 'backward' | 'both'
-}
-
-export interface StreamlineData {
-  streamlines: Array<{
-    start_point: { x: number; y: number }
-    x: number[]
-    y: number[]
-  }>
-}
-
-export interface LineIntegralRequest {
-  P: string
-  Q: string
-  path: {
-    type: 'parametric' | 'segments'
-    x?: string
-    y?: string
-    t_range?: number[]
-    segments?: Array<{
-      x: string | any
-      y: string | any
-      t_range: number[]
-    }>
-  }
-  num_points?: number
-}
-
-export interface LineIntegralData {
-  integral_value: number
-  flux_value: number
-  path: {
-    x: number[]
-    y: number[]
-  }
-  field_data?: {
-    u_field: number[]
-    v_field: number[]
-    u_tangent: number[]
-    v_tangent: number[]
-    tangent_projection: number[]
-    u_normal: number[]
-    v_normal: number[]
-    normal_projection: number[]
-  }
-}
-
-export interface GreensTheoremRequest {
-  P: string
-  Q: string
-  region_type: 'circle' | 'rectangle'
-  region_params?: {
-    radius?: number
-    x_min?: number
-    x_max?: number
-    y_min?: number
-    y_max?: number
-  }
-}
-
-export interface GreensTheoremData {
-  greens_theorem: {
-    left_side: {
-      value: number
-      expression: string
-    }
-    right_side: {
-      value: number
-      integrand: string
-      expression: string
-    }
-    difference: number
-    relative_error: number
-    is_verified: boolean
-  }
-  boundary: {
-    x: number[]
-    y: number[]
-  }
-  region: {
-    type: string
-    params: any
-  }
-}
-
-export interface CurlDivergenceRequest {
-  P: string
-  Q: string
-  x: number
-  y: number
-}
-
-export interface VectorFieldPreset {
-  id: string
-  name: string
-  description: string
-  P: string
-  Q: string
-  potential?: string | null
-}
-
-export interface PathPreset {
-  id: string
-  name: string
-  description: string
-  parametric: any
-  is_closed: boolean
-}
-
-export interface VectorFieldPresetsData {
-  vector_fields: VectorFieldPreset[]
-  paths: PathPreset[]
-}
-
-// ============ 保守场相关接口 ============
-
-export interface ConservativeCheckRequest {
-  P: string
-  Q: string
-}
-
-export interface ConservativeCheckData {
-  success: boolean
-  is_conservative: boolean
-  curl_expression: string
-  curl_value: number
-  curl_at_points: number[]
-  message: string
-  error?: string
-}
-
-export interface PotentialRequest {
-  P: string
-  Q: string
-}
-
-export interface PotentialData {
-  success: boolean
-  is_conservative: boolean
-  potential_function: string | null
-  grad_x: string
-  grad_y: string
-  matches_field: boolean
-  message: string
-  error?: string
-  curl_expression?: string
-}
-
-export interface PotentialContourRequest {
-  P: string
-  Q: string
-  x_range: number[]
-  y_range: number[]
-  resolution?: number
-}
-
-export interface PotentialContourData {
-  success: boolean
-  potential_function: string
-  x: number[][]
-  y: number[][]
-  z: number[][]
-  levels: number[]
-  z_range: number[]
-  error?: string
-}
-
-export interface PathIndependenceRequest {
-  P: string
-  Q: string
-  start_point: [number, number]
-  end_point: [number, number]
-  num_points?: number
-}
-
-export interface PathIndependenceData {
-  success: boolean
-  is_conservative: boolean
-  start_point: { x: number; y: number }
-  end_point: { x: number; y: number }
-  integrals: Array<{
-    path_name: string
-    path_type: string
-    value: number
-  }>
-  differences: Array<{
-    pair: string
-    difference: number
-  }>
-  relative_errors: Array<{
-    path: string
-    error: number
-  }>
-  path_points: Record<string, { x: number[]; y: number[] }>
-  is_independent: boolean
-  message: string
-  curl_expression?: string
-  curl_value?: number
-  error?: string
-}
-
-// ============ 3D向量场相关接口 ============
-
-export interface VectorField3DRequest {
-  P: string           // x分量表达式
-  Q: string           // y分量表达式
-  R: string           // z分量表达式
-  x_range: number[]
-  y_range: number[]
-  z_range: number[]
-  resolution?: number
-}
-
-export interface VectorField3DData {
-  success: boolean
-  error?: string
-  vector_field?: {
-    x: number[]       // 扁平化数据用于cone图
-    y: number[]
-    z: number[]
-    u: number[]       // P(x,y,z)
-    v: number[]       // Q(x,y,z)
-    w: number[]       // R(x,y,z)
-    u_norm: number[]
-    v_norm: number[]
-    w_norm: number[]
-    magnitude: number[]
-    grid_x: number[][][]
-    grid_y: number[][][]
-    grid_z: number[][][]
-    grid_u: number[][][]
-    grid_v: number[][][]
-    grid_w: number[][][]
-    grid_magnitude: number[][][]
-  }
-  curl: {
-    expression: { x: string; y: string; z: string }
-    value: { x: number; y: number; z: number }
-    values_x: number[][][]
-    values_y: number[][][]
-    values_z: number[][][]
-  }
-  divergence: {
-    expression: string
-    value: number
-    values: number[][][]
-  }
-  field_expressions: { P: string; Q: string; R: string }
-  x_range: number[]
-  y_range: number[]
-  z_range: number[]
-}
-
-export interface Streamline3DRequest {
-  P: string
-  Q: string
-  R: string
-  start_points: number[][]
-  t_span: number[]
-  direction?: 'forward' | 'backward' | 'both'
-}
-
-export interface Streamline3DData {
-  success: boolean
-  error?: string
-  streamlines?: Array<{
-    start_point: { x: number; y: number; z: number }
-    x: number[]
-    y: number[]
-    z: number[]
-    direction: string
-  }>
-  field: { P: string; Q: string; R: string }
-}
-
-export interface CurlDivergence3DRequest {
-  P: string
-  Q: string
-  R: string
-  x?: number
-  y?: number
-  z?: number
-}
-
-export interface CurlDivergence3DData {
-  success: boolean
-  curl: {
-    expression: { x: string; y: string; z: string }
-    value: { x: number; y: number; z: number }
-  }
-  divergence: {
-    expression: string
-    value: number
-  }
-  point: { x: number; y: number; z: number }
-}
-
-export interface VectorField3DPreset {
-  id: string
-  name: string
-  description: string
-  P: string
-  Q: string
-  R: string
-}
-
-// ============ 曲面积分相关接口 ============
-
-export type SurfaceType = 'sphere' | 'cylinder' | 'paraboloid' | 'cone' | 'plane'
-
-export interface SurfacePreset {
-  id: string
-  name: string
-  description: string
-  parametric: {
-    x: string
-    y: string
-    z: string
-    u_range: number[]
-    v_range: number[]
-    params: Record<string, number>
-  }
-}
-
-export interface SurfaceIntegralRequest {
-  P: string
-  Q: string
-  R: string
-  surface_type: SurfaceType
-  surface_params?: Record<string, number>
-  orientation?: 'outward' | 'inward'
-  resolution?: number
-}
-
-export interface SurfaceIntegralData {
-  success: boolean
-  error?: string
-  surface_integral: number
-  surface: {
-    type: SurfaceType
-    name: string
-    x: number[][]
-    y: number[][]
-    z: number[][]
-  }
-  normal: {
-    x: number[][]
-    y: number[][]
-    z: number[][]
-    magnitude: number[][]
-  }
-  field_on_surface?: {
-    P: number[][]
-    Q: number[][]
-    R: number[][]
-  }
-  flux_density: number[][]
-  orientation: string
-  field: { P: string; Q: string; R: string }
-}
-
-// ============ 高斯定理相关接口 ============
-
-export type SolidType = 'sphere' | 'cube' | 'cylinder'
-
-export interface GaussSolidPreset {
-  id: string
-  name: string
-  description: string
-  type: SolidType
-  params: Record<string, number>
-}
-
-export interface GaussTheoremRequest {
-  P: string
-  Q: string
-  R: string
-  solid_type: SolidType
-  solid_params?: Record<string, number>
-  resolution?: number
-}
-
-export interface GaussTheoremData {
-  success: boolean
-  error?: string
-  gauss_theorem: {
-    surface_integral: {
-      value: number
-      expression: string
-    }
-    volume_integral: {
-      value: number
-      expression: string
-    }
-    divergence_expression: string
-    difference: number
-    relative_error: number
-    is_verified: boolean
-    formula: string
-  }
-  solid: {
-    type: SolidType
-    name: string
-    params: Record<string, number>
-    x: any
-    y: any
-    z: any
-  }
-  field: { P: string; Q: string; R: string }
-}
-
-export const vectorFieldApi = {
-  // 向量场可视化
-  async vectorField(data: VectorFieldRequest) {
-    const response = await axios.post('/api/vector-field/field', data)
-    return response.data
-  },
-
-  // 流线计算
-  async streamline(data: StreamlineRequest) {
-    const response = await axios.post('/api/vector-field/streamline', data)
-    return response.data
-  },
-
-  // 线积分计算
-  async lineIntegral(data: LineIntegralRequest) {
-    const response = await axios.post('/api/vector-field/line-integral', data)
-    return response.data
-  },
-
-  // 格林公式验证
-  async greensTheorem(data: GreensTheoremRequest) {
-    const response = await axios.post('/api/vector-field/greens-theorem', data)
-    return response.data
-  },
-
-  // 通量计算
-  async flux(data: LineIntegralRequest) {
-    const response = await axios.post('/api/vector-field/flux', data)
-    return response.data
-  },
-
-  // 旋度和散度计算
-  async curlDivergence(data: CurlDivergenceRequest) {
-    const response = await axios.post('/api/vector-field/curl-divergence', data)
-    return response.data
-  },
-
-  // 获取预设
-  async getPresets(): Promise<{ success: boolean; data?: VectorFieldPresetsData; error?: string }> {
-    const response = await axios.get('/api/vector-field/presets')
-    return response.data
-  },
-
-  // 保守场判定
-  async checkConservative(data: ConservativeCheckRequest): Promise<ConservativeCheckData> {
-    const response = await axios.post('/api/vector-field/conservative', data)
-    return response.data
-  },
-
-  // 势函数计算
-  async findPotential(data: PotentialRequest): Promise<PotentialData> {
-    const response = await axios.post('/api/vector-field/potential', data)
-    return response.data
-  },
-
-  // 势函数等值线
-  async potentialContour(data: PotentialContourRequest): Promise<PotentialContourData> {
-    const response = await axios.post('/api/vector-field/potential-contour', data)
-    return response.data
-  },
-
-  // 路径无关性验证
-  async verifyPathIndependence(data: PathIndependenceRequest): Promise<PathIndependenceData> {
-    const response = await axios.post('/api/vector-field/path-independence', data)
-    return response.data
-  },
-
-  // ============ 3D向量场 API ============
-
-  // 3D向量场可视化
-  async vectorField3d(data: VectorField3DRequest): Promise<VectorField3DData> {
-    const response = await axios.post('/api/vector-field/field-3d', data)
-    return response.data
-  },
-
-  // 3D流线计算
-  async streamline3d(data: Streamline3DRequest): Promise<Streamline3DData> {
-    const response = await axios.post('/api/vector-field/streamline-3d', data)
-    return response.data
-  },
-
-  // 3D旋度和散度计算
-  async curlDivergence3d(data: CurlDivergence3DRequest): Promise<CurlDivergence3DData> {
-    const response = await axios.post('/api/vector-field/curl-divergence-3d', data)
-    return response.data
-  },
-
-  // 获取3D预设向量场
-  async getPresets3d(): Promise<{ success: boolean; vector_fields: VectorField3DPreset[] }> {
-    const response = await axios.get('/api/vector-field/presets-3d')
-    return response.data
-  },
-
-  // ============ 曲面积分 API ============
-
-  // 计算曲面积分
-  async surfaceIntegral(data: SurfaceIntegralRequest): Promise<SurfaceIntegralData> {
-    const response = await axios.post('/api/vector-field/surface-integral', data)
-    return response.data
-  },
-
-  // 获取预设曲面
-  async getSurfacePresets(): Promise<{ success: boolean; surfaces: SurfacePreset[] }> {
-    const response = await axios.get('/api/vector-field/surface-presets')
-    return response.data
-  },
-
-  // ============ 高斯定理 API ============
-
-  // 验证高斯定理
-  async gaussTheorem(data: GaussTheoremRequest): Promise<GaussTheoremData> {
-    const response = await axios.post('/api/vector-field/gauss-theorem', data)
-    return response.data
-  },
-
-  // 获取高斯定理预设立体
-  async getGaussPresets(): Promise<{ success: boolean; solids: GaussSolidPreset[] }> {
-    const response = await axios.get('/api/vector-field/gauss-presets')
-    return response.data
-  }
-}
+/**
+ * API 服务统一入口（兼容旧导入）
+ *
+ * 新的模块文件已拆分至 `./api/` 目录下：
+ *   - ./api/client.ts     axios 实例
+ *   - ./api/calculus.ts   微积分相关
+ *   - ./api/linearAlgebra.ts  线性代数
+ *   - ./api/probability.ts    概率论
+ *   - ./api/taylor.ts         泰勒展开
+ *   - ./api/integration.ts    黎曼积分与数值积分
+ *   - ./api/multivariate.ts   多元函数
+ *   - ./api/vectorField.ts    向量场与线积分
+ *   - ./api/manim.ts          Manim 动画
+ *
+ * 本文件继续重新导出所有内容，避免一次性修改所有页面导入。
+ */
+
+export { client, API_PREFIX } from './api/client'
+
+export type {
+  EpsilonDeltaRequest,
+  DerivativeRequest,
+  SecantRequest,
+  HigherDerivativeRequest,
+  LinearApproximationRequest,
+} from './api/calculus'
+export { calculusApi } from './api/calculus'
+
+export type { MatrixTransformRequest, EigenValue, MatrixTransformData } from './api/linearAlgebra'
+export { linearAlgebraApi } from './api/linearAlgebra'
+
+export type {
+  LLNSimulateRequest,
+  LLNResultData,
+  DistributionType,
+  CLTSimulateRequest,
+  CLTResultData,
+  DistributionSimulateRequest,
+  DistributionResultData,
+  DistributionPreset,
+  DistributionParamConfig,
+  DistributionPresetsData,
+} from './api/probability'
+export { probabilityApi } from './api/probability'
+
+export type {
+  TaylorRequest,
+  TaylorCoefficient,
+  Singularity,
+  TaylorConvergence,
+  TaylorPolynomialData,
+  RemainderCurveData,
+  TaylorData,
+  TaylorEvaluateRequest,
+  TaylorApproximation,
+  TaylorEvaluateData,
+} from './api/taylor'
+export { taylorApi } from './api/taylor'
+
+export type {
+  RiemannSumRequest,
+  RiemannSumData,
+  ConvergenceRequest,
+  MethodResult,
+  ConvergenceData,
+} from './api/integration'
+export { integrationApi } from './api/integration'
+
+export type {
+  SurfaceRequest,
+  ContourRequest,
+  GradientRequest,
+  PartialDerivRequest,
+  GradientDescentRequest,
+  ComputeSurfaceRequest,
+  SurfaceData,
+  ContourData,
+  GradientData,
+  PartialDerivativesData,
+  ComputeSurfaceData,
+  Preset,
+} from './api/multivariate'
+export { multivariateApi } from './api/multivariate'
+
+export type {
+  VectorFieldRequest,
+  VectorFieldData,
+  StreamlineRequest,
+  StreamlineData,
+  LineIntegralRequest,
+  LineIntegralData,
+  GreensTheoremRequest,
+  GreensTheoremData,
+  CurlDivergenceRequest,
+  VectorFieldPreset,
+  PathPreset,
+  VectorFieldPresetsData,
+  ConservativeCheckRequest,
+  ConservativeCheckData,
+  PotentialRequest,
+  PotentialData,
+  PotentialContourRequest,
+  PotentialContourData,
+  PathIndependenceRequest,
+  PathIndependenceData,
+  VectorField3DRequest,
+  VectorField3DData,
+  Streamline3DRequest,
+  Streamline3DData,
+  CurlDivergence3DRequest,
+  CurlDivergence3DData,
+  VectorField3DPreset,
+  SurfaceType,
+  SurfacePreset,
+  SurfaceIntegralRequest,
+  SurfaceIntegralData,
+  SolidType,
+  GaussSolidPreset,
+  GaussTheoremRequest,
+  GaussTheoremData,
+} from './api/vectorField'
+export { vectorFieldApi } from './api/vectorField'
+
+export type { GenerateAnimationRequest, GenerateAnimationResponse } from './api/manim'
+export { manimApi } from './api/manim'
+
+export type {
+  SolverSubject,
+  SolverStep,
+  VisualizationSuggestion,
+  SolverResult,
+  AnalyzeProblemRequest,
+  HintRequest,
+  HintResponse,
+  SimilarProblem,
+  SimilarRequest,
+  SimilarResponse,
+} from './api/solver'
+export { solverApi } from './api/solver'
