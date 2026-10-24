@@ -52,6 +52,10 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/playwright/.cache/
 
 # Worktrees
 .worktrees/
@@ -65,5 +69,26 @@ htmlcov/
 # Manim generated media
 backend/media/
 
-# Competition materials
+# Packaging artifacts
+MathInsight-package/
+*.tar.gz
+*.tgz
+
+# Art source materials (runtime copies live in frontend/public/assets)
+/Pixel/
+
+# Debug & temp scripts
+frontend/world-debug.mjs
+frontend/world-probe.mjs
+frontend/world-probe2.mjs
+frontend/w2d-shots2.tmp.mjs
+*.tmp.mjs
+
+# Competition materials (never push)
 参赛资料/
+*.docx
+*.doc
+*.pdf
+使用手册.md
+fill_form.py
+my-idea.md
