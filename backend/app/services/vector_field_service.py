@@ -8,6 +8,9 @@ import numpy as np
 from scipy.integrate import quad, solve_ivp, dblquad
 from app.utils.math_utils import _safe_parse
 
+# NumPy 2.0 起 np.trapz 更名为 np.trapezoid，此处做双版本兼容
+_trapezoid = getattr(np, 'trapezoid', np.trapz)
+
 
 class VectorFieldService:
     """向量场与线积分服务类"""
@@ -273,19 +276,22 @@ class VectorFieldService:
             P = _safe_parse(p_str)
             Q = _safe_parse(q_str)
 
-            # 定义向量场函数
+            # 定义向量场函数（使用 lambdify 加速）
+            P_func = sp.lambdify((x_sym, y_sym), P, 'numpy')
+            Q_func = sp.lambdify((x_sym, y_sym), Q, 'numpy')
+
             def vector_field(t, pos):
                 xi, yi = pos
                 try:
-                    ui = float(P.subs({x_sym: xi, y_sym: yi}))
-                    vi = float(Q.subs({x_sym: xi, y_sym: yi}))
+                    ui = float(P_func(xi, yi))
+                    vi = float(Q_func(xi, yi))
                     # 处理数值问题
                     if np.isnan(ui) or np.isinf(ui):
                         ui = 0
                     if np.isnan(vi) or np.isinf(vi):
                         vi = 0
                     return [ui, vi]
-                except:
+                except Exception:
                     return [0, 0]
 
             # 如果没有指定评估点，生成默认点
@@ -436,7 +442,7 @@ class VectorFieldService:
                 ds = np.sqrt(dx_dt_vals**2 + dy_dt_vals**2)
 
                 # 通量积分 ∫ F·n ds
-                flux_value = np.trapz(normal_projection * ds, t_vals)
+                flux_value = _trapezoid(normal_projection * ds, t_vals)
 
                 return {
                     'integral': integral_value,
@@ -948,7 +954,7 @@ class VectorFieldService:
                         integral_vals = integrand_func(t_vals)
                         if not np.isfinite(integral_vals).all():
                             integral_vals = np.where(np.isfinite(integral_vals), integral_vals, 0)
-                        total += np.trapz(integral_vals, t_vals)
+                        total += _trapezoid(integral_vals, t_vals)
                     return total
                 else:
                     dx_dt = sp.diff(x_t, t)
@@ -960,7 +966,7 @@ class VectorFieldService:
                     integral_vals = integrand_func(t_vals)
                     if not np.isfinite(integral_vals).all():
                         integral_vals = np.where(np.isfinite(integral_vals), integral_vals, 0)
-                    return np.trapz(integral_vals, t_vals)
+                    return _trapezoid(integral_vals, t_vals)
 
             def get_path_points(path_type: str):
                 """生成路径坐标点"""
@@ -1754,7 +1760,7 @@ class VectorFieldService:
                     normal_y = -normal_y
                     normal_z = -normal_z
 
-                surface_integral = np.trapz(np.trapz(np.abs(flux_density) * normal_mag, v_vals, axis=0), u_vals)
+                surface_integral = _trapezoid(_trapezoid(np.abs(flux_density) * normal_mag, v_vals, axis=0), u_vals)
 
                 # 计算实际向量场在曲面上的值
                 P_func = sp.lambdify((x, y, z), P, 'numpy')
@@ -1912,7 +1918,7 @@ class VectorFieldService:
                 # 计算面积分
                 du = (u_range[1] - u_range[0]) / (resolution - 1)
                 dv = (v_range[1] - v_range[0]) / (resolution - 1)
-                surface_integral = np.trapz(np.trapz(flux_density, v_vals, axis=0), u_vals)
+                surface_integral = _trapezoid(_trapezoid(flux_density, v_vals, axis=0), u_vals)
 
                 # 体积积分 - 使用数值积分（避免 SymPy 解析积分过慢）
                 rho_vals = np.linspace(0, r, resolution)
@@ -1928,8 +1934,8 @@ class VectorFieldService:
                 )
                 div_vals = np.where(np.isnan(div_vals) | np.isinf(div_vals), 0, div_vals)
 
-                volume_integral_val = np.trapz(
-                    np.trapz(np.trapz(np.abs(div_vals) * RHO**2 * np.sin(PHI),
+                volume_integral_val = _trapezoid(
+                    _trapezoid(_trapezoid(np.abs(div_vals) * RHO**2 * np.sin(PHI),
                         rho_vals, axis=0), phi_vals, axis=0), theta_vals
                 )
 
@@ -2110,7 +2116,7 @@ class VectorFieldService:
 
                 du = 2*np.pi / (resolution - 1)
                 dv = h / (resolution - 1)
-                surface_integral_side = np.trapz(np.trapz(flux_density, v_vals, axis=0), u_vals)
+                surface_integral_side = _trapezoid(_trapezoid(flux_density, v_vals, axis=0), u_vals)
 
                 # 顶面 z = h/2, 法向量向上 (0, 0, 1)
                 def flux_top_func(x_val, y_val):
@@ -2137,7 +2143,7 @@ class VectorFieldService:
                 # 使用向量化操作代替嵌套列表推导式
                 flux_top_vals = np.vectorize(flux_top_func)(X_top, Y_top)
                 flux_top_vals = np.where(np.isnan(flux_top_vals) | np.isinf(flux_top_vals), 0, flux_top_vals)
-                flux_top = np.trapz(np.trapz(flux_top_vals * RHO, r_vals, axis=0), theta_vals)
+                flux_top = _trapezoid(_trapezoid(flux_top_vals * RHO, r_vals, axis=0), theta_vals)
 
                 X_bot = RHO * np.cos(THETA)
                 Y_bot = RHO * np.sin(THETA)
@@ -2146,7 +2152,7 @@ class VectorFieldService:
                 # 使用向量化操作代替嵌套列表推导式
                 flux_bottom_vals = np.vectorize(flux_bottom_func)(X_bot, Y_bot)
                 flux_bottom_vals = np.where(np.isnan(flux_bottom_vals) | np.isinf(flux_bottom_vals), 0, flux_bottom_vals)
-                flux_bottom = np.trapz(np.trapz(flux_bottom_vals * RHO, r_vals, axis=0), theta_vals)
+                flux_bottom = _trapezoid(_trapezoid(flux_bottom_vals * RHO, r_vals, axis=0), theta_vals)
 
                 surface_integral = surface_integral_side + flux_top + flux_bottom
 

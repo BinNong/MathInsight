@@ -11,8 +11,20 @@ from app.utils.math_utils import (
     compute_delta_for_epsilon,
     generate_function_points,
     get_derivative,
-    _safe_parse
+    _safe_parse,
+    verify_delta_for_epsilon,
+    is_function_defined_at,
+    estimate_side_limits,
+    generate_approach_points,
+    analyze_derivative,
+    estimate_linear_approximation_error,
+    find_critical_points,
+    analyze_taylor_series,
+    evaluate_taylor_at_point
 )
+
+# NumPy 2.0 起 np.trapz 更名为 np.trapezoid，此处做双版本兼容
+_trapezoid = getattr(np, 'trapezoid', np.trapz)
 
 
 class CalculusService:
@@ -51,16 +63,33 @@ class CalculusService:
         # δ 带（垂直带）
         x_left = x0 - delta
         x_right = x0 + delta
-        delta_band_y = [min(function_curve['y'] or [0]) - 1,
-                        max(function_curve['y'] or [1]) + 1]
+        y_values = [y for y in function_curve['y'] if y is not None]
+        y_min = min(y_values) if y_values else L - 1
+        y_max = max(y_values) if y_values else L + 1
+        delta_band_y = [y_min - 0.1 * (y_max - y_min),
+                        y_max + 0.1 * (y_max - y_min)]
         delta_fill_x = [x_left, x_right, x_right, x_left, x_left]
 
-        # 极限点和函数值
-        f_x0 = safe_eval_single(func_str, x0)
+        # 函数在 x0 是否有定义
+        x0_defined = is_function_defined_at(func_str, x0)
+        f_x0 = safe_eval_single(func_str, x0) if x0_defined else None
 
         # δ 区间端点的函数值（用于显示）
-        f_left = safe_eval_single(func_str, x_left) if x_left > domain_range[0] else None
-        f_right = safe_eval_single(func_str, x_right) if x_right < domain_range[1] else None
+        f_left = safe_eval_single(func_str, x_left) if x_left >= domain_range[0] else None
+        f_right = safe_eval_single(func_str, x_right) if x_right <= domain_range[1] else None
+
+        # 验证 delta 是否真正满足 epsilon 条件
+        verification = verify_delta_for_epsilon(func_str, x0, L, epsilon, delta)
+
+        # 估算左右极限
+        side_limits = estimate_side_limits(func_str, x0)
+
+        # 生成趋近动画点
+        approach_distance = min(delta * 2, (domain_range[1] - domain_range[0]) / 2, 2.0)
+        approach_points = generate_approach_points(
+            func_str, x0, L, side='both', num_points=40,
+            max_distance=approach_distance
+        )
 
         return {
             'function_curve': function_curve,
@@ -82,7 +111,8 @@ class CalculusService:
             'limit_point': {
                 'x0': x0,
                 'L': L,
-                'f_x0': f_x0
+                'f_x0': f_x0,
+                'defined': x0_defined
             },
             'delta_values': {
                 'delta': delta,
@@ -90,7 +120,17 @@ class CalculusService:
                 'f_left': f_left,
                 'f_right': f_right
             },
-            'domain_range': domain_range
+            'verification': verification,
+            'side_limits': side_limits,
+            'approach_points': approach_points,
+            'domain_range': domain_range,
+            'definition_state': {
+                'x0': x0,
+                'L': L,
+                'epsilon': epsilon,
+                'delta': delta,
+                'x0_defined': x0_defined
+            }
         }
 
     @staticmethod
@@ -138,6 +178,12 @@ class CalculusService:
         # 导数值
         derivative_expr = get_derivative(func_str)
 
+        # 综合分析
+        analysis = analyze_derivative(func_str, x0, domain_range)
+
+        # 临界点（在可视域内）
+        critical_points = find_critical_points(func_str, domain_range)
+
         return {
             'function_curve': function_curve,
             'tangent_line': {
@@ -161,6 +207,8 @@ class CalculusService:
                 'value': slope,
                 'expression': derivative_expr
             },
+            'analysis': analysis,
+            'critical_points': critical_points,
             'domain_range': domain_range
         }
 
@@ -212,6 +260,22 @@ class CalculusService:
         tangent_y = [slope * domain_range[0] + intercept,
                      slope * domain_range[1] + intercept]
 
+        # 步骤说明：割线斜率 → 切线斜率
+        steps = []
+        for i, sec in enumerate(secants):
+            error = abs(sec['slope'] - slope)
+            steps.append({
+                'index': i,
+                'h': sec['h'],
+                'slope': sec['slope'],
+                'error': error,
+                'description': (
+                    f"当 h = {sec['h']} 时，割线经过 (x₀, f(x₀)) 与 "
+                    f"(x₀ + h, f(x₀ + h))，斜率为 {sec['slope']:.6f}，"
+                    f"与切线斜率误差 {error:.6f}。"
+                )
+            })
+
         return {
             'function_curve': function_curve,
             'point': {'x': x0, 'y': f_x0},
@@ -220,6 +284,12 @@ class CalculusService:
                 'x': tangent_x,
                 'y': tangent_y,
                 'slope': slope
+            },
+            'steps': steps,
+            'animation': {
+                'total_frames': len(secants),
+                'h_values': h_values,
+                'target_slope': slope
             },
             'domain_range': domain_range
         }
@@ -276,6 +346,7 @@ class CalculusService:
         domain = domain_range or [x0 - 2, x0 + 2]
 
         curves = []
+        x_vals = np.linspace(domain[0], domain[1], 500)
         for i in range(order + 1):
             if i == 0:
                 expr = func
@@ -284,23 +355,54 @@ class CalculusService:
                 expr = sp.diff(func, x, i)
                 name = f"f{'′' * i}(x)"
 
-            x_vals = np.linspace(domain[0], domain[1], 500)
-            y_vals = []
-            for xv in x_vals:
-                try:
-                    yv = float(expr.subs(x, xv))
-                    if np.isnan(yv) or np.isinf(yv):
+            expr_simplified = sp.simplify(expr)
+
+            # 使用 lambdify 向量化计算
+            f = sp.lambdify(x, expr_simplified, 'numpy')
+            try:
+                y_arr = f(x_vals)
+                if np.isscalar(y_arr):
+                    y_arr = np.full_like(x_vals, y_arr, dtype=float)
+                y_vals = [
+                    float(yv) if not (np.isnan(yv) or np.isinf(yv)) else None
+                    for yv in y_arr
+                ]
+            except (TypeError, ValueError, ZeroDivisionError):
+                y_vals = []
+                for xv in x_vals:
+                    try:
+                        yv = float(expr_simplified.subs(x, xv))
+                        if np.isnan(yv) or np.isinf(yv):
+                            y_vals.append(None)
+                        else:
+                            y_vals.append(yv)
+                    except (TypeError, ValueError, sp.SympifyError):
                         y_vals.append(None)
-                    else:
-                        y_vals.append(yv)
-                except (TypeError, ValueError, sp.SympifyError):
-                    y_vals.append(None)
+
+            value_at_x0 = float(expr_simplified.subs(x, x0))
+
+            # 符号摘要：统计各阶导数在区间上的正负
+            finite_vals = [yv for yv in y_vals if yv is not None]
+            if finite_vals:
+                pos_ratio = sum(1 for v in finite_vals if v > 1e-10) / len(finite_vals)
+                neg_ratio = sum(1 for v in finite_vals if v < -1e-10) / len(finite_vals)
+                if pos_ratio > 0.9:
+                    sign_summary = '在区间内主要为正'
+                elif neg_ratio > 0.9:
+                    sign_summary = '在区间内主要为负'
+                elif pos_ratio > 0.4 and neg_ratio > 0.4:
+                    sign_summary = '在区间内变号'
+                else:
+                    sign_summary = '在区间内接近零'
+            else:
+                sign_summary = '无法判断'
 
             curves.append({
                 'order': i,
                 'name': name,
-                'expression': str(expr),
-                'value_at_x0': float(expr.subs(x, x0)),
+                'expression': str(expr_simplified),
+                'value_at_x0': value_at_x0,
+                'sign_summary': sign_summary,
                 'x': x_vals.tolist(),
                 'y': y_vals
             })
@@ -310,6 +412,77 @@ class CalculusService:
             'x0': x0,
             'curves': curves,
             'domain_range': domain
+        }
+
+    @staticmethod
+    def linear_approximation(func_str: str, x0: float, domain_range: list) -> Dict[str, Any]:
+        """
+        生成局部线性近似可视化数据
+
+        Args:
+            func_str: 函数表达式
+            x0: 展开点
+            domain_range: 绘图域 [x_min, x_max]
+
+        Returns:
+            dict: 包含函数曲线、线性近似、误差曲线与误差上界
+        """
+        function_curve = generate_function_points(func_str, domain_range)
+        slope, intercept = get_tangent_line(func_str, x0)
+
+        x_vals = function_curve['x']
+        linear_y = [slope * xv + intercept for xv in x_vals]
+
+        # 误差曲线
+        error_y = []
+        for i, xv in enumerate(x_vals):
+            f_y = function_curve['y'][i]
+            if f_y is None:
+                error_y.append(None)
+            else:
+                error_y.append(f_y - linear_y[i])
+
+        # 误差区域数据（用于 Plotly fill）
+        error_area_x = []
+        error_area_y = []
+        for i, (xv, ey) in enumerate(zip(x_vals, error_y)):
+            if ey is not None:
+                error_area_x.extend([xv, xv, None])
+                error_area_y.extend([0, ey, None])
+
+        f_x0 = safe_eval_single(func_str, x0)
+        equation = f'y = {slope:.4f}(x - {x0}) + {f_x0:.4f}'
+
+        # 拉格朗日余项误差估计
+        error_estimate = estimate_linear_approximation_error(func_str, x0, domain_range)
+
+        # 综合分析
+        analysis = analyze_derivative(func_str, x0, domain_range)
+
+        return {
+            'function_curve': function_curve,
+            'linear_approximation': {
+                'x': x_vals,
+                'y': linear_y,
+                'slope': slope,
+                'intercept': intercept,
+                'equation': equation
+            },
+            'error_curve': {
+                'x': x_vals,
+                'y': error_y
+            },
+            'error_area': {
+                'x': error_area_x,
+                'y': error_area_y
+            },
+            'error_estimate': error_estimate,
+            'point': {
+                'x': x0,
+                'y': f_x0
+            },
+            'analysis': analysis,
+            'domain_range': domain_range
         }
 
     @staticmethod
@@ -382,16 +555,26 @@ class CalculusService:
 
             # 生成泰勒多项式曲线数据
             x_vals = np.linspace(domain[0], domain[1], 500)
-            y_vals = []
-            for xv in x_vals:
-                try:
-                    yv = float(taylor_expr_simplified.subs(x, xv))
-                    if np.isnan(yv) or np.isinf(yv):
+            f_taylor = sp.lambdify(x, taylor_expr_simplified, 'numpy')
+            try:
+                y_arr = f_taylor(x_vals)
+                if np.isscalar(y_arr):
+                    y_arr = np.full_like(x_vals, y_arr, dtype=float)
+                y_vals = [
+                    float(yv) if not (np.isnan(yv) or np.isinf(yv)) else None
+                    for yv in y_arr
+                ]
+            except (TypeError, ValueError, ZeroDivisionError):
+                y_vals = []
+                for xv in x_vals:
+                    try:
+                        yv = float(taylor_expr_simplified.subs(x, xv))
+                        if np.isnan(yv) or np.isinf(yv):
+                            y_vals.append(None)
+                        else:
+                            y_vals.append(yv)
+                    except (TypeError, ValueError, sp.SympifyError):
                         y_vals.append(None)
-                    else:
-                        y_vals.append(yv)
-                except (TypeError, ValueError, sp.SympifyError):
-                    y_vals.append(None)
 
             # 构建易读的泰勒公式字符串
             formula_parts = []
@@ -439,24 +622,29 @@ class CalculusService:
 
             # 采样搜索最大值
             x_search = np.linspace(domain[0], domain[1], 100)
-            max_abs_deriv = 0
-            for xv in x_search:
-                try:
-                    val = abs(float(n_plus_1_deriv.subs(x, xv)))
-                    if val > max_abs_deriv and not (np.isnan(val) or np.isinf(val)):
-                        max_abs_deriv = val
-                except:
-                    pass
+            f_deriv = sp.lambdify(x, n_plus_1_deriv, 'numpy')
+            try:
+                deriv_vals = np.abs(f_deriv(x_search))
+                deriv_vals = np.where(np.isnan(deriv_vals) | np.isinf(deriv_vals), 0, deriv_vals)
+                max_abs_deriv = float(np.max(deriv_vals))
+            except (TypeError, ValueError, ZeroDivisionError):
+                max_abs_deriv = 0
+                for xv in x_search:
+                    try:
+                        val = abs(float(n_plus_1_deriv.subs(x, xv)))
+                        if val > max_abs_deriv and not (np.isnan(val) or np.isinf(val)):
+                            max_abs_deriv = val
+                    except Exception:
+                        pass
 
             # 计算余项估计
-            remainder_y = []
-            for xv in x_vals:
-                try:
-                    # |Rₙ(x)| ≤ max|f⁽ⁿ⁺¹⁾(ξ)| / (n+1)! × |x-x₀|ⁿ⁺¹
-                    term = max_abs_deriv / sp.factorial(order + 1) * abs(xv - x0) ** (order + 1)
-                    remainder_y.append(float(term))
-                except:
-                    remainder_y.append(None)
+            try:
+                remainder_y = [
+                    float(max_abs_deriv / sp.factorial(order + 1) * abs(xv - x0) ** (order + 1))
+                    for xv in x_vals
+                ]
+            except Exception:
+                remainder_y = [None] * len(x_vals)
 
             remainder_curves.append({
                 'order': order,
@@ -488,6 +676,9 @@ class CalculusService:
         # 求导点处的函数值
         f_x0 = float(func.subs(x, x0))
 
+        # 泰勒级数综合分析（系数、收敛半径、奇点）
+        taylor_analysis = analyze_taylor_series(func_str, x0, max_order, domain)
+
         return {
             'function': func_str,
             'x0': x0,
@@ -497,8 +688,23 @@ class CalculusService:
             'taylor_polynomials': taylor_polynomials,
             'remainder_bound': remainder_curves,
             'actual_remainder': actual_remainder_curves,
+            'coefficients': taylor_analysis['coefficients'],
+            'convergence': {
+                'radius_of_convergence': taylor_analysis['radius_of_convergence'],
+                'nearest_singularity': taylor_analysis['nearest_singularity'],
+                'singularities': taylor_analysis['singularities'],
+                'summary': taylor_analysis['series_summary']
+            },
             'domain_range': domain
         }
+
+    @staticmethod
+    def evaluate_taylor_at_point(func_str: str, x0: float, evaluate_at: float,
+                                  max_order: int = 5) -> Dict[str, Any]:
+        """
+        在指定点评估泰勒多项式的逼近效果
+        """
+        return evaluate_taylor_at_point(func_str, x0, evaluate_at, max_order)
 
     @staticmethod
     def riemann_sum(func_str: str, a: float, b: float, n: int,
@@ -525,27 +731,33 @@ class CalculusService:
 
         # 根据不同方法选择采样点
         if method == 'left':
-            sample_points = [a + i * dx for i in range(n)]
+            sample_points = np.array([a + i * dx for i in range(n)])
         elif method == 'right':
-            sample_points = [a + (i + 1) * dx for i in range(n)]
+            sample_points = np.array([a + (i + 1) * dx for i in range(n)])
         elif method == 'midpoint':
-            sample_points = [a + (i + 0.5) * dx for i in range(n)]
+            sample_points = np.array([a + (i + 0.5) * dx for i in range(n)])
         elif method == 'random':
             np.random.seed(42)  # 保证可复现性
-            sample_points = [a + np.random.uniform(i * dx, (i + 1) * dx) for i in range(n)]
+            sample_points = np.array([a + np.random.uniform(i * dx, (i + 1) * dx) for i in range(n)])
         else:
-            sample_points = [a + (i + 0.5) * dx for i in range(n)]  # 默认中点法
+            sample_points = np.array([a + (i + 0.5) * dx for i in range(n)])  # 默认中点法
 
         # 计算每个矩形的面积
-        heights = []
-        for xi in sample_points:
-            try:
-                h = float(func.subs(x, xi))
-                if np.isnan(h) or np.isinf(h):
-                    h = 0
-                heights.append(h)
-            except (TypeError, ValueError):
-                heights.append(0)
+        f_numeric = sp.lambdify(x, func, 'numpy')
+        try:
+            heights_arr = f_numeric(sample_points)
+            heights_arr = np.where(np.isnan(heights_arr) | np.isinf(heights_arr), 0, heights_arr)
+            heights = heights_arr.tolist()
+        except (TypeError, ValueError):
+            heights = []
+            for xi in sample_points:
+                try:
+                    h = float(func.subs(x, xi))
+                    if np.isnan(h) or np.isinf(h):
+                        h = 0
+                    heights.append(h)
+                except (TypeError, ValueError):
+                    heights.append(0)
 
         # 计算黎曼和
         approximation = sum(h * dx for h in heights)
@@ -665,6 +877,9 @@ class CalculusService:
         # 定义不同的数值积分方法
         methods = ['left', 'right', 'midpoint', 'trapezoid', 'simpson']
 
+        # 使用 lambdify 向量化计算函数值
+        f_numeric = sp.lambdify(x, func, 'numpy')
+
         results = {}
 
         for method in methods:
@@ -675,62 +890,42 @@ class CalculusService:
                 if method in ['left', 'right', 'midpoint']:
                     # 矩形法
                     if method == 'left':
-                        sample_points = np.array([a + i * dx for i in range(n)])
+                        sample_points = np.linspace(a, b - dx, n)
                     elif method == 'right':
-                        sample_points = np.array([a + (i + 1) * dx for i in range(n)])
+                        sample_points = np.linspace(a + dx, b, n)
                     else:  # midpoint
-                        sample_points = np.array([a + (i + 0.5) * dx for i in range(n)])
+                        sample_points = np.linspace(a + dx / 2, b - dx / 2, n)
 
-                    # 计算函数值
-                    f_values = []
-                    for xi in sample_points:
-                        try:
-                            fv = float(func.subs(x, xi))
-                            if np.isnan(fv) or np.isinf(fv):
-                                fv = 0
-                            f_values.append(fv)
-                        except:
-                            f_values.append(0)
-
-                    approximation = sum(fv * dx for fv in f_values)
+                    try:
+                        f_values = f_numeric(sample_points)
+                        f_values = np.where(np.isnan(f_values) | np.isinf(f_values), 0, f_values)
+                        approximation = float(np.sum(f_values) * dx)
+                    except (TypeError, ValueError):
+                        approximation = 0.0
 
                 elif method == 'trapezoid':
                     # 梯形法
                     x_points = np.linspace(a, b, n + 1)
-                    y_values = []
-                    for xi in x_points:
-                        try:
-                            yv = float(func.subs(x, xi))
-                            if np.isnan(yv) or np.isinf(yv):
-                                yv = 0
-                            y_values.append(yv)
-                        except:
-                            y_values.append(0)
-                    approximation = np.trapz(y_values, x_points)
+                    try:
+                        y_values = f_numeric(x_points)
+                        y_values = np.where(np.isnan(y_values) | np.isinf(y_values), 0, y_values)
+                        approximation = float(_trapezoid(y_values, x_points))
+                    except (TypeError, ValueError):
+                        approximation = 0.0
 
                 elif method == 'simpson':
                     # 辛普森法（需要偶数个区间）
+                    from scipy.integrate import simpson
                     n_even = n if n % 2 == 0 else n + 1
                     if n_even < 4:
                         n_even = 4
                     x_points = np.linspace(a, b, n_even + 1)
-                    y_values = []
-                    for xi in x_points:
-                        try:
-                            yv = float(func.subs(x, xi))
-                            if np.isnan(yv) or np.isinf(yv):
-                                yv = 0
-                            y_values.append(yv)
-                        except:
-                            y_values.append(0)
-                    # 手动实现 Simpson 法则
-                    dx = x_points[1] - x_points[0]
-                    approximation = (dx / 3) * (
-                        y_values[0] +
-                        y_values[-1] +
-                        4 * sum(y_values[i] for i in range(1, n_even, 2)) +
-                        2 * sum(y_values[i] for i in range(2, n_even - 1, 2))
-                    )
+                    try:
+                        y_values = f_numeric(x_points)
+                        y_values = np.where(np.isnan(y_values) | np.isinf(y_values), 0, y_values)
+                        approximation = float(simpson(y_values, x_points))
+                    except (TypeError, ValueError):
+                        approximation = 0.0
 
                 error = abs(approximation - exact_value) if exact_value is not None else 0
                 errors.append({'n': n, 'error': error})

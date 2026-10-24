@@ -1,5 +1,7 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request
 from app.services.linear_algebra_service import LinearAlgebraService
+from app.utils.validation import validate_request_data
+from app.utils.response import success_response, error_response, server_error_response
 
 
 linear_algebra_bp = Blueprint('linear_algebra', __name__)
@@ -17,14 +19,6 @@ def validate_matrix_request(data: dict) -> tuple:
     return True, None
 
 
-def safe_float(value, field_name: str) -> tuple:
-    """安全地将值转换为 float"""
-    try:
-        return True, float(value)
-    except (TypeError, ValueError):
-        return False, f'{field_name} must be a number'
-
-
 @linear_algebra_bp.route('/matrix-transform', methods=['POST'])
 def matrix_transform():
     """
@@ -40,7 +34,7 @@ def matrix_transform():
     data = request.json
     is_valid, error = validate_matrix_request(data)
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     a, b, c, d = data['matrix']
     show_eigenvectors = data.get('show_eigenvectors', True)
@@ -50,20 +44,17 @@ def matrix_transform():
         result = LinearAlgebraService.matrix_transform(
             a, b, c, d, show_eigenvectors
         )
-        return jsonify({
-            'success': True,
-            'data': {
-                'matrix': result.matrix,
-                'unit_grid': result.unit_grid,
-                'transformed_grid': result.transformed_grid,
-                'unit_circle': result.unit_circle,
-                'determinant': result.determinant if show_determinant else None,
-                'eigenvalues': result.eigenvalues,
-                'eigenvectors': result.eigenvectors if show_eigenvectors else None
-            }
+        return success_response({
+            'matrix': result.matrix,
+            'unit_grid': result.unit_grid,
+            'transformed_grid': result.transformed_grid,
+            'unit_circle': result.unit_circle,
+            'determinant': result.determinant if show_determinant else None,
+            'eigenvalues': result.eigenvalues,
+            'eigenvectors': result.eigenvectors if show_eigenvectors else None
         })
     except Exception as e:
-        return jsonify({'success': False, 'error': f'计算错误: {str(e)}'}), 400
+        return server_error_response('矩阵变换计算失败，请检查输入参数', exc=e)
 
 
 @linear_algebra_bp.route('/matrix-presets', methods=['GET'])
@@ -84,7 +75,4 @@ def matrix_presets():
     }
     """
     presets = LinearAlgebraService.get_presets()
-    return jsonify({
-        'success': True,
-        'data': {'presets': presets}
-    })
+    return success_response({'presets': presets})

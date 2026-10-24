@@ -1,36 +1,9 @@
 from flask import Blueprint, request, jsonify
 from app.services.vector_field_service import VectorFieldService
+from app.utils.validation import validate_request_data, safe_float, safe_float_list, safe_int
+from app.utils.response import success_response, error_response, math_error_response
 
 vector_field_bp = Blueprint('vector_field', __name__)
-
-
-def validate_request_data(data: dict, required_fields: list = None) -> tuple:
-    """验证请求数据"""
-    if not data:
-        return False, 'Request body is required'
-    if required_fields:
-        for field in required_fields:
-            if field not in data:
-                return False, f'Missing required field: {field}'
-    return True, None
-
-
-def safe_float(value, field_name: str) -> tuple:
-    """安全地将值转换为 float"""
-    try:
-        return True, float(value)
-    except (TypeError, ValueError):
-        return False, f'{field_name} must be a number'
-
-
-def safe_float_list(value, field_name: str) -> tuple:
-    """安全地将值转换为 float 列表"""
-    try:
-        if isinstance(value, list):
-            return True, [float(v) for v in value]
-        return False, f'{field_name} must be a list'
-    except (TypeError, ValueError):
-        return False, f'{field_name} must be a list of numbers'
 
 
 @vector_field_bp.route('/field', methods=['POST'])
@@ -50,18 +23,18 @@ def vector_field():
     data = request.json
     is_valid, error = validate_request_data(data, ['P', 'Q'])
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     p_str = data.get('P', '-y')
     q_str = data.get('Q', 'x')
 
     is_valid, x_range = safe_float_list(data.get('x_range', [-3, 3]), 'x_range')
     if not is_valid:
-        return jsonify({'success': False, 'error': x_range}), 400
+        return error_response(x_range)
 
     is_valid, y_range = safe_float_list(data.get('y_range', [-3, 3]), 'y_range')
     if not is_valid:
-        return jsonify({'success': False, 'error': y_range}), 400
+        return error_response(y_range)
 
     resolution = int(data.get('resolution', 20))
     resolution = min(max(resolution, 5), 50)
@@ -72,7 +45,7 @@ def vector_field():
         )
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @vector_field_bp.route('/streamline', methods=['POST'])
@@ -92,7 +65,7 @@ def streamline():
     data = request.json
     is_valid, error = validate_request_data(data, ['P', 'Q', 'start_points'])
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     p_str = data.get('P', '-y')
     q_str = data.get('Q', 'x')
@@ -109,7 +82,7 @@ def streamline():
         )
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @vector_field_bp.route('/line-integral', methods=['POST'])
@@ -133,7 +106,7 @@ def line_integral():
     data = request.json
     is_valid, error = validate_request_data(data, ['P', 'Q', 'path'])
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     p_str = data.get('P', '-y')
     q_str = data.get('Q', 'x')
@@ -146,7 +119,7 @@ def line_integral():
         )
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @vector_field_bp.route('/greens-theorem', methods=['POST'])
@@ -167,7 +140,7 @@ def greens_theorem():
     data = request.json
     is_valid, error = validate_request_data(data, ['P', 'Q'])
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     p_str = data.get('P', '-y')
     q_str = data.get('Q', 'x')
@@ -180,7 +153,7 @@ def greens_theorem():
         )
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @vector_field_bp.route('/flux', methods=['POST'])
@@ -203,7 +176,7 @@ def flux_integral():
     data = request.json
     is_valid, error = validate_request_data(data, ['P', 'Q', 'path'])
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     p_str = data.get('P', 'x')
     q_str = data.get('Q', 'y')
@@ -216,15 +189,12 @@ def flux_integral():
         )
         # 提取通量相关数据
         if result.get('success'):
-            return jsonify({
-                'success': True,
-                'flux_value': result.get('flux_value', 0),
+            return success_response({'flux_value': result.get('flux_value', 0),
                 'path': result.get('path'),
-                'field': result.get('field')
-            })
+                'field': result.get('field')})
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @vector_field_bp.route('/curl-divergence', methods=['POST'])
@@ -243,7 +213,7 @@ def curl_divergence():
     data = request.json
     is_valid, error = validate_request_data(data, ['P', 'Q'])
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     p_str = data.get('P', '-y')
     q_str = data.get('Q', 'x')
@@ -266,9 +236,7 @@ def curl_divergence():
         div_expr = sp.diff(P, x) + sp.diff(Q, y)
         div_val = float(div_expr.subs({x: x_val, y: y_val}))
 
-        return jsonify({
-            'success': True,
-            'curl': {
+        return success_response({'curl': {
                 'expression': str(curl_expr),
                 'value': curl_val
             },
@@ -276,10 +244,9 @@ def curl_divergence():
                 'expression': str(div_expr),
                 'value': div_val
             },
-            'point': {'x': x_val, 'y': y_val}
-        })
+            'point': {'x': x_val, 'y': y_val}})
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @vector_field_bp.route('/presets', methods=['GET'])
@@ -321,7 +288,7 @@ def check_conservative():
     data = request.json
     is_valid, error = validate_request_data(data, ['P', 'Q'])
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     p_str = data.get('P')
     q_str = data.get('Q')
@@ -330,7 +297,7 @@ def check_conservative():
         result = VectorFieldService.is_conservative(p_str, q_str)
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @vector_field_bp.route('/potential', methods=['POST'])
@@ -357,7 +324,7 @@ def find_potential():
     data = request.json
     is_valid, error = validate_request_data(data, ['P', 'Q'])
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     p_str = data.get('P')
     q_str = data.get('Q')
@@ -366,7 +333,7 @@ def find_potential():
         result = VectorFieldService.find_potential(p_str, q_str)
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @vector_field_bp.route('/potential-contour', methods=['POST'])
@@ -396,18 +363,18 @@ def potential_contour():
     data = request.json
     is_valid, error = validate_request_data(data, ['P', 'Q'])
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     p_str = data.get('P')
     q_str = data.get('Q')
 
     is_valid, x_range = safe_float_list(data.get('x_range', [-3, 3]), 'x_range')
     if not is_valid:
-        return jsonify({'success': False, 'error': x_range}), 400
+        return error_response(x_range)
 
     is_valid, y_range = safe_float_list(data.get('y_range', [-3, 3]), 'y_range')
     if not is_valid:
-        return jsonify({'success': False, 'error': y_range}), 400
+        return error_response(y_range)
 
     resolution = int(data.get('resolution', 50))
     resolution = min(max(resolution, 10), 100)
@@ -418,7 +385,7 @@ def potential_contour():
         )
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @vector_field_bp.route('/path-independence', methods=['POST'])
@@ -448,18 +415,18 @@ def path_independence():
     data = request.json
     is_valid, error = validate_request_data(data, ['P', 'Q', 'start_point', 'end_point'])
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     p_str = data.get('P')
     q_str = data.get('Q')
 
     is_valid, start_point = safe_float_list(data.get('start_point', [0, 0]), 'start_point')
     if not is_valid:
-        return jsonify({'success': False, 'error': start_point}), 400
+        return error_response(start_point)
 
     is_valid, end_point = safe_float_list(data.get('end_point', [1, 1]), 'end_point')
     if not is_valid:
-        return jsonify({'success': False, 'error': end_point}), 400
+        return error_response(end_point)
 
     num_points = int(data.get('num_points', 200))
 
@@ -469,7 +436,7 @@ def path_independence():
         )
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 # ============ 3D向量场 API ============
@@ -493,7 +460,7 @@ def vector_field_3d():
     data = request.json
     is_valid, error = validate_request_data(data, ['P', 'Q', 'R'])
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     p_str = data.get('P', '-y')
     q_str = data.get('Q', 'x')
@@ -501,15 +468,15 @@ def vector_field_3d():
 
     is_valid, x_range = safe_float_list(data.get('x_range', [-3, 3]), 'x_range')
     if not is_valid:
-        return jsonify({'success': False, 'error': x_range}), 400
+        return error_response(x_range)
 
     is_valid, y_range = safe_float_list(data.get('y_range', [-3, 3]), 'y_range')
     if not is_valid:
-        return jsonify({'success': False, 'error': y_range}), 400
+        return error_response(y_range)
 
     is_valid, z_range = safe_float_list(data.get('z_range', [-3, 3]), 'z_range')
     if not is_valid:
-        return jsonify({'success': False, 'error': z_range}), 400
+        return error_response(z_range)
 
     resolution = int(data.get('resolution', 8))
     resolution = min(max(resolution, 3), 15)
@@ -520,7 +487,7 @@ def vector_field_3d():
         )
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @vector_field_bp.route('/streamline-3d', methods=['POST'])
@@ -541,7 +508,7 @@ def streamline_3d():
     data = request.json
     is_valid, error = validate_request_data(data, ['P', 'Q', 'R', 'start_points'])
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     p_str = data.get('P', '-y')
     q_str = data.get('Q', 'x')
@@ -559,7 +526,7 @@ def streamline_3d():
         )
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @vector_field_bp.route('/curl-divergence-3d', methods=['POST'])
@@ -580,7 +547,7 @@ def curl_divergence_3d():
     data = request.json
     is_valid, error = validate_request_data(data, ['P', 'Q', 'R'])
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     p_str = data.get('P', '-y')
     q_str = data.get('Q', 'x')
@@ -595,7 +562,7 @@ def curl_divergence_3d():
         )
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @vector_field_bp.route('/presets-3d', methods=['GET'])
@@ -603,10 +570,7 @@ def get_presets_3d():
     """
     获取3D预设向量场
     """
-    return jsonify({
-        'success': True,
-        'vector_fields': VectorFieldService.VECTOR_FIELD_3D_PRESETS
-    })
+    return success_response({'vector_fields': VectorFieldService.VECTOR_FIELD_3D_PRESETS})
 
 
 # ============ 曲面积分 API ============
@@ -630,7 +594,7 @@ def surface_integral():
     data = request.json
     is_valid, error = validate_request_data(data, ['P', 'Q', 'R'])
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     p_str = data.get('P', '0')
     q_str = data.get('Q', '0')
@@ -647,7 +611,7 @@ def surface_integral():
         )
         return jsonify(result)
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @vector_field_bp.route('/surface-presets', methods=['GET'])
@@ -679,7 +643,7 @@ def gauss_theorem():
     data = request.json
     is_valid, error = validate_request_data(data, ['P', 'Q', 'R'])
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     p_str = data.get('P', '0')
     q_str = data.get('Q', '0')
@@ -697,7 +661,7 @@ def gauss_theorem():
     except Exception as e:
         import traceback
         traceback.print_exc()
-        return jsonify({'success': False, 'error': f'计算过程中发生错误: {str(e)}'}), 400
+        return math_error_response('calculation')
 
 
 @vector_field_bp.route('/gauss-presets', methods=['GET'])

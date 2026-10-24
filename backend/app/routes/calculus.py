@@ -1,36 +1,10 @@
-from flask import Blueprint, request, jsonify
+import sympy as sp
+from flask import Blueprint, request
 from app.services.calculus_service import CalculusService
-from app.utils.math_utils import generate_function_points, get_tangent_line
+from app.utils.validation import validate_request_data, safe_float
+from app.utils.response import success_response, error_response, math_error_response
 
 calculus_bp = Blueprint('calculus', __name__)
-
-
-def validate_request_data(data: dict, required_fields: list = None) -> tuple:
-    """
-    验证请求数据
-
-    Args:
-        data: 请求数据字典
-        required_fields: 必填字段列表
-
-    Returns:
-        (is_valid, error_message)
-    """
-    if not data:
-        return False, 'Request body is required'
-    if required_fields:
-        for field in required_fields:
-            if field not in data:
-                return False, f'Missing required field: {field}'
-    return True, None
-
-
-def safe_float(value, field_name: str) -> tuple:
-    """安全地将值转换为 float"""
-    try:
-        return True, float(value)
-    except (TypeError, ValueError):
-        return False, f'{field_name} must be a number'
 
 
 @calculus_bp.route('/limit/epsilon-delta', methods=['POST'])
@@ -50,18 +24,18 @@ def epsilon_delta_limit():
     data = request.json
     is_valid, error = validate_request_data(data)
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     # Validate numeric fields
     is_valid, x0 = safe_float(data.get('x0', 2), 'x0')
     if not is_valid:
-        return jsonify({'success': False, 'error': x0}), 400
+        return error_response(x0)
     is_valid, L = safe_float(data.get('L', 4), 'L')
     if not is_valid:
-        return jsonify({'success': False, 'error': L}), 400
+        return error_response(L)
     is_valid, epsilon = safe_float(data.get('epsilon', 0.5), 'epsilon')
     if not is_valid:
-        return jsonify({'success': False, 'error': epsilon}), 400
+        return error_response(epsilon)
 
     func_str = data.get('function', 'x**2')
     domain_range = data.get('domain_range', [-1, 5])
@@ -70,11 +44,11 @@ def epsilon_delta_limit():
         result = CalculusService.epsilon_delta_visualization(
             func_str, x0, L, epsilon, domain_range
         )
-        return jsonify({'success': True, 'data': result})
+        return success_response(result)
     except (ValueError, sp.SympifyError) as e:
-        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
+        return math_error_response('parse')
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @calculus_bp.route('/derivative/tangent', methods=['POST'])
@@ -92,11 +66,11 @@ def derivative_tangent():
     data = request.json
     is_valid, error = validate_request_data(data)
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     is_valid, x0 = safe_float(data.get('x0', 2), 'x0')
     if not is_valid:
-        return jsonify({'success': False, 'error': x0}), 400
+        return error_response(x0)
 
     func_str = data.get('function', 'x**2')
     domain_range = data.get('domain_range', [0, 4])
@@ -105,11 +79,11 @@ def derivative_tangent():
         result = CalculusService.derivative_visualization(
             func_str, x0, domain_range
         )
-        return jsonify({'success': True, 'data': result})
+        return success_response(result)
     except (ValueError, sp.SympifyError) as e:
-        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
+        return math_error_response('parse')
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @calculus_bp.route('/derivative/secant-approximation', methods=['POST'])
@@ -128,11 +102,11 @@ def secant_approximation():
     data = request.json
     is_valid, error = validate_request_data(data)
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     is_valid, x0 = safe_float(data.get('x0', 2), 'x0')
     if not is_valid:
-        return jsonify({'success': False, 'error': x0}), 400
+        return error_response(x0)
 
     func_str = data.get('function', 'x**2')
     h_values = data.get('h_values', [1, 0.5, 0.1, 0.01, 0.001])
@@ -142,11 +116,11 @@ def secant_approximation():
         result = CalculusService.secant_approximation(
             func_str, x0, h_values, domain_range
         )
-        return jsonify({'success': True, 'data': result})
+        return success_response(result)
     except (ValueError, sp.SympifyError) as e:
-        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
+        return math_error_response('parse')
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @calculus_bp.route('/evaluate', methods=['POST'])
@@ -157,18 +131,18 @@ def evaluate_function():
     data = request.json
     is_valid, error = validate_request_data(data)
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     func_str = data.get('function', 'x**2')
     x_values = data.get('x_values', [0, 1, 2, 3])
 
     try:
         result = CalculusService.evaluate_function(func_str, x_values)
-        return jsonify({'success': True, 'data': result})
+        return success_response(result)
     except (ValueError, sp.SympifyError) as e:
-        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
+        return math_error_response('parse')
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @calculus_bp.route('/limit/compute', methods=['POST'])
@@ -191,21 +165,21 @@ def compute_limit():
     data = request.json
     is_valid, error = validate_request_data(data)
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     is_valid, x0 = safe_float(data.get('x0', 2), 'x0')
     if not is_valid:
-        return jsonify({'success': False, 'error': x0}), 400
+        return error_response(x0)
 
     func_str = data.get('function', 'x**2')
 
     try:
         L = CalculusService.compute_limit(func_str, x0)
-        return jsonify({'success': True, 'data': {'L': L}})
+        return success_response({'L': L})
     except (ValueError, sp.SympifyError) as e:
-        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
+        return math_error_response('parse')
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @calculus_bp.route('/derivative/higher', methods=['POST'])
@@ -224,11 +198,11 @@ def higher_derivatives():
     data = request.json
     is_valid, error = validate_request_data(data)
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     is_valid, x0 = safe_float(data.get('x0', 2), 'x0')
     if not is_valid:
-        return jsonify({'success': False, 'error': x0}), 400
+        return error_response(x0)
 
     func_str = data.get('function', 'x**3')
     order = int(data.get('order', 3))
@@ -238,11 +212,11 @@ def higher_derivatives():
         result = CalculusService.get_higher_derivatives(
             func_str, x0, order, domain_range
         )
-        return jsonify({'success': True, 'data': result})
+        return success_response(result)
     except (ValueError, sp.SympifyError) as e:
-        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
+        return math_error_response('parse')
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @calculus_bp.route('/derivative/linear-approximation', methods=['POST'])
@@ -260,73 +234,22 @@ def linear_approximation():
     data = request.json
     is_valid, error = validate_request_data(data)
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     is_valid, x0 = safe_float(data.get('x0', 2), 'x0')
     if not is_valid:
-        return jsonify({'success': False, 'error': x0}), 400
+        return error_response(x0)
 
     func_str = data.get('function', 'x**2')
     domain_range = data.get('domain_range', [x0 - 2, x0 + 2])
 
     try:
-        # 主函数曲线
-        function_curve = generate_function_points(func_str, domain_range)
-
-        # 切线数据
-        slope, intercept = get_tangent_line(func_str, x0)
-
-        # 线性近似曲线
-        x_vals = function_curve['x']
-        linear_y = [slope * xv + intercept for xv in x_vals]
-
-        # 误差曲线
-        error_y = []
-        for i, xv in enumerate(x_vals):
-            f_y = function_curve['y'][i]
-            if f_y is None:
-                error_y.append(None)
-            else:
-                error_y.append(f_y - linear_y[i])
-
-        # 误差区域数据
-        error_area_x = []
-        error_area_y = []
-        for i, (xv, ey) in enumerate(zip(x_vals, error_y)):
-            if ey is not None:
-                error_area_x.extend([xv, xv])
-                error_area_y.extend([0, ey])
-
-        from sympy import Symbol
-        f_x0 = float(generate_function_points(func_str, [x0 - 0.001, x0 + 0.001])['y'][1])
-        equation = f'y = {slope:.4f}(x - {x0}) + {f_x0:.4f}'
-
-        return jsonify({
-            'success': True,
-            'data': {
-                'function_curve': function_curve,
-                'linear_approximation': {
-                    'x': x_vals,
-                    'y': linear_y,
-                    'slope': slope,
-                    'intercept': intercept,
-                    'equation': equation
-                },
-                'error_curve': {
-                    'x': x_vals,
-                    'y': error_y
-                },
-                'point': {
-                    'x': x0,
-                    'y': f_x0
-                },
-                'domain_range': domain_range
-            }
-        })
+        result = CalculusService.linear_approximation(func_str, x0, domain_range)
+        return success_response(result)
     except (ValueError, sp.SympifyError) as e:
-        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
+        return math_error_response('parse')
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @calculus_bp.route('/taylor', methods=['POST'])
@@ -347,11 +270,11 @@ def taylor_visualization():
     data = request.json
     is_valid, error = validate_request_data(data)
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     is_valid, x0 = safe_float(data.get('x0', 0), 'x0')
     if not is_valid:
-        return jsonify({'success': False, 'error': x0}), 400
+        return error_response(x0)
 
     func_str = data.get('function', 'sin(x)')
     max_order = int(data.get('max_order', 5))
@@ -364,11 +287,53 @@ def taylor_visualization():
         result = CalculusService.taylor_visualization(
             func_str, x0, max_order, domain_range
         )
-        return jsonify({'success': True, 'data': result})
+        return success_response(result)
     except (ValueError, sp.SympifyError) as e:
-        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
+        return math_error_response('parse')
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
+
+
+@calculus_bp.route('/taylor/evaluate', methods=['POST'])
+def evaluate_taylor_at_point():
+    """
+    在指定点评估泰勒多项式的逼近效果
+
+    请求参数:
+    {
+        "function": "sin(x)",   # 函数表达式
+        "x0": 0,                 # 展开点
+        "x": 1.5,                # 评估点
+        "max_order": 5           # 最大阶数（默认5）
+    }
+    """
+    import sympy as sp
+
+    data = request.json
+    is_valid, error = validate_request_data(data)
+    if not is_valid:
+        return error_response(error)
+
+    is_valid, x0 = safe_float(data.get('x0', 0), 'x0')
+    if not is_valid:
+        return error_response(x0)
+    is_valid, x_eval = safe_float(data.get('x', x0 + 1), 'x')
+    if not is_valid:
+        return error_response(x_eval)
+
+    func_str = data.get('function', 'sin(x)')
+    max_order = int(data.get('max_order', 5))
+    max_order = min(max_order, 10)
+
+    try:
+        result = CalculusService.evaluate_taylor_at_point(
+            func_str, x0, x_eval, max_order
+        )
+        return success_response(result)
+    except (ValueError, sp.SympifyError) as e:
+        return math_error_response('parse')
+    except Exception as e:
+        return math_error_response('calculation')
 
 
 @calculus_bp.route('/integration/riemann-sum', methods=['POST'])
@@ -391,39 +356,39 @@ def riemann_sum():
     data = request.json
     is_valid, error = validate_request_data(data)
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     # 验证数值参数
     is_valid, a = safe_float(data.get('a', 0), 'a')
     if not is_valid:
-        return jsonify({'success': False, 'error': a}), 400
+        return error_response(a)
     is_valid, b = safe_float(data.get('b', 1), 'b')
     if not is_valid:
-        return jsonify({'success': False, 'error': b}), 400
+        return error_response(b)
 
     if a >= b:
-        return jsonify({'success': False, 'error': '积分下限必须小于上限'}), 400
+        return error_response('积分下限必须小于上限')
 
     n = int(data.get('n', 10))
     if n <= 0 or n > 1000:
-        return jsonify({'success': False, 'error': '分割数量必须在 1-1000 之间'}), 400
+        return error_response('分割数量必须在 1-1000 之间')
 
     func_str = data.get('function', 'x**2')
     method = data.get('method', 'left')
     domain_range = data.get('domain_range', None)
 
     if method not in ['left', 'right', 'midpoint', 'random']:
-        return jsonify({'success': False, 'error': '不支持的分割方法'}), 400
+        return error_response('不支持的分割方法')
 
     try:
         result = CalculusService.riemann_sum(
             func_str, a, b, n, method, domain_range
         )
-        return jsonify({'success': True, 'data': result})
+        return success_response(result)
     except (ValueError, sp.SympifyError) as e:
-        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
+        return math_error_response('parse')
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
 
 
 @calculus_bp.route('/integration/convergence', methods=['POST'])
@@ -445,18 +410,18 @@ def integration_convergence():
     data = request.json
     is_valid, error = validate_request_data(data)
     if not is_valid:
-        return jsonify({'success': False, 'error': error}), 400
+        return error_response(error)
 
     # 验证数值参数
     is_valid, a = safe_float(data.get('a', 0), 'a')
     if not is_valid:
-        return jsonify({'success': False, 'error': a}), 400
+        return error_response(a)
     is_valid, b = safe_float(data.get('b', 1), 'b')
     if not is_valid:
-        return jsonify({'success': False, 'error': b}), 400
+        return error_response(b)
 
     if a >= b:
-        return jsonify({'success': False, 'error': '积分下限必须小于上限'}), 400
+        return error_response('积分下限必须小于上限')
 
     func_str = data.get('function', 'x**2')
     n_values = data.get('n_values', [4, 8, 16, 32, 64, 128, 256, 512])
@@ -469,8 +434,8 @@ def integration_convergence():
         result = CalculusService.numerical_integration_convergence(
             func_str, a, b, n_values, domain_range
         )
-        return jsonify({'success': True, 'data': result})
+        return success_response(result)
     except (ValueError, sp.SympifyError) as e:
-        return jsonify({'success': False, 'error': '函数表达式解析失败，请检查输入格式'}), 400
+        return math_error_response('parse')
     except Exception as e:
-        return jsonify({'success': False, 'error': '计算过程中发生错误，请稍后重试'}), 400
+        return math_error_response('calculation')
