@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 700" width="1000" height="700">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8fafc"/>
+      <stop offset="100%" style="stop-color:#e2e8f0"/>
+    </linearGradient>
+    <linearGradient id="calGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#10b981"/>
+      <stop offset="100%" style="stop-color:#34d399"/>
+    </linearGradient>
+    <linearGradient id="laGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#0891b2"/>
+      <stop offset="100%" style="stop-color:#22d3ee"/>
+    </linearGradient>
+    <linearGradient id="probGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#ec4899"/>
+      <stop offset="100%" style="stop-color:#f472b6"/>
+    </linearGradient>
+    <linearGradient id="manimGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#f97316"/>
+      <stop offset="100%" style="stop-color:#fb923c"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.1"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="700" fill="url(#bgGrad)" rx="16"/>
+
+  <!-- Title -->
+  <text x="500" y="36" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#1e293b">MathInsight 功能模块总览</text>
+  <line x1="350" y1="48" x2="650" y2="48" stroke="#cbd5e1" stroke-width="1.5"/>
+
+  <!-- ===== 微积分 ===== -->
+  <!-- Main box background -->
+  <rect x="20" y="65" width="620" height="300" rx="14" fill="#fff" stroke="#10b981" stroke-width="2" filter="url(#shadow)"/>
+  <!-- Header bar -->
+  <rect x="20" y="65" width="620" height="44" rx="14" fill="url(#calGrad)"/>
+  <rect x="20" y="95" width="620" height="14" fill="url(#calGrad)"/>
+  <text x="330" y="94" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#fff" font-weight="bold">微积分 Calculus（9 个模块）</text>
+
+  <!-- Row label: 单元微积分 -->
+  <text x="40" y="138" font-family="Arial, sans-serif" font-size="12" fill="#059669" font-weight="bold">单元微积分</text>
+  <line x1="125" y1="135" x2="620" y2="135" stroke="#d1fae5" stroke-width="1"/>
+
+  <!-- Row 1: 极限 / 导数 / 积分 -->
+  <!-- ε-δ 极限 -->
+  <rect x="35" y="148" width="180" height="62" rx="8" fill="#f0fdf4" stroke="#d1fae5"/>
+  <text x="125" y="168" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#065f46" font-weight="bold">ε-δ 极限</text>
+  <text x="125" y="184" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#475569">双Band高亮 · 自动δ计算</text>
+  <text x="125" y="198" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#475569">缩放联动 · 反例演示</text>
+
+  <!-- 导数与切线 -->
+  <rect x="230" y="148" width="180" height="62" rx="8" fill="#f0fdf4" stroke="#d1fae5"/>
+  <text x="320" y="168" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#065f46" font-weight="bold">导数与切线</text>
+  <text x="320" y="184" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#475569">四合一模式 · 高阶导数</text>
+  <text x="320" y="198" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#475569">放大镜 · 割线逼近动画</text>
+
+  <!-- 黎曼积分 -->
+  <rect x="425" y="148" width="180" height="62" rx="8" fill="#f0fdf4" stroke="#d1fae5"/>
+  <text x="515" y="168" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#065f46" font-weight="bold">黎曼积分</text>
+  <text x="515" y="184" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#475569">逐矩形动画 · 四种方法</text>
+  <text x="515" y="198" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#475569">误差收敛对比 · 面积累加</text>
+
+  <!-- 泰勒公式 -->
+  <rect x="35" y="225" width="180" height="62" rx="8" fill="#f0fdf4" stroke="#d1fae5"/>
+  <text x="125" y="245" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#065f46" font-weight="bold">泰勒公式</text>
+  <text x="125" y="261" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#475569">多阶展开 · 独立切换</text>
+  <text x="125" y="275" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#475569">余项分析 · 拉格朗日余项</text>
+
+  <!-- Row label: 多元与向量微积分 -->
+  <text x="240" y="242" font-family="Arial, sans-serif" font-size="12" fill="#059669" font-weight="bold">多元与向量微积分</text>
+  <line x1="360" y1="239" x2="620" y2="239" stroke="#d1fae5" stroke-width="1"/>
+
+  <!-- 多元函数 -->
+  <rect x="230" y="253" width="180" height="62" rx="8" fill="#f0fdf4" stroke="#d1fae5"/>
+  <text x="320" y="273" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#065f46" font-weight="bold">多元函数</text>
+  <text x="320" y="289" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#475569">3D曲面 · 等高线 · 梯度场</text>
+  <text x="320" y="303" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#475569">偏导数 · 切平面联动</text>
+
+  <!-- 向量场与线积分 -->
+  <rect x="425" y="253" width="180" height="62" rx="8" fill="#f0fdf4" stroke="#d1fae5"/>
+  <text x="515" y="273" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#065f46" font-weight="bold">向量场与线积分</text>
+  <text x="515" y="289" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#475569">五种模式 · 格林定理验证</text>
+  <text x="515" y="303" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#475569">保守场判定 · 路径无关性</text>
+
+  <!-- 曲面积分 -->
+  <rect x="35" y="300" width="180" height="55" rx="8" fill="#f0fdf4" stroke="#d1fae5"/>
+  <text x="125" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#065f46" font-weight="bold">曲面积分</text>
+  <text x="125" y="336" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#475569">通量计算 · 法向量切换 · 多种曲面</text>
+
+  <!-- 高斯定理 -->
+  <rect x="230" y="300" width="180" height="55" rx="8" fill="#f0fdf4" stroke="#d1fae5"/>
+  <text x="320" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#065f46" font-weight="bold">高斯定理</text>
+  <text x="320" y="336" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#475569">双侧对比验证 · 球/柱/立方体</text>
+
+  <!-- 3D 向量场 -->
+  <rect x="425" y="300" width="180" height="55" rx="8" fill="#f0fdf4" stroke="#d1fae5"/>
+  <text x="515" y="320" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#065f46" font-weight="bold">3D 向量场</text>
+  <text x="515" y="336" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#475569">旋度 · 散度 · 流线追踪</text>
+
+  <!-- ===== 线性代数 ===== -->
+  <rect x="660" y="65" width="320" height="140" rx="14" fill="#fff" stroke="#0891b2" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="660" y="65" width="320" height="40" rx="14" fill="url(#laGrad)"/>
+  <rect x="660" y="91" width="320" height="14" fill="url(#laGrad)"/>
+  <text x="820" y="91" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#fff" font-weight="bold">线性代数（1 个模块）</text>
+
+  <rect x="675" y="117" width="290" height="72" rx="8" fill="#f0fdfa" stroke="#ccfbf1"/>
+  <text x="820" y="137" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#0e7490" font-weight="bold">矩阵变换可视化</text>
+  <text x="685" y="157" font-family="Arial, sans-serif" font-size="10" fill="#475569">2×2矩阵 · 实时椭圆变换 · 12种预设模板</text>
+  <text x="685" y="173" font-family="Arial, sans-serif" font-size="10" fill="#475569">特征向量 · 行列式 · 基向量追踪</text>
+
+  <!-- ===== 概率论 ===== -->
+  <rect x="660" y="220" width="320" height="140" rx="14" fill="#fff" stroke="#ec4899" stroke-width="2" filter="url(#shadow)"/>
+  <rect x="660" y="220" width="320" height="40" rx="14" fill="url(#probGrad)"/>
+  <rect x="660" y="246" width="320" height="14" fill="url(#probGrad)"/>
+  <text x="820" y="246" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#fff" font-weight="bold">概率论（1 个模块）</text>
+
+  <rect x="675" y="272" width="290" height="72" rx="8" fill="#fdf2f8" stroke="#fce7f3"/>
+  <text x="820" y="292" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#db2777" font-weight="bold">大数定律模拟</text>
+  <text x="685" y="312" font-family="Arial, sans-serif" font-size="10" fill="#475569">蒙特卡洛实验 · 硬币/骰子 · 批处理动画</text>
+  <text x="685" y="328" font-family="Arial, sans-serif" font-size="10" fill="#475569">收敛曲线 · 分布直方图 · 可调样本量与速度</text>
+
+  <!-- ===== Manim AI ===== -->
+  <rect x="20" y="380" width="960" height="100" rx="14" fill="#fff" stroke="#f97316" stroke-width="2.5" stroke-dasharray="8,4" filter="url(#shadow)"/>
+  <rect x="20" y="380" width="960" height="40" rx="14" fill="url(#manimGrad)"/>
+  <rect x="20" y="406" width="960" height="14" fill="url(#manimGrad)"/>
+  <text x="500" y="406" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" fill="#fff" font-weight="bold">核心创新 ⚡ Manim AI 动画生成器</text>
+  <text x="500" y="442" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#475569">自然语言描述 → LLM 生成代码 → 自动渲染测试（≤10次迭代）→ 输出 MP4 视频</text>
+  <text x="500" y="464" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#d97706">支持 720p / 1080p / 4K 分辨率 · 24 / 30 / 60 fps · 零编程门槛</text>
+
+  <!-- Stats Footer -->
+  <rect x="20" y="500" width="960" height="55" rx="12" fill="#1e293b" opacity="0.9"/>
+  <text x="180" y="522" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#94a3b8">功能模块</text>
+  <text x="180" y="544" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#10b981" font-weight="bold">14 个</text>
+  <line x1="330" y1="508" x2="330" y2="548" stroke="#334155" stroke-width="1"/>
+  <text x="490" y="522" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#94a3b8">覆盖知识点</text>
+  <text x="490" y="544" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#3b82f6" font-weight="bold">30+ 个</text>
+  <line x1="640" y1="508" x2="640" y2="548" stroke="#334155" stroke-width="1"/>
+  <text x="800" y="522" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#94a3b8">AI 迭代次数</text>
+  <text x="800" y="544" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" fill="#f97316" font-weight="bold">≤ 10 次</text>
+
+  <!-- Bottom note -->
+  <text x="500" y="695" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8">覆盖范围：单元微积分 → 多元微积分 → 向量微积分 → 线性代数 → 概率论</text>
+</svg>

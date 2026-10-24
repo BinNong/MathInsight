@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 520" width="900" height="520">
+  <defs>
+    <linearGradient id="homeGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea"/>
+      <stop offset="100%" style="stop-color:#764ba2"/>
+    </linearGradient>
+    <linearGradient id="calGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981"/>
+      <stop offset="100%" style="stop-color:#059669"/>
+    </linearGradient>
+    <linearGradient id="laGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#0891b2"/>
+      <stop offset="100%" style="stop-color:#0e7490"/>
+    </linearGradient>
+    <linearGradient id="probGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ec4899"/>
+      <stop offset="100%" style="stop-color:#db2777"/>
+    </linearGradient>
+    <linearGradient id="manimGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f97316"/>
+      <stop offset="100%" style="stop-color:#ea580c"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#000" flood-opacity="0.12"/>
+    </filter>
+    <filter id="lightShadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.08"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="900" height="520" fill="#f8fafc" rx="16"/>
+
+  <!-- Title -->
+  <text x="450" y="36" text-anchor="middle" font-family="Arial, sans-serif" font-size="22" font-weight="bold" fill="#1e293b">MathInsight 页面导航结构</text>
+  <line x1="300" y1="48" x2="600" y2="48" stroke="#cbd5e1" stroke-width="1.5"/>
+
+  <!-- Home Page -->
+  <g transform="translate(340, 70)" filter="url(#shadow)">
+    <rect x="0" y="0" width="220" height="50" rx="25" fill="url(#homeGrad)"/>
+    <text x="110" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#fff" font-weight="bold">🏠 首页</text>
+  </g>
+
+  <!-- Home → Subject arrow -->
+  <line x1="450" y1="120" x2="450" y2="155" stroke="#94a3b8" stroke-width="2"/>
+  <polygon points="445,152 450,162 455,152" fill="#94a3b8"/>
+
+  <!-- Subject Pages Row -->
+  <g transform="translate(50, 170)" filter="url(#shadow)">
+    <rect x="0" y="0" width="240" height="55" rx="12" fill="url(#calGrad)"/>
+    <text x="120" y="22" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#fff" font-weight="bold">📐 微积分</text>
+    <text x="120" y="42" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#fff" opacity="0.85">9 个功能模块</text>
+  </g>
+
+  <g transform="translate(330, 170)" filter="url(#shadow)">
+    <rect x="0" y="0" width="240" height="55" rx="12" fill="url(#laGrad)"/>
+    <text x="120" y="22" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#fff" font-weight="bold">📊 线性代数</text>
+    <text x="120" y="42" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#fff" opacity="0.85">1 个功能模块</text>
+  </g>
+
+  <g transform="translate(610, 170)" filter="url(#shadow)">
+    <rect x="0" y="0" width="240" height="55" rx="12" fill="url(#probGrad)"/>
+    <text x="120" y="22" text-anchor="middle" font-family="Arial, sans-serif" font-size="14" fill="#fff" font-weight="bold">🎲 概率论</text>
+    <text x="120" y="42" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#fff" opacity="0.85">1 个功能模块</text>
+  </g>
+
+  <!-- Subject → Modules arrows -->
+  <line x1="170" y1="225" x2="170" y2="260" stroke="#10b981" stroke-width="1.5"/>
+  <polygon points="166,256 170,266 174,256" fill="#10b981"/>
+  <line x1="450" y1="225" x2="450" y2="260" stroke="#0891b2" stroke-width="1.5"/>
+  <polygon points="446,256 450,266 454,256" fill="#0891b2"/>
+  <line x1="730" y1="225" x2="730" y2="260" stroke="#db2777" stroke-width="1.5"/>
+  <polygon points="726,256 730,266 734,256" fill="#db2777"/>
+
+  <!-- Calculus sub-modules -->
+  <g transform="translate(20, 275)" filter="url(#lightShadow)">
+    <rect x="0" y="0" width="300" height="180" rx="10" fill="#fff" stroke="#10b981" stroke-width="1.5"/>
+    <rect x="0" y="0" width="300" height="32" rx="10" fill="#10b981" opacity="0.1"/>
+    <text x="150" y="21" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#059669" font-weight="bold">微积分模块</text>
+    <g font-family="Arial, sans-serif" font-size="11" fill="#475569">
+      <text x="15" y="55">ε-δ 极限可视化</text>
+      <text x="15" y="75">导数与切线</text>
+      <text x="15" y="95">黎曼积分</text>
+      <text x="15" y="115">泰勒公式</text>
+      <text x="155" y="55">多元函数可视化</text>
+      <text x="155" y="75">向量场与线积分</text>
+      <text x="155" y="95">曲面积分</text>
+      <text x="155" y="115">高斯定理</text>
+      <text x="155" y="135">3D 向量场</text>
+    </g>
+  </g>
+
+  <!-- Linear Algebra sub-modules -->
+  <g transform="translate(340, 275)" filter="url(#lightShadow)">
+    <rect x="0" y="0" width="220" height="100" rx="10" fill="#fff" stroke="#0891b2" stroke-width="1.5"/>
+    <rect x="0" y="0" width="220" height="32" rx="10" fill="#0891b2" opacity="0.1"/>
+    <text x="110" y="21" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#0891b2" font-weight="bold">线性代数模块</text>
+    <g font-family="Arial, sans-serif" font-size="11" fill="#475569">
+      <text x="15" y="55">矩阵变换可视化</text>
+      <text x="15" y="75">特征向量 · 行列式</text>
+    </g>
+  </g>
+
+  <!-- Probability sub-modules -->
+  <g transform="translate(580, 275)" filter="url(#lightShadow)">
+    <rect x="0" y="0" width="300" height="100" rx="10" fill="#fff" stroke="#ec4899" stroke-width="1.5"/>
+    <rect x="0" y="0" width="300" height="32" rx="10" fill="#ec4899" opacity="0.1"/>
+    <text x="150" y="21" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#db2777" font-weight="bold">概率论模块</text>
+    <g font-family="Arial, sans-serif" font-size="11" fill="#475569">
+      <text x="15" y="55">大数定律模拟</text>
+      <text x="15" y="75">蒙特卡洛实验 · 收敛曲线 · 分布直方图</text>
+    </g>
+  </g>
+
+  <!-- Manim entry at bottom -->
+  <g transform="translate(275, 465)" filter="url(#shadow)">
+    <rect x="0" y="0" width="350" height="42" rx="21" fill="url(#manimGrad)"/>
+    <text x="175" y="26" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#fff" font-weight="bold">🎬 Manim 动画生成器（首页直达）</text>
+  </g>
+  <line x1="450" y1="455" x2="450" y2="473" stroke="#94a3b8" stroke-width="1" stroke-dasharray="4,3"/>
+</svg>

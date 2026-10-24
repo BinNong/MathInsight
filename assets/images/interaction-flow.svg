@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 380" width="800" height="380">
+  <defs>
+    <linearGradient id="uiGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#3b82f6"/>
+      <stop offset="100%" style="stop-color:#1d4ed8"/>
+    </linearGradient>
+    <linearGradient id="apiGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#8b5cf6"/>
+      <stop offset="100%" style="stop-color:#6d28d9"/>
+    </linearGradient>
+    <linearGradient id="calcGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f59e0b"/>
+      <stop offset="100%" style="stop-color:#d97706"/>
+    </linearGradient>
+    <linearGradient id="vizGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981"/>
+      <stop offset="100%" style="stop-color:#059669"/>
+    </linearGradient>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#000" flood-opacity="0.1"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <rect width="800" height="380" fill="#f8fafc" rx="16"/>
+
+  <text x="400" y="30" text-anchor="middle" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="#1e293b">系统交互流程</text>
+  <text x="400" y="48" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#94a3b8">用户操作 → API 调用 → 数学计算 → 可视化更新（秒级响应）</text>
+
+  <!-- Step circles and arrows -->
+  <g transform="translate(40, 80)">
+    <!-- Step 1: User Input -->
+    <g filter="url(#shadow)">
+      <rect x="0" y="0" width="160" height="200" rx="14" fill="#fff" stroke="#3b82f6" stroke-width="2"/>
+      <rect x="0" y="0" width="160" height="38" rx="14" fill="url(#uiGrad)"/>
+      <rect x="0" y="24" width="160" height="14" fill="url(#uiGrad)"/>
+      <text x="80" y="24" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#fff" font-weight="bold">用户操作</text>
+    </g>
+
+    <g transform="translate(15, 52)">
+      <text x="65" y="16" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#475569">📝 输入函数表达式</text>
+      <text x="65" y="36" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#475569">🎚️ 拖动滑块</text>
+      <text x="65" y="56" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#475569">🖱️ 点击预设模板</text>
+      <text x="65" y="76" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#475569">🔄 拖拽 3D 视角</text>
+      <text x="65" y="96" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#475569">🎬 自然语言描述</text>
+    </g>
+
+    <!-- Arrow 1→2 -->
+    <path d="M 160 100 L 210 100" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+    <!-- Step 2: API Request -->
+    <g transform="translate(210, 0)" filter="url(#shadow)">
+      <rect x="0" y="0" width="160" height="200" rx="14" fill="#fff" stroke="#8b5cf6" stroke-width="2"/>
+      <rect x="0" y="0" width="160" height="38" rx="14" fill="url(#apiGrad)"/>
+      <rect x="0" y="24" width="160" height="14" fill="url(#apiGrad)"/>
+      <text x="80" y="24" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#fff" font-weight="bold">API 请求</text>
+    </g>
+
+    <g transform="translate(225, 52)">
+      <text x="65" y="16" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#475569">📡 RESTful API</text>
+      <text x="65" y="36" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#475569">🔐 JSON 格式</text>
+      <text x="65" y="56" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8">/api/calculus/*</text>
+      <text x="65" y="72" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8">/api/linear-algebra/*</text>
+      <text x="65" y="88" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8">/api/probability/*</text>
+      <text x="65" y="104" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8">/api/manim/generate</text>
+    </g>
+
+    <!-- Arrow 2→3 -->
+    <path d="M 370 100 L 420 100" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+    <!-- Step 3: Backend Compute -->
+    <g transform="translate(420, 0)" filter="url(#shadow)">
+      <rect x="0" y="0" width="160" height="200" rx="14" fill="#fff" stroke="#f59e0b" stroke-width="2"/>
+      <rect x="0" y="0" width="160" height="38" rx="14" fill="url(#calcGrad)"/>
+      <rect x="0" y="24" width="160" height="14" fill="url(#calcGrad)"/>
+      <text x="80" y="24" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#fff" font-weight="bold">数学计算</text>
+    </g>
+
+    <g transform="translate(435, 52)">
+      <text x="65" y="16" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#475569">🧮 SymPy 符号计算</text>
+      <text x="65" y="36" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#475569">📊 NumPy 数值运算</text>
+      <text x="65" y="56" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#475569">🤖 LLM 代码生成</text>
+      <text x="65" y="80" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8">导数 · 积分 · 矩阵</text>
+      <text x="65" y="96" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8">极限 · 特征值 · 概率</text>
+    </g>
+
+    <!-- Arrow 3→4 -->
+    <path d="M 580 100 L 630 100" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+    <!-- Step 4: Visualization -->
+    <g transform="translate(630, 0)" filter="url(#shadow)">
+      <rect x="0" y="0" width="160" height="200" rx="14" fill="#fff" stroke="#10b981" stroke-width="2"/>
+      <rect x="0" y="0" width="160" height="38" rx="14" fill="url(#vizGrad)"/>
+      <rect x="0" y="24" width="160" height="14" fill="url(#vizGrad)"/>
+      <text x="80" y="24" text-anchor="middle" font-family="Arial, sans-serif" font-size="13" fill="#fff" font-weight="bold">可视化更新</text>
+    </g>
+
+    <g transform="translate(645, 52)">
+      <text x="65" y="16" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#475569">📈 2D 曲线图</text>
+      <text x="65" y="36" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#475569">🌐 3D 曲面图</text>
+      <text x="65" y="56" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#475569">🎯 向量场箭头</text>
+      <text x="65" y="76" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#475569">🎬 MP4 视频</text>
+      <text x="65" y="96" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" fill="#475569">⬇️ 导出下载</text>
+    </g>
+  </g>
+
+  <!-- Response time note -->
+  <g transform="translate(20, 300)">
+    <rect x="0" y="0" width="760" height="40" rx="10" fill="#3b82f6" opacity="0.08"/>
+    <text x="380" y="25" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#1d4ed8">
+      ⚡ 常规计算秒级响应 · 3D 渲染 &lt; 2秒 · 流线计算 &lt; 3秒 · Manim 动画 1-5 分钟
+    </text>
+  </g>
+
+  <!-- Loop arrow at bottom -->
+  <g transform="translate(20, 355)">
+    <text x="380" y="14" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#94a3b8">
+      用户调整参数 → 循环全流程 → 实时更新图表（防抖优化，避免请求风暴）
+    </text>
+  </g>
+</svg>
