@@ -1,26 +1,48 @@
 """
 Manim 动画生成 API 路由
 """
-from flask import Blueprint, request, jsonify, send_file, current_app
 import os
-from pathlib import Path
-from dotenv import load_dotenv
 
-# 加载环境变量
-env_path = Path(__file__).parent.parent.parent / '.env'
-load_dotenv(env_path)
+from flask import Blueprint, request, jsonify, send_file
+from werkzeug.utils import secure_filename
 
-manim_bp = Blueprint('manim', __name__)
+from app.config import Config
+from app.services.manim_service import ManimService
+from app.services.manim_task_manager import TaskStatus, manim_executor, task_manager
+from app.utils.response import error_response
 
-# 默认配置（实际使用时从环境变量或配置读取）
-DEFAULT_MODEL = os.environ.get('ANTHROPIC_MODEL', 'claude-sonnet-4-20250514')
-DEFAULT_BASE_URL = os.environ.get('OPENAI_BASE_URL', None)
+manim_bp = Blueprint("manim", __name__)
+
+# 默认配置
+DEFAULT_MODEL = Config.ANTHROPIC_MODEL
+DEFAULT_BASE_URL = Config.get_anthropic_base_url()
 
 
-@manim_bp.route('/generate', methods=['POST'])
+def _get_downloads_dir() -> str:
+    """获取下载目录路径"""
+    downloads_dir = os.path.join(
+        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
+        "downloads",
+    )
+    os.makedirs(downloads_dir, exist_ok=True)
+    return downloads_dir
+
+
+def _get_tasks_persist_dir() -> str:
+    """获取任务持久化目录路径"""
+    persist_dir = os.path.join(_get_downloads_dir(), ".tasks")
+    os.makedirs(persist_dir, exist_ok=True)
+    return persist_dir
+
+
+# 为全局任务管理器启用文件持久化（便于多 worker 查询）
+task_manager.enable_persistence(_get_tasks_persist_dir())
+
+
+@manim_bp.route("/generate", methods=["POST"])
 def generate_animation():
     """
-    生成 Manim 动画
+    创建 Manim 动画生成任务
 
     请求体:
     {
@@ -28,69 +50,130 @@ def generate_animation():
         "resolution": "720p",  // 可选
         "fps": 30  // 可选
     }
+
+    响应:
+    {
+        "success": true,
+        "task_id": "manim_xxx",
+        "status": "PENDING"
+    }
     """
     data = request.get_json()
 
-    if not data or 'description' not in data:
-        return jsonify({
-            "success": False,
-            "error": "请提供动画描述"
-        }), 400
+    if not data or "description" not in data:
+        return error_response("请提供动画描述")
 
-    description = data['description']
-    resolution = data.get('resolution', '720p')
-    fps = data.get('fps', 30)
+    description = data["description"]
+    if not description or not description.strip():
+        return error_response("动画描述不能为空")
+
+    resolution = data.get("resolution", "720p")
+    fps = data.get("fps", 30)
 
     # 检查 API 密钥
-    api_key = os.environ.get('ANTHROPIC_API_KEY') or os.environ.get('OPENAI_API_KEY')
+    api_key = Config.get_llm_api_key()
     if not api_key:
-        return jsonify({
-            "success": False,
-            "error": "未配置 LLM API 密钥，请在 .env 文件中设置 ANTHROPIC_API_KEY"
-        }), 500
+        return error_response(
+            "未配置 LLM API 密钥，请在 .env 文件中设置 ANTHROPIC_API_KEY 或 OPENAI_API_KEY",
+            500,
+        )
 
-    # 导入服务（延迟导入避免循环依赖）
-    from app.services.manim_service import ManimService
+    downloads_dir = _get_downloads_dir()
+    task = task_manager.create_task(
+        description=description.strip(),
+        resolution=resolution,
+        fps=fps,
+    )
 
-    # 创建服务实例
     service = ManimService(
         api_key=api_key,
-        base_url=os.environ.get('ANTHROPIC_BASE_URL', DEFAULT_BASE_URL),
-        model=os.environ.get('ANTHROPIC_MODEL', DEFAULT_MODEL)
+        base_url=Config.ANTHROPIC_BASE_URL or DEFAULT_BASE_URL,
+        model=Config.ANTHROPIC_MODEL or DEFAULT_MODEL,
     )
 
-    # 生成动画
-    try:
-        result = service.generate_animation(
-            description=description,
-            resolution=resolution,
-            fps=fps
+    # 提交到受控线程池执行，避免无限制创建后台线程
+    future = manim_executor.submit(
+        task.task_id,
+        service.generate_animation,
+        task,
+        downloads_dir,
+    )
+    if future is None:
+        task_manager.update_task(
+            task.task_id,
+            status=TaskStatus.FAILED,
+            stage_message="当前渲染任务已满，请稍后重试",
+            error="当前渲染任务已满，请稍后重试",
         )
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        return jsonify({
-            "success": False,
-            "error": f"生成失败: {str(e)}",
-            "detail": traceback.format_exc()
-        }), 500
+        return error_response(
+            f"当前已有 {manim_executor.max_workers} 个渲染任务在执行，请稍后重试",
+            429,
+        )
 
-    if result.get('success'):
-        return jsonify(result), 200
-    else:
-        return jsonify(result), 500
+    return jsonify({
+        "success": True,
+        "task_id": task.task_id,
+        "status": task.status.value,
+        "message": "任务已创建",
+    }), 202
 
 
-@manim_bp.route('/download/<filename>', methods=['GET'])
-def download_video(filename):
+@manim_bp.route("/tasks/<task_id>", methods=["GET"])
+def get_task_status(task_id: str):
+    """查询任务状态与结果"""
+    task = task_manager.get_task(task_id)
+    if not task:
+        return error_response("任务不存在", 404)
+
+    return jsonify({
+        "success": True,
+        "task": task.to_dict(),
+    }), 200
+
+
+@manim_bp.route("/tasks/<task_id>/cancel", methods=["POST"])
+def cancel_task(task_id: str):
+    """取消任务"""
+    task = task_manager.cancel_task(task_id)
+    if not task:
+        return error_response("任务不存在", 404)
+
+    return jsonify({
+        "success": True,
+        "task_id": task_id,
+        "status": task.status.value,
+        "message": "已请求取消任务",
+    }), 200
+
+
+@manim_bp.route("/tasks/<task_id>/code", methods=["GET"])
+def get_task_code(task_id: str):
+    """获取任务生成的 Manim 代码与渲染日志"""
+    task = task_manager.get_task(task_id)
+    if not task:
+        return error_response("任务不存在", 404)
+
+    return jsonify({
+        "success": True,
+        "task_id": task_id,
+        "generated_code": task.generated_code,
+        "render_log": task.render_log,
+        "status": task.status.value,
+    }), 200
+
+
+@manim_bp.route("/download/<filename>", methods=["GET"])
+def download_video(filename: str):
     """下载生成的视频"""
-    downloads_dir = os.path.join(
-        os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-        'downloads'
-    )
-    filepath = os.path.join(downloads_dir, filename)
+    safe_name = secure_filename(filename)
+    # 防御路径遍历与内部文件访问
+    if not safe_name or safe_name != filename or safe_name.startswith('.'):
+        return error_response("文件不存在", 404)
+
+    downloads_dir = _get_downloads_dir()
+    filepath = os.path.join(downloads_dir, safe_name)
 
     if not os.path.exists(filepath):
-        return jsonify({"error": "文件不存在"}), 404
+        return error_response("文件不存在", 404)
 
     return send_file(filepath, as_attachment=True)
