@@ -1,0 +1,13 @@
+.git
+.claude
+node_modules
+frontend
+__pycache__
+*.pyc
+.env
+.venv
+venv
+backend/media
+backend/downloads
+.DS_Store
+*.log
