@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Link } from 'react-router-dom'
 import Plot from 'react-plotly.js'
 import { vectorFieldApi, SurfaceType, SurfacePreset, SurfaceIntegralData } from '../services/api'
+import PageHeader from '../components/PageHeader'
+import LoadingState from '../components/LoadingState'
+import ErrorState from '../components/ErrorState'
 
 // ============ 默认预设 ============
 
@@ -16,8 +18,8 @@ const DEFAULT_SURFACE_PRESETS: SurfacePreset[] = [
       z: 'r*cos(u)',
       u_range: [0, Math.PI],
       v_range: [0, 2 * Math.PI],
-      params: { r: 1 }
-    }
+      params: { r: 1 },
+    },
   },
   {
     id: 'cylinder',
@@ -29,8 +31,8 @@ const DEFAULT_SURFACE_PRESETS: SurfacePreset[] = [
       z: 'v',
       u_range: [0, 2 * Math.PI],
       v_range: [-1, 1],
-      params: { r: 1 }
-    }
+      params: { r: 1 },
+    },
   },
   {
     id: 'paraboloid',
@@ -42,8 +44,8 @@ const DEFAULT_SURFACE_PRESETS: SurfacePreset[] = [
       z: 'r**2',
       u_range: [0, 2 * Math.PI],
       v_range: [0, 1],
-      params: { r: 1 }
-    }
+      params: { r: 1 },
+    },
   },
   {
     id: 'cone',
@@ -55,8 +57,8 @@ const DEFAULT_SURFACE_PRESETS: SurfacePreset[] = [
       z: 'r',
       u_range: [0, 2 * Math.PI],
       v_range: [0, 1],
-      params: { r: 1 }
-    }
+      params: { r: 1 },
+    },
   },
   {
     id: 'plane',
@@ -68,9 +70,9 @@ const DEFAULT_SURFACE_PRESETS: SurfacePreset[] = [
       z: '0.5*u + 0.5*v',
       u_range: [-1, 1],
       v_range: [-1, 1],
-      params: { a: 0.5, b: 0.5 }
-    }
-  }
+      params: { a: 0.5, b: 0.5 },
+    },
+  },
 ]
 
 const DEFAULT_VECTOR_FIELD_PRESETS = [
@@ -78,7 +80,7 @@ const DEFAULT_VECTOR_FIELD_PRESETS = [
   { id: 'rotation_z', name: '绕z轴旋转', P: '-y', Q: 'x', R: '0' },
   { id: 'helix', name: '螺旋场', P: '-y', Q: 'x', R: '1' },
   { id: 'constant', name: '恒定场', P: '1', Q: '1', R: '1' },
-  { id: 'vortex', name: '涡旋场', P: '-z', Q: '0', R: 'x' }
+  { id: 'vortex', name: '涡旋场', P: '-z', Q: '0', R: 'x' },
 ]
 
 // ============ 类型定义 ============
@@ -108,7 +110,7 @@ const DEFAULT_STATE: SurfaceIntegralState = {
   surfaceA: 0.5,
   surfaceB: 0.5,
   showNormal: true,
-  showField: true
+  showField: true,
 }
 
 // ============ 主组件 ============
@@ -157,7 +159,7 @@ export default function SurfaceIntegrals() {
         surface_type: state.surfaceType,
         surface_params: surfaceParams,
         orientation: state.orientation,
-        resolution: state.resolution
+        resolution: state.resolution,
       })
 
       if (response.success) {
@@ -172,23 +174,36 @@ export default function SurfaceIntegrals() {
     } finally {
       setLoading(false)
     }
-  }, [state.P, state.Q, state.R, state.surfaceType, state.surfaceRadius, state.surfaceA, state.surfaceB, state.orientation, state.resolution])
+  }, [
+    state.P,
+    state.Q,
+    state.R,
+    state.surfaceType,
+    state.surfaceRadius,
+    state.surfaceA,
+    state.surfaceB,
+    state.orientation,
+    state.resolution,
+  ])
 
   // 当参数变化时重新计算
   useEffect(() => {
     fetchSurfaceIntegral()
   }, [fetchSurfaceIntegral])
 
-  const handleStateChange = <K extends keyof SurfaceIntegralState>(key: K, value: SurfaceIntegralState[K]) => {
-    setState(prev => ({ ...prev, [key]: value }))
+  const handleStateChange = <K extends keyof SurfaceIntegralState>(
+    key: K,
+    value: SurfaceIntegralState[K]
+  ) => {
+    setState((prev) => ({ ...prev, [key]: value }))
   }
 
-  const applyVectorField = (preset: typeof DEFAULT_VECTOR_FIELD_PRESETS[0]) => {
-    setState(prev => ({ ...prev, P: preset.P, Q: preset.Q, R: preset.R }))
+  const applyVectorField = (preset: (typeof DEFAULT_VECTOR_FIELD_PRESETS)[0]) => {
+    setState((prev) => ({ ...prev, P: preset.P, Q: preset.Q, R: preset.R }))
   }
 
   const applySurface = (preset: SurfacePreset) => {
-    setState(prev => {
+    setState((prev) => {
       const newState = { ...prev, surfaceType: preset.id as SurfaceType }
       if (preset.id === 'sphere' || preset.id === 'cylinder') {
         newState.surfaceRadius = preset.parametric.params.r || 1
@@ -233,7 +248,7 @@ export default function SurfaceIntegrals() {
       showscale: false,
       opacity: 0.7,
       name: '曲面 S',
-      hoverongaps: false
+      hoverongaps: false,
     })
 
     // 显示法向量
@@ -256,9 +271,20 @@ export default function SurfaceIntegrals() {
           const ny = normal.y?.[i]?.[j]
           const nz = normal.z?.[i]?.[j]
 
-          if (typeof px === 'number' && typeof py === 'number' && typeof pz === 'number' &&
-              typeof nx === 'number' && typeof ny === 'number' && typeof nz === 'number' &&
-              !isNaN(px) && !isNaN(py) && !isNaN(pz) && !isNaN(nx) && !isNaN(ny) && !isNaN(nz)) {
+          if (
+            typeof px === 'number' &&
+            typeof py === 'number' &&
+            typeof pz === 'number' &&
+            typeof nx === 'number' &&
+            typeof ny === 'number' &&
+            typeof nz === 'number' &&
+            !isNaN(px) &&
+            !isNaN(py) &&
+            !isNaN(pz) &&
+            !isNaN(nx) &&
+            !isNaN(ny) &&
+            !isNaN(nz)
+          ) {
             const scale = 0.15
             arrowX.push(px)
             arrowY.push(py)
@@ -281,9 +307,12 @@ export default function SurfaceIntegrals() {
         sizemode: 'scaled',
         sizeref: 0.5,
         anchor: 'tip',
-        colorscale: [[0, 'rgb(255,0,0)'], [1, 'rgb(255,0,0)']],
+        colorscale: [
+          [0, 'rgb(255,0,0)'],
+          [1, 'rgb(255,0,0)'],
+        ],
         showscale: false,
-        name: '法向量 n'
+        name: '法向量 n',
       })
     }
 
@@ -307,9 +336,20 @@ export default function SurfaceIntegrals() {
           const pv = field_on_surface.Q?.[i]?.[j]
           const pw = field_on_surface.R?.[i]?.[j]
 
-          if (typeof px === 'number' && typeof py === 'number' && typeof pz === 'number' &&
-              typeof pu === 'number' && typeof pv === 'number' && typeof pw === 'number' &&
-              !isNaN(px) && !isNaN(py) && !isNaN(pz) && !isNaN(pu) && !isNaN(pv) && !isNaN(pw)) {
+          if (
+            typeof px === 'number' &&
+            typeof py === 'number' &&
+            typeof pz === 'number' &&
+            typeof pu === 'number' &&
+            typeof pv === 'number' &&
+            typeof pw === 'number' &&
+            !isNaN(px) &&
+            !isNaN(py) &&
+            !isNaN(pz) &&
+            !isNaN(pu) &&
+            !isNaN(pv) &&
+            !isNaN(pw)
+          ) {
             // 归一化向量
             const mag = Math.sqrt(pu * pu + pv * pv + pw * pw)
             const scale = 0.1
@@ -336,9 +376,12 @@ export default function SurfaceIntegrals() {
         sizemode: 'scaled',
         sizeref: 0.5,
         anchor: 'tip',
-        colorscale: [[0, 'rgb(0,100,0)'], [1, 'rgb(0,200,0)']],
+        colorscale: [
+          [0, 'rgb(0,100,0)'],
+          [1, 'rgb(0,200,0)'],
+        ],
         showscale: false,
-        name: 'F'
+        name: 'F',
       })
     }
 
@@ -346,52 +389,60 @@ export default function SurfaceIntegrals() {
   }, [surfaceData, state.showNormal, state.showField])
 
   // 图表布局
-  const layout = useMemo((): any => ({
-    title: {
-      text: `曲面积分: F·dS, S = ${surfaceData?.surface.name || '曲面'}`,
-      font: { size: 14 }
-    },
-    scene: {
-      xaxis: { title: 'x', range: [-2, 2] },
-      yaxis: { title: 'y', range: [-2, 2] },
-      zaxis: { title: 'z', range: [-2, 2] },
-      aspectmode: 'cube'
-    },
-    margin: { t: 50, r: 50, b: 50, l: 50 },
-    showlegend: true,
-    legend: { x: 1.02, y: 1 }
-  }), [surfaceData])
+  const layout = useMemo(
+    (): any => ({
+      title: {
+        text: `曲面积分: F·dS, S = ${surfaceData?.surface.name || '曲面'}`,
+        font: { size: 14 },
+      },
+      scene: {
+        xaxis: { title: 'x', range: [-2, 2] },
+        yaxis: { title: 'y', range: [-2, 2] },
+        zaxis: { title: 'z', range: [-2, 2] },
+        aspectmode: 'cube',
+      },
+      margin: { t: 50, r: 50, b: 50, l: 50 },
+      showlegend: true,
+      legend: { x: 1.02, y: 1 },
+    }),
+    [surfaceData]
+  )
 
   return (
     <div className="detail-page">
-      <header className="detail-header">
-        <Link to="/subject/calculus" className="detail-back-button">
-          ← 返回微积分
-        </Link>
-        <div className="breadcrumb">
-          <Link to="/">首页</Link>
-          <span className="breadcrumb-separator">/</span>
-          <Link to="/subject/calculus">微积分</Link>
-          <span className="breadcrumb-separator">/</span>
-          <span>曲面积分</span>
-        </div>
-        <h1 className="detail-title">曲面积分可视化</h1>
-      </header>
+      <PageHeader
+        backTo="/subject/calculus"
+        backLabel="返回微积分"
+        breadcrumbs={[
+          { label: '首页', path: '/' },
+          { label: '微积分', path: '/subject/calculus' },
+          { label: '曲面积分' },
+        ]}
+        title="曲面积分可视化"
+      />
 
-      <div className="content-card" style={{ margin: '2rem', maxWidth: '1600px' }}>
+      <div className="content-card" style={{ margin: '2rem auto', maxWidth: '1600px' }}>
         <div className="card-header">
           <h2>曲面积分计算</h2>
           <p>计算向量场穿过曲面的通量 ∬_S F·dS</p>
         </div>
 
         {/* 控制面板 */}
-        <div style={{
-          background: 'var(--background)',
-          borderRadius: '8px',
-          padding: '1rem',
-          marginBottom: '1rem'
-        }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+        <div
+          style={{
+            background: 'var(--background)',
+            borderRadius: '8px',
+            padding: '1rem',
+            marginBottom: '1rem',
+          }}
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1rem',
+            }}
+          >
             {/* 向量场输入 */}
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label>P(x, y, z) =</label>
@@ -428,8 +479,10 @@ export default function SurfaceIntegrals() {
                 value={state.surfaceType}
                 onChange={(e) => handleStateChange('surfaceType', e.target.value as SurfaceType)}
               >
-                {surfacePresets.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                {surfacePresets.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -439,7 +492,9 @@ export default function SurfaceIntegrals() {
               <label>法向量方向</label>
               <select
                 value={state.orientation}
-                onChange={(e) => handleStateChange('orientation', e.target.value as 'outward' | 'inward')}
+                onChange={(e) =>
+                  handleStateChange('orientation', e.target.value as 'outward' | 'inward')
+                }
               >
                 <option value="outward">向外</option>
                 <option value="inward">向内</option>
@@ -450,10 +505,20 @@ export default function SurfaceIntegrals() {
           {/* 曲面参数 */}
           {(state.surfaceType === 'sphere' || state.surfaceType === 'cylinder') && (
             <div style={{ marginTop: '1rem' }}>
-              <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
+              <label
+                style={{
+                  fontSize: '0.875rem',
+                  color: 'var(--text-secondary)',
+                  marginBottom: '0.5rem',
+                  display: 'block',
+                }}
+              >
                 曲面参数
               </label>
-              <div className="form-group" style={{ marginBottom: 0, display: 'inline-block', marginRight: '1rem' }}>
+              <div
+                className="form-group"
+                style={{ marginBottom: 0, display: 'inline-block', marginRight: '1rem' }}
+              >
                 <label>半径 r =</label>
                 <input
                   type="number"
@@ -461,7 +526,9 @@ export default function SurfaceIntegrals() {
                   min="0.1"
                   max="3"
                   value={state.surfaceRadius}
-                  onChange={(e) => handleStateChange('surfaceRadius', parseFloat(e.target.value) || 1)}
+                  onChange={(e) =>
+                    handleStateChange('surfaceRadius', parseFloat(e.target.value) || 1)
+                  }
                 />
               </div>
             </div>
@@ -469,10 +536,20 @@ export default function SurfaceIntegrals() {
 
           {state.surfaceType === 'plane' && (
             <div style={{ marginTop: '1rem' }}>
-              <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
+              <label
+                style={{
+                  fontSize: '0.875rem',
+                  color: 'var(--text-secondary)',
+                  marginBottom: '0.5rem',
+                  display: 'block',
+                }}
+              >
                 平面参数 z = ax + by
               </label>
-              <div className="form-group" style={{ marginBottom: 0, display: 'inline-block', marginRight: '1rem' }}>
+              <div
+                className="form-group"
+                style={{ marginBottom: 0, display: 'inline-block', marginRight: '1rem' }}
+              >
                 <label>a =</label>
                 <input
                   type="number"
@@ -495,11 +572,18 @@ export default function SurfaceIntegrals() {
 
           {/* 预设向量场 */}
           <div style={{ marginTop: '1rem' }}>
-            <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
+            <label
+              style={{
+                fontSize: '0.875rem',
+                color: 'var(--text-secondary)',
+                marginBottom: '0.5rem',
+                display: 'block',
+              }}
+            >
               预设向量场
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {DEFAULT_VECTOR_FIELD_PRESETS.map(preset => (
+              {DEFAULT_VECTOR_FIELD_PRESETS.map((preset) => (
                 <button
                   key={preset.id}
                   className="btn btn-secondary"
@@ -515,11 +599,18 @@ export default function SurfaceIntegrals() {
 
           {/* 预设曲面 */}
           <div style={{ marginTop: '1rem' }}>
-            <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
+            <label
+              style={{
+                fontSize: '0.875rem',
+                color: 'var(--text-secondary)',
+                marginBottom: '0.5rem',
+                display: 'block',
+              }}
+            >
               预设曲面
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {surfacePresets.map(preset => (
+              {surfacePresets.map((preset) => (
                 <button
                   key={preset.id}
                   className={`btn ${state.surfaceType === preset.id ? 'btn-primary' : 'btn-secondary'}`}
@@ -534,7 +625,9 @@ export default function SurfaceIntegrals() {
 
           {/* 显示选项 */}
           <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+            >
               <input
                 type="checkbox"
                 checked={state.showNormal}
@@ -542,7 +635,9 @@ export default function SurfaceIntegrals() {
               />
               显示法向量
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+            >
               <input
                 type="checkbox"
                 checked={state.showField}
@@ -555,16 +650,13 @@ export default function SurfaceIntegrals() {
 
         {/* 错误信息 */}
         {error && (
-          <div className="error-message" style={{ marginBottom: '1rem' }}>
-            <span style={{ marginRight: '8px' }}>⚠️</span>
-            {error}
+          <div style={{ marginBottom: '1rem' }}>
+            <ErrorState message={error} />
           </div>
         )}
 
         {/* 可视化区域 */}
-        {loading && !surfaceData && (
-          <div className="loading">加载中...</div>
-        )}
+        {loading && !surfaceData && <LoadingState text="正在计算曲面积分..." />}
 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
           {/* Plotly 图表 */}
@@ -581,16 +673,36 @@ export default function SurfaceIntegrals() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* 曲面积分结果 */}
             {surfaceData && surfaceData.success && (
-              <div className="info-panel" style={{ background: 'rgba(139, 92, 246, 0.05)', borderColor: 'rgba(139, 92, 246, 0.2)' }}>
+              <div
+                className="info-panel"
+                style={{
+                  background: 'rgba(139, 92, 246, 0.05)',
+                  borderColor: 'rgba(139, 92, 246, 0.2)',
+                }}
+              >
                 <h4>曲面积分结果</h4>
                 <div className="info-item">
                   <span>∬_S F·dS</span>
-                  <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{formatNumber(surfaceData.surface_integral)}</span>
+                  <span style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>
+                    {formatNumber(surfaceData.surface_integral)}
+                  </span>
                 </div>
-                <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', color: 'var(--text-secondary)' }}>
+                <p
+                  style={{
+                    fontSize: '0.875rem',
+                    marginTop: '0.5rem',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
                   {state.orientation === 'outward' ? '法向量向外' : '法向量向内'}
                 </p>
-                <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', color: 'var(--text-secondary)' }}>
+                <p
+                  style={{
+                    fontSize: '0.875rem',
+                    marginTop: '0.5rem',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
                   曲面: {surfaceData.surface.name}
                 </p>
               </div>
@@ -616,13 +728,31 @@ export default function SurfaceIntegrals() {
                     })()}
                   </span>
                 </div>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                <p
+                  style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--text-secondary)',
+                    marginTop: '0.25rem',
+                  }}
+                >
                   div(F) = ∂P/∂x + ∂Q/∂y + ∂R/∂z
                 </p>
-                <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', color: 'var(--text-secondary)' }}>
+                <p
+                  style={{
+                    fontSize: '0.875rem',
+                    marginTop: '0.5rem',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
                   当 div(F) {'>'} 0 时，该点为"源"；
                 </p>
-                <p style={{ fontSize: '0.875rem', marginTop: '0.25rem', color: 'var(--text-secondary)' }}>
+                <p
+                  style={{
+                    fontSize: '0.875rem',
+                    marginTop: '0.25rem',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
                   当 div(F) {'<'} 0 时，该点为"汇"。
                 </p>
               </div>
@@ -632,10 +762,18 @@ export default function SurfaceIntegrals() {
             <div className="info-panel">
               <h4>数学公式</h4>
               <div style={{ fontSize: '0.875rem', fontFamily: 'monospace' }}>
-                <p><strong>曲面积分（通量）:</strong></p>
+                <p>
+                  <strong>曲面积分（通量）:</strong>
+                </p>
                 <p>∬_S F·dS</p>
                 <p style={{ marginTop: '0.5rem' }}>= ∬_S (P dydz + Q dzdx + R dxdy)</p>
-                <p style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                <p
+                  style={{
+                    marginTop: '0.5rem',
+                    fontSize: '0.75rem',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
                   dS = |r_u × r_v| du dv
                 </p>
               </div>

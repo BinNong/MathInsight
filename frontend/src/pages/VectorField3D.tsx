@@ -1,7 +1,15 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Plot from 'react-plotly.js'
-import { vectorFieldApi, VectorField3DData, Streamline3DData, CurlDivergence3DData, VectorField3DPreset } from '../services/api'
-import { Link } from 'react-router-dom'
+import {
+  vectorFieldApi,
+  VectorField3DData,
+  Streamline3DData,
+  CurlDivergence3DData,
+  VectorField3DPreset,
+} from '../services/api'
+import PageHeader from '../components/PageHeader'
+import LoadingState from '../components/LoadingState'
+import ErrorState from '../components/ErrorState'
 
 // ============ 常量定义 ============
 
@@ -13,7 +21,7 @@ const DEFAULT_3D_PRESETS: VectorField3DPreset[] = [
   { id: 'shear_3d', name: '剪切流', description: 'F = (y, 0, 0)', P: 'y', Q: '0', R: '0' },
   { id: 'saddle_3d', name: '3D鞍点', description: 'F = (x, -y, z)', P: 'x', Q: '-y', R: 'z' },
   { id: 'vortex_3d', name: '涡旋场', description: 'F = (-z, 0, x)', P: '-z', Q: '0', R: 'x' },
-  { id: 'constant_3d', name: '恒定场', description: 'F = (1, 1, 1)', P: '1', Q: '1', R: '1' }
+  { id: 'constant_3d', name: '恒定场', description: 'F = (1, 1, 1)', P: '1', Q: '1', R: '1' },
 ]
 
 // ============ 类型定义 ============
@@ -59,7 +67,7 @@ const DEFAULT_STATE: VectorField3DState = {
   curlPointX: 0,
   curlPointY: 0,
   curlPointZ: 0,
-  showCurlDivergence: true
+  showCurlDivergence: true,
 }
 
 // ============ 主组件 ============
@@ -93,7 +101,7 @@ export default function VectorField3D() {
     try {
       const parsed = JSON.parse(str)
       if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed.map(p => {
+        return parsed.map((p) => {
           if (Array.isArray(p) && p.length === 3) {
             return [Number(p[0]), Number(p[1]), Number(p[2])]
           }
@@ -118,7 +126,7 @@ export default function VectorField3D() {
         x_range: state.xRange,
         y_range: state.yRange,
         z_range: state.zRange,
-        resolution: state.resolution
+        resolution: state.resolution,
       })
 
       if (response.success) {
@@ -146,7 +154,7 @@ export default function VectorField3D() {
         R: state.R,
         start_points: startPoints,
         t_span: [0, state.streamlineTimeSpan],
-        direction: state.streamlineDirection
+        direction: state.streamlineDirection,
       })
 
       if (response.success) {
@@ -160,7 +168,15 @@ export default function VectorField3D() {
     } finally {
       setLoading(false)
     }
-  }, [state.P, state.Q, state.R, state.streamlineStartPoints, state.streamlineTimeSpan, state.streamlineDirection, parseStartPoints])
+  }, [
+    state.P,
+    state.Q,
+    state.R,
+    state.streamlineStartPoints,
+    state.streamlineTimeSpan,
+    state.streamlineDirection,
+    parseStartPoints,
+  ])
 
   // 获取旋度散度数据
   const fetchCurlDivergence = useCallback(async () => {
@@ -171,7 +187,7 @@ export default function VectorField3D() {
         R: state.R,
         x: state.curlPointX,
         y: state.curlPointY,
-        z: state.curlPointZ
+        z: state.curlPointZ,
       })
 
       if (response.success) {
@@ -186,11 +202,11 @@ export default function VectorField3D() {
 
   // 加载预设
   const loadPreset = useCallback((preset: VectorField3DPreset) => {
-    setState(prev => ({
+    setState((prev) => ({
       ...prev,
       P: preset.P,
       Q: preset.Q,
-      R: preset.R
+      R: preset.R,
     }))
   }, [])
 
@@ -219,7 +235,7 @@ export default function VectorField3D() {
       const lineText: string[] = []
 
       // 归一化向量用于颜色映射
-      const maxMag = Math.max(...vf.magnitude.filter(m => !isNaN(m) && isFinite(m)), 0.001)
+      const maxMag = Math.max(...vf.magnitude.filter((m) => !isNaN(m) && isFinite(m)), 0.001)
 
       for (let i = 0; i < vf.x.length; i += sampleRate) {
         // 安全获取数据，处理 undefined 和 NaN
@@ -241,8 +257,14 @@ export default function VectorField3D() {
         const mag = Number(rawMag) || 0
 
         // 跳过无效数据点
-        if (!isFinite(x) || !isFinite(y) || !isFinite(z) ||
-            !isFinite(u) || !isFinite(v) || !isFinite(w)) {
+        if (
+          !isFinite(x) ||
+          !isFinite(y) ||
+          !isFinite(z) ||
+          !isFinite(u) ||
+          !isFinite(v) ||
+          !isFinite(w)
+        ) {
           continue
         }
 
@@ -268,10 +290,10 @@ export default function VectorField3D() {
           colorscale: 'Viridis',
           width: 3,
           cmin: 0,
-          cmax: 1
+          cmax: 1,
         },
         hovertemplate: '位置: (%{x:.2f}, %{y:.2f}, %{z:.2f})<br>向量: (%{text})<extra></extra>',
-        text: lineText
+        text: lineText,
       } as any)
 
       // 添加向量起点（用于指示位置）
@@ -308,9 +330,9 @@ export default function VectorField3D() {
           color: markerColors,
           colorscale: 'Viridis',
           cmin: 0,
-          cmax: 1
+          cmax: 1,
         },
-        hovertemplate: 'x: %{x:.2f}<br>y: %{y:.2f}<br>z: %{z:.2f}<extra></extra>'
+        hovertemplate: 'x: %{x:.2f}<br>y: %{y:.2f}<br>z: %{z:.2f}<extra></extra>',
       } as any)
     }
 
@@ -327,10 +349,10 @@ export default function VectorField3D() {
           z: streamline.z,
           line: {
             color: colors[index % colors.length],
-            width: 4
+            width: 4,
           },
           hovertemplate: `流线 ${index + 1}<br>t: %{text:.2f}<extra></extra>`,
-          text: streamline.x.map((_, i) => i)
+          text: streamline.x.map((_, i) => i),
         })
 
         // 起点标记
@@ -344,9 +366,9 @@ export default function VectorField3D() {
           marker: {
             size: 8,
             color: colors[index % colors.length],
-            symbol: 'circle'
+            symbol: 'circle',
           },
-          hovertemplate: `起点 ${index + 1}<br>x: %{x:.2f}<br>y: %{y:.2f}<br>z: %{z:.2f}<extra></extra>`
+          hovertemplate: `起点 ${index + 1}<br>x: %{x:.2f}<br>y: %{y:.2f}<br>z: %{z:.2f}<extra></extra>`,
         })
       })
     }
@@ -359,36 +381,36 @@ export default function VectorField3D() {
     return {
       title: {
         text: `3D向量场: F(x,y,z) = (${state.P}, ${state.Q}, ${state.R})`,
-        font: { size: 16 }
+        font: { size: 16 },
       },
       scene: {
         xaxis: {
           title: 'x',
           range: state.xRange,
-          gridcolor: '#ddd'
+          gridcolor: '#ddd',
         },
         yaxis: {
           title: 'y',
           range: state.yRange,
-          gridcolor: '#ddd'
+          gridcolor: '#ddd',
         },
         zaxis: {
           title: 'z',
           range: state.zRange,
-          gridcolor: '#ddd'
+          gridcolor: '#ddd',
         },
         aspectmode: 'cube',
         camera: {
-          eye: { x: 1.5, y: 1.5, z: 1.2 }
-        }
+          eye: { x: 1.5, y: 1.5, z: 1.2 },
+        },
       },
       margin: { t: 60, r: 20, b: 60, l: 60 },
       showlegend: true,
       legend: {
         x: 0.02,
         y: 0.98,
-        bgcolor: 'rgba(255,255,255,0.8)'
-      }
+        bgcolor: 'rgba(255,255,255,0.8)',
+      },
     }
   }, [state.P, state.Q, state.R, state.xRange, state.yRange, state.zRange])
 
@@ -399,41 +421,46 @@ export default function VectorField3D() {
 
   return (
     <div className="detail-page">
-      <header className="detail-header">
-        <Link to="/subject/calculus" className="detail-back-button">
-          ← 返回微积分
-        </Link>
-        <div className="breadcrumb">
-          <Link to="/">首页</Link>
-          <span className="breadcrumb-separator">/</span>
-          <Link to="/subject/calculus">微积分</Link>
-          <span className="breadcrumb-separator">/</span>
-          <span>3D向量场</span>
-        </div>
-        <h1 className="detail-title">3D向量场可视化</h1>
-      </header>
+      <PageHeader
+        backTo="/subject/calculus"
+        backLabel="返回微积分"
+        breadcrumbs={[
+          { label: '首页', path: '/' },
+          { label: '微积分', path: '/subject/calculus' },
+          { label: '3D 向量场' },
+        ]}
+        title="3D 向量场可视化"
+      />
 
-      <div className="content-card" style={{ margin: '2rem', maxWidth: '1600px' }}>
+      <div className="content-card" style={{ margin: '2rem auto', maxWidth: '1600px' }}>
         <div className="card-header">
           <h2>3D向量场可视化</h2>
           <p>探索三维空间中的向量场分布，计算旋度和散度</p>
         </div>
 
         {/* 控制面板 */}
-        <div style={{
-          background: 'var(--background)',
-          borderRadius: '8px',
-          padding: '1rem',
-          marginBottom: '1rem'
-        }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+        <div
+          style={{
+            background: 'var(--background)',
+            borderRadius: '8px',
+            padding: '1rem',
+            marginBottom: '1rem',
+          }}
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1rem',
+            }}
+          >
             {/* 向量场表达式 P */}
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label>P(x,y,z) =</label>
               <input
                 type="text"
                 value={state.P}
-                onChange={(e) => setState(s => ({ ...s, P: e.target.value }))}
+                onChange={(e) => setState((s) => ({ ...s, P: e.target.value }))}
                 placeholder="-y"
               />
             </div>
@@ -444,7 +471,7 @@ export default function VectorField3D() {
               <input
                 type="text"
                 value={state.Q}
-                onChange={(e) => setState(s => ({ ...s, Q: e.target.value }))}
+                onChange={(e) => setState((s) => ({ ...s, Q: e.target.value }))}
                 placeholder="x"
               />
             </div>
@@ -455,7 +482,7 @@ export default function VectorField3D() {
               <input
                 type="text"
                 value={state.R}
-                onChange={(e) => setState(s => ({ ...s, R: e.target.value }))}
+                onChange={(e) => setState((s) => ({ ...s, R: e.target.value }))}
                 placeholder="1"
               />
             </div>
@@ -468,14 +495,24 @@ export default function VectorField3D() {
                   type="number"
                   step="0.5"
                   value={state.xRange[0]}
-                  onChange={(e) => setState(s => ({ ...s, xRange: [parseFloat(e.target.value) || -3, s.xRange[1]] }))}
+                  onChange={(e) =>
+                    setState((s) => ({
+                      ...s,
+                      xRange: [parseFloat(e.target.value) || -3, s.xRange[1]],
+                    }))
+                  }
                 />
                 <span style={{ alignSelf: 'center' }}>~</span>
                 <input
                   type="number"
                   step="0.5"
                   value={state.xRange[1]}
-                  onChange={(e) => setState(s => ({ ...s, xRange: [s.xRange[0], parseFloat(e.target.value) || 3] }))}
+                  onChange={(e) =>
+                    setState((s) => ({
+                      ...s,
+                      xRange: [s.xRange[0], parseFloat(e.target.value) || 3],
+                    }))
+                  }
                 />
               </div>
             </div>
@@ -488,14 +525,24 @@ export default function VectorField3D() {
                   type="number"
                   step="0.5"
                   value={state.yRange[0]}
-                  onChange={(e) => setState(s => ({ ...s, yRange: [parseFloat(e.target.value) || -3, s.yRange[1]] }))}
+                  onChange={(e) =>
+                    setState((s) => ({
+                      ...s,
+                      yRange: [parseFloat(e.target.value) || -3, s.yRange[1]],
+                    }))
+                  }
                 />
                 <span style={{ alignSelf: 'center' }}>~</span>
                 <input
                   type="number"
                   step="0.5"
                   value={state.yRange[1]}
-                  onChange={(e) => setState(s => ({ ...s, yRange: [s.yRange[0], parseFloat(e.target.value) || 3] }))}
+                  onChange={(e) =>
+                    setState((s) => ({
+                      ...s,
+                      yRange: [s.yRange[0], parseFloat(e.target.value) || 3],
+                    }))
+                  }
                 />
               </div>
             </div>
@@ -508,14 +555,24 @@ export default function VectorField3D() {
                   type="number"
                   step="0.5"
                   value={state.zRange[0]}
-                  onChange={(e) => setState(s => ({ ...s, zRange: [parseFloat(e.target.value) || -3, s.zRange[1]] }))}
+                  onChange={(e) =>
+                    setState((s) => ({
+                      ...s,
+                      zRange: [parseFloat(e.target.value) || -3, s.zRange[1]],
+                    }))
+                  }
                 />
                 <span style={{ alignSelf: 'center' }}>~</span>
                 <input
                   type="number"
                   step="0.5"
                   value={state.zRange[1]}
-                  onChange={(e) => setState(s => ({ ...s, zRange: [s.zRange[0], parseFloat(e.target.value) || 3] }))}
+                  onChange={(e) =>
+                    setState((s) => ({
+                      ...s,
+                      zRange: [s.zRange[0], parseFloat(e.target.value) || 3],
+                    }))
+                  }
                 />
               </div>
             </div>
@@ -528,9 +585,16 @@ export default function VectorField3D() {
                 min="3"
                 max="12"
                 value={state.resolution}
-                onChange={(e) => setState(s => ({ ...s, resolution: parseInt(e.target.value) }))}
+                onChange={(e) => setState((s) => ({ ...s, resolution: parseInt(e.target.value) }))}
               />
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  fontSize: '0.75rem',
+                  color: 'var(--text-secondary)',
+                }}
+              >
                 <span>3</span>
                 <span>12</span>
               </div>
@@ -539,7 +603,14 @@ export default function VectorField3D() {
 
           {/* 预设函数 */}
           <div style={{ marginTop: '1rem' }}>
-            <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
+            <label
+              style={{
+                fontSize: '0.875rem',
+                color: 'var(--text-secondary)',
+                marginBottom: '0.5rem',
+                display: 'block',
+              }}
+            >
               预设向量场
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -559,27 +630,33 @@ export default function VectorField3D() {
 
           {/* 显示选项 */}
           <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+            >
               <input
                 type="checkbox"
                 checked={state.showField}
-                onChange={(e) => setState(s => ({ ...s, showField: e.target.checked }))}
+                onChange={(e) => setState((s) => ({ ...s, showField: e.target.checked }))}
               />
               显示向量场
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+            >
               <input
                 type="checkbox"
                 checked={state.showStreamlines}
-                onChange={(e) => setState(s => ({ ...s, showStreamlines: e.target.checked }))}
+                onChange={(e) => setState((s) => ({ ...s, showStreamlines: e.target.checked }))}
               />
               显示流线
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+            >
               <input
                 type="checkbox"
                 checked={state.showCurlDivergence}
-                onChange={(e) => setState(s => ({ ...s, showCurlDivergence: e.target.checked }))}
+                onChange={(e) => setState((s) => ({ ...s, showCurlDivergence: e.target.checked }))}
               />
               显示旋度/散度
             </label>
@@ -587,13 +664,27 @@ export default function VectorField3D() {
 
           {/* 流线设置 */}
           {state.showStreamlines && (
-            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            <div
+              style={{
+                marginTop: '1rem',
+                paddingTop: '1rem',
+                borderTop: '1px solid var(--border)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                  gap: '1rem',
+                }}
+              >
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>起始点 [[x,y,z], ...]</label>
                   <textarea
                     value={state.streamlineStartPoints}
-                    onChange={(e) => setState(s => ({ ...s, streamlineStartPoints: e.target.value }))}
+                    onChange={(e) =>
+                      setState((s) => ({ ...s, streamlineStartPoints: e.target.value }))
+                    }
                     rows={3}
                     style={{ fontFamily: 'monospace', fontSize: '0.875rem' }}
                   />
@@ -607,9 +698,18 @@ export default function VectorField3D() {
                     max="20"
                     step="0.5"
                     value={state.streamlineTimeSpan}
-                    onChange={(e) => setState(s => ({ ...s, streamlineTimeSpan: parseFloat(e.target.value) }))}
+                    onChange={(e) =>
+                      setState((s) => ({ ...s, streamlineTimeSpan: parseFloat(e.target.value) }))
+                    }
                   />
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      fontSize: '0.75rem',
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
                     <span>1</span>
                     <span>20</span>
                   </div>
@@ -619,7 +719,9 @@ export default function VectorField3D() {
                   <label>方向</label>
                   <select
                     value={state.streamlineDirection}
-                    onChange={(e) => setState(s => ({ ...s, streamlineDirection: e.target.value as any }))}
+                    onChange={(e) =>
+                      setState((s) => ({ ...s, streamlineDirection: e.target.value as any }))
+                    }
                   >
                     <option value="forward">前向</option>
                     <option value="backward">后向</option>
@@ -641,18 +743,39 @@ export default function VectorField3D() {
 
           {/* 旋度散度计算点 */}
           {state.showCurlDivergence && (
-            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-              <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
+            <div
+              style={{
+                marginTop: '1rem',
+                paddingTop: '1rem',
+                borderTop: '1px solid var(--border)',
+              }}
+            >
+              <label
+                style={{
+                  fontSize: '0.875rem',
+                  color: 'var(--text-secondary)',
+                  marginBottom: '0.5rem',
+                  display: 'block',
+                }}
+              >
                 旋度/散度计算点
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '0.5rem' }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
+                  gap: '0.5rem',
+                }}
+              >
                 <div className="form-group" style={{ marginBottom: 0 }}>
                   <label>x</label>
                   <input
                     type="number"
                     step="0.1"
                     value={state.curlPointX}
-                    onChange={(e) => setState(s => ({ ...s, curlPointX: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) =>
+                      setState((s) => ({ ...s, curlPointX: parseFloat(e.target.value) || 0 }))
+                    }
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -661,7 +784,9 @@ export default function VectorField3D() {
                     type="number"
                     step="0.1"
                     value={state.curlPointY}
-                    onChange={(e) => setState(s => ({ ...s, curlPointY: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) =>
+                      setState((s) => ({ ...s, curlPointY: parseFloat(e.target.value) || 0 }))
+                    }
                   />
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
@@ -670,7 +795,9 @@ export default function VectorField3D() {
                     type="number"
                     step="0.1"
                     value={state.curlPointZ}
-                    onChange={(e) => setState(s => ({ ...s, curlPointZ: parseFloat(e.target.value) || 0 }))}
+                    onChange={(e) =>
+                      setState((s) => ({ ...s, curlPointZ: parseFloat(e.target.value) || 0 }))
+                    }
                   />
                 </div>
               </div>
@@ -680,16 +807,13 @@ export default function VectorField3D() {
 
         {/* 错误信息 */}
         {error && (
-          <div className="error-message" style={{ marginBottom: '1rem' }}>
-            <span style={{ marginRight: '8px' }}>⚠️</span>
-            {error}
+          <div style={{ marginBottom: '1rem' }}>
+            <ErrorState message={error} />
           </div>
         )}
 
         {/* 加载状态 */}
-        {loading && !vectorFieldData && (
-          <div className="loading">加载中...</div>
-        )}
+        {loading && !vectorFieldData && <LoadingState text="正在计算向量场数据..." />}
 
         {/* 3D图表 */}
         {vectorFieldData && vectorFieldData.success && (
@@ -705,24 +829,45 @@ export default function VectorField3D() {
 
         {/* 旋度散度信息 */}
         {state.showCurlDivergence && curlDivergenceData && curlDivergenceData.success && (
-          <div className="info-panel" style={{
-            marginTop: '1rem',
-            background: 'rgba(59, 130, 246, 0.05)',
-            borderColor: 'rgba(59, 130, 246, 0.2)'
-          }}>
+          <div
+            className="info-panel"
+            style={{
+              marginTop: '1rem',
+              background: 'rgba(59, 130, 246, 0.05)',
+              borderColor: 'rgba(59, 130, 246, 0.2)',
+            }}
+          >
             <h4>旋度 curl(F) 和散度 div(F)</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '1rem',
+              }}
+            >
               {/* 旋度信息 */}
               <div className="info-item">
                 <span>curl(F) =</span>
                 <span style={{ fontFamily: 'monospace' }}>
-                  ({formatNumber(curlDivergenceData.curl.value.x)}, {formatNumber(curlDivergenceData.curl.value.y)}, {formatNumber(curlDivergenceData.curl.value.z)})
+                  ({formatNumber(curlDivergenceData.curl.value.x)},{' '}
+                  {formatNumber(curlDivergenceData.curl.value.y)},{' '}
+                  {formatNumber(curlDivergenceData.curl.value.z)})
                 </span>
               </div>
               {/* 散度信息 */}
               <div className="info-item">
                 <span>div(F) =</span>
-                <span style={{ fontFamily: 'monospace', color: curlDivergenceData.divergence.value > 0 ? '#10b981' : curlDivergenceData.divergence.value < 0 ? '#ef4444' : 'inherit' }}>
+                <span
+                  style={{
+                    fontFamily: 'monospace',
+                    color:
+                      curlDivergenceData.divergence.value > 0
+                        ? '#10b981'
+                        : curlDivergenceData.divergence.value < 0
+                          ? '#ef4444'
+                          : 'inherit',
+                  }}
+                >
                   {formatNumber(curlDivergenceData.divergence.value)}
                 </span>
               </div>
@@ -730,12 +875,17 @@ export default function VectorField3D() {
               <div className="info-item">
                 <span>计算点</span>
                 <span style={{ fontFamily: 'monospace' }}>
-                  ({formatNumber(curlDivergenceData.point.x)}, {formatNumber(curlDivergenceData.point.y)}, {formatNumber(curlDivergenceData.point.z)})
+                  ({formatNumber(curlDivergenceData.point.x)},{' '}
+                  {formatNumber(curlDivergenceData.point.y)},{' '}
+                  {formatNumber(curlDivergenceData.point.z)})
                 </span>
               </div>
             </div>
-            <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', color: 'var(--text-secondary)' }}>
-              旋度表达式: curl(F) = ({curlDivergenceData.curl.expression.x}, {curlDivergenceData.curl.expression.y}, {curlDivergenceData.curl.expression.z})
+            <p
+              style={{ fontSize: '0.875rem', marginTop: '0.5rem', color: 'var(--text-secondary)' }}
+            >
+              旋度表达式: curl(F) = ({curlDivergenceData.curl.expression.x},{' '}
+              {curlDivergenceData.curl.expression.y}, {curlDivergenceData.curl.expression.z})
             </p>
           </div>
         )}
@@ -743,7 +893,14 @@ export default function VectorField3D() {
         {/* 数学概念说明 */}
         <div className="info-panel" style={{ marginTop: '1rem' }}>
           <h4>数学概念</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem', fontSize: '0.875rem' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: '1rem',
+              fontSize: '0.875rem',
+            }}
+          >
             <div>
               <p style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>旋度 curl(F)</p>
               <p style={{ color: 'var(--text-secondary)' }}>
@@ -753,7 +910,8 @@ export default function VectorField3D() {
             <div>
               <p style={{ fontWeight: 'bold', marginBottom: '0.25rem' }}>散度 div(F)</p>
               <p style={{ color: 'var(--text-secondary)' }}>
-                衡量向量场从某点的"发散程度"。散度为零 = 无源场；散度为正 = 源（向外发散）；散度为负 = 汇（向内汇聚）。
+                衡量向量场从某点的"发散程度"。散度为零 = 无源场；散度为正 = 源（向外发散）；散度为负
+                = 汇（向内汇聚）。
               </p>
             </div>
             <div>
@@ -768,10 +926,19 @@ export default function VectorField3D() {
         {/* 图例说明 */}
         <div className="info-panel" style={{ marginTop: '1rem' }}>
           <h4>图例说明</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.5rem', fontSize: '0.875rem' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '0.5rem',
+              fontSize: '0.875rem',
+            }}
+          >
             <p>
-              <span style={{ color: '#3b82f6' }}>●</span> 向量：从点 (x,y,z) 指向 (x+u,y+v,z+w)<br/>
-              <span style={{ color: '#10b981' }}>●</span> 颜色深浅表示向量模长大小<br/>
+              <span style={{ color: '#3b82f6' }}>●</span> 向量：从点 (x,y,z) 指向 (x+u,y+v,z+w)
+              <br />
+              <span style={{ color: '#10b981' }}>●</span> 颜色深浅表示向量模长大小
+              <br />
               <span style={{ color: '#ef4444' }}>●</span> 流线：沿向量场方向的积分曲线
             </p>
           </div>

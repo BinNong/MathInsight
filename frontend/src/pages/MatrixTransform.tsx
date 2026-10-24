@@ -1,8 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import Plot from 'react-plotly.js'
 import { linearAlgebraApi, MatrixTransformData } from '../services/api'
-import { Link } from 'react-router-dom'
-
+import PageHeader from '../components/PageHeader'
+import ControlPanel from '../components/ControlPanel'
+import VisualizationCard from '../components/VisualizationCard'
+import LoadingState from '../components/LoadingState'
+import ErrorState from '../components/ErrorState'
+import VisualizationWorkspace from '../components/VisualizationWorkspace'
+import CollapsibleSection from '../components/CollapsibleSection'
 
 interface MatrixValues {
   a: number
@@ -12,33 +17,43 @@ interface MatrixValues {
 }
 
 const PRESETS: Record<string, MatrixValues> = {
-  'identity': { a: 1, b: 0, c: 0, d: 1 },
-  'scale_2': { a: 2, b: 0, c: 0, d: 2 },
-  'stretch_x': { a: 2, b: 0, c: 0, d: 1 },
-  'stretch_y': { a: 1, b: 0, c: 0, d: 2 },
-  'shear_x': { a: 1, b: 1, c: 0, d: 1 },
-  'shear_y': { a: 1, b: 0, c: 1, d: 1 },
-  'reflect_x': { a: 1, b: 0, c: 0, d: -1 },
-  'reflect_y': { a: -1, b: 0, c: 0, d: 1 },
-  'rotate_30': { a: Math.cos(Math.PI/6), b: -Math.sin(Math.PI/6), c: Math.sin(Math.PI/6), d: Math.cos(Math.PI/6) },
-  'rotate_45': { a: Math.cos(Math.PI/4), b: -Math.sin(Math.PI/4), c: Math.sin(Math.PI/4), d: Math.cos(Math.PI/4) },
-  'squeeze': { a: 2, b: 0, c: 0, d: 0.5 },
-  'scale_nonuniform': { a: 2, b: 0, c: 0, d: 0.5 }
+  identity: { a: 1, b: 0, c: 0, d: 1 },
+  scale_2: { a: 2, b: 0, c: 0, d: 2 },
+  stretch_x: { a: 2, b: 0, c: 0, d: 1 },
+  stretch_y: { a: 1, b: 0, c: 0, d: 2 },
+  shear_x: { a: 1, b: 1, c: 0, d: 1 },
+  shear_y: { a: 1, b: 0, c: 1, d: 1 },
+  reflect_x: { a: 1, b: 0, c: 0, d: -1 },
+  reflect_y: { a: -1, b: 0, c: 0, d: 1 },
+  rotate_30: {
+    a: Math.cos(Math.PI / 6),
+    b: -Math.sin(Math.PI / 6),
+    c: Math.sin(Math.PI / 6),
+    d: Math.cos(Math.PI / 6),
+  },
+  rotate_45: {
+    a: Math.cos(Math.PI / 4),
+    b: -Math.sin(Math.PI / 4),
+    c: Math.sin(Math.PI / 4),
+    d: Math.cos(Math.PI / 4),
+  },
+  squeeze: { a: 2, b: 0, c: 0, d: 0.5 },
+  scale_nonuniform: { a: 2, b: 0, c: 0, d: 0.5 },
 }
 
 const PRESET_LABELS: Record<string, string> = {
-  'identity': '单位矩阵',
-  'scale_2': '缩放 2x',
-  'stretch_x': 'X 轴拉伸',
-  'stretch_y': 'Y 轴拉伸',
-  'shear_x': 'X 方向剪切',
-  'shear_y': 'Y 方向剪切',
-  'reflect_x': 'X 轴反射',
-  'reflect_y': 'Y 轴反射',
-  'rotate_30': '旋转 30°',
-  'rotate_45': '旋转 45°',
-  'squeeze': '挤压变换',
-  'scale_nonuniform': '非均匀缩放'
+  identity: '单位矩阵',
+  scale_2: '缩放 2x',
+  stretch_x: 'X 轴拉伸',
+  stretch_y: 'Y 轴拉伸',
+  shear_x: 'X 方向剪切',
+  shear_y: 'Y 方向剪切',
+  reflect_x: 'X 轴反射',
+  reflect_y: 'Y 轴反射',
+  rotate_30: '旋转 30°',
+  rotate_45: '旋转 45°',
+  squeeze: '挤压变换',
+  scale_nonuniform: '非均匀缩放',
 }
 
 // 特征值类型：可以是数字或 {re, im} 对象
@@ -62,26 +77,29 @@ export default function MatrixTransform() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchData = useCallback(async (values: MatrixValues) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await linearAlgebraApi.matrixTransform({
-        matrix: [values.a, values.b, values.c, values.d],
-        show_eigenvectors: showEigenvectors,
-        show_determinant: showDeterminant
-      })
-      if (response.success) {
-        setData(response.data)
-      } else {
-        setError(response.error || '计算失败')
+  const fetchData = useCallback(
+    async (values: MatrixValues) => {
+      setLoading(true)
+      setError(null)
+      try {
+        const response = await linearAlgebraApi.matrixTransform({
+          matrix: [values.a, values.b, values.c, values.d],
+          show_eigenvectors: showEigenvectors,
+          show_determinant: showDeterminant,
+        })
+        if (response.success) {
+          setData(response.data)
+        } else {
+          setError(response.error || '计算失败')
+        }
+      } catch (err: any) {
+        setError('无法连接到服务器')
+      } finally {
+        setLoading(false)
       }
-    } catch (err: any) {
-      setError('无法连接到服务器')
-    } finally {
-      setLoading(false)
-    }
-  }, [showEigenvectors, showDeterminant])
+    },
+    [showEigenvectors, showDeterminant]
+  )
 
   // 初始加载
   useEffect(() => {
@@ -89,7 +107,7 @@ export default function MatrixTransform() {
   }, [fetchData, matrix.a, matrix.b, matrix.c, matrix.d, showEigenvectors, showDeterminant])
 
   const handleMatrixChange = (field: keyof MatrixValues, value: number) => {
-    setMatrix(prev => ({ ...prev, [field]: value }))
+    setMatrix((prev) => ({ ...prev, [field]: value }))
   }
 
   const applyPreset = (presetKey: string) => {
@@ -121,7 +139,7 @@ export default function MatrixTransform() {
           mode: 'lines',
           line: { color: '#94a3b8', width: 1, dash: 'dot' },
           showlegend: false,
-          hoverinfo: 'skip'
+          hoverinfo: 'skip',
         })
       }
       // 垂直线
@@ -133,7 +151,7 @@ export default function MatrixTransform() {
           mode: 'lines',
           line: { color: '#94a3b8', width: 1, dash: 'dot' },
           showlegend: false,
-          hoverinfo: 'skip'
+          hoverinfo: 'skip',
         })
       }
     }
@@ -149,7 +167,7 @@ export default function MatrixTransform() {
           mode: 'lines',
           line: { color: '#3b82f6', width: 2 },
           showlegend: false,
-          hoverinfo: 'skip'
+          hoverinfo: 'skip',
         })
       }
       // 变换后的垂直线 (红色)
@@ -161,7 +179,7 @@ export default function MatrixTransform() {
           mode: 'lines',
           line: { color: '#ef4444', width: 2 },
           showlegend: false,
-          hoverinfo: 'skip'
+          hoverinfo: 'skip',
         })
       }
     }
@@ -176,7 +194,7 @@ export default function MatrixTransform() {
       fillcolor: 'rgba(148, 163, 184, 0.1)',
       line: { color: '#94a3b8', width: 1, dash: 'dot' },
       name: '原始单位圆',
-      hoverinfo: 'skip'
+      hoverinfo: 'skip',
     })
 
     // 变换后的椭圆
@@ -188,7 +206,7 @@ export default function MatrixTransform() {
       fill: 'tozeroy',
       fillcolor: 'rgba(16, 185, 129, 0.15)',
       line: { color: '#10b981', width: 2 },
-      name: '变换后'
+      name: '变换后',
     })
 
     // 基向量标注
@@ -201,7 +219,7 @@ export default function MatrixTransform() {
       line: { color: '#ef4444', width: 3 },
       marker: { size: 8, color: '#ef4444' },
       name: 'e₁ →',
-      hovertemplate: 'e₁ → %{y:.2f}'
+      hovertemplate: 'e₁ → %{y:.2f}',
     })
 
     // e2 → [b, d]
@@ -213,7 +231,7 @@ export default function MatrixTransform() {
       line: { color: '#3b82f6', width: 3 },
       marker: { size: 8, color: '#3b82f6' },
       name: 'e₂ →',
-      hovertemplate: 'e₂ → %{y:.2f}'
+      hovertemplate: 'e₂ → %{y:.2f}',
     })
 
     // 特征向量
@@ -228,7 +246,7 @@ export default function MatrixTransform() {
           line: { color: '#8b5cf6', width: 2, dash: 'dash' },
           marker: { size: 6, color: '#8b5cf6' },
           name: `λ${idx + 1} = ${ev.lambda.toFixed(2)}`,
-          showlegend: true
+          showlegend: true,
         })
       })
     }
@@ -236,110 +254,98 @@ export default function MatrixTransform() {
     return plots
   }
 
-  const layout = {
+  const layout: any = {
     title: {
       text: `2×2 矩阵变换: [[${formatNumber(matrix.a)}, ${formatNumber(matrix.b)}], [${formatNumber(matrix.c)}, ${formatNumber(matrix.d)}]]`,
-      font: { size: 16 }
+      font: { size: 16 },
     },
     xaxis: {
       title: 'x',
       range: [-6, 6],
       zeroline: true,
       showspikes: false,
-      scaleanchor: 'y' as const,
-      scaleratio: 1
+      scaleanchor: 'y',
+      scaleratio: 1,
     },
     yaxis: {
       title: 'y',
       range: [-6, 6],
       zeroline: true,
-      showspikes: false
+      showspikes: false,
     },
     showlegend: true,
     legend: { x: 1.02, y: 1 },
     hovermode: 'closest',
     dragmode: 'pan',
-    margin: { t: 60, r: 120, b: 60, l: 60 }
+    margin: { t: 60, r: 120, b: 60, l: 60 },
+    autosize: true,
   }
 
   return (
     <div className="detail-page">
-      <header className="detail-header">
-        <Link to="/subject/linear-algebra" className="detail-back-button">
-          ← 返回线性代数
-        </Link>
-        <div className="breadcrumb">
-          <Link to="/">首页</Link>
-          <span className="breadcrumb-separator">/</span>
-          <Link to="/subject/linear-algebra">线性代数</Link>
-          <span className="breadcrumb-separator">/</span>
-          <span>矩阵变换</span>
-        </div>
-        <h1 className="detail-title">2×2 矩阵变换可视化</h1>
-      </header>
+      <PageHeader
+        backTo="/subject/linear-algebra"
+        backLabel="返回线性代数"
+        breadcrumbs={[
+          { label: '首页', path: '/' },
+          { label: '线性代数', path: '/subject/linear-algebra' },
+          { label: '2×2 矩阵变换可视化' },
+        ]}
+        title="2×2 矩阵变换可视化"
+      />
 
-      <div className="content-card" style={{ margin: '2rem', maxWidth: '1400px' }}>
-        <div className="card-header">
-          <h2>2×2 矩阵变换可视化</h2>
-          <p>输入矩阵 [[a, b], [c, d]]，观察对单位圆和网格的变换效果</p>
-        </div>
-
-        <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '1.5rem' }}>
-        {/* 左侧控制面板 */}
-        <div>
-          {/* 矩阵输入 */}
-          <div style={{
-            background: 'var(--background)',
-            borderRadius: '8px',
-            padding: '1rem',
-            marginBottom: '1rem'
-          }}>
-            <h4 style={{ marginBottom: '1rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-              矩阵元素
-            </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>a</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={matrix.a}
-                  onChange={(e) => handleMatrixChange('a', parseFloat(e.target.value) || 0)}
-                />
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>b</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={matrix.b}
-                  onChange={(e) => handleMatrixChange('b', parseFloat(e.target.value) || 0)}
-                />
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>c</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={matrix.c}
-                  onChange={(e) => handleMatrixChange('c', parseFloat(e.target.value) || 0)}
-                />
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>d</label>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={matrix.d}
-                  onChange={(e) => handleMatrixChange('d', parseFloat(e.target.value) || 0)}
-                />
+      <VisualizationWorkspace
+        visualizationTitle="2×2 矩阵变换可视化"
+        controls={
+          <ControlPanel title="参数设置" subtitle="输入矩阵 [[a, b], [c, d]]">
+            <div className="form-section">
+              <div className="form-row" style={{ gridTemplateColumns: '1fr 1fr' }}>
+                <div>
+                  <label className="form-label">a</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    step="0.1"
+                    value={matrix.a}
+                    onChange={(e) => handleMatrixChange('a', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <label className="form-label">b</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    step="0.1"
+                    value={matrix.b}
+                    onChange={(e) => handleMatrixChange('b', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <label className="form-label">c</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    step="0.1"
+                    value={matrix.c}
+                    onChange={(e) => handleMatrixChange('c', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <label className="form-label">d</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    step="0.1"
+                    value={matrix.d}
+                    onChange={(e) => handleMatrixChange('d', parseFloat(e.target.value) || 0)}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* 滑块 */}
-            <div style={{ marginTop: '1rem', display: 'grid', gap: '0.5rem' }}>
+            <div className="form-section">
               <div className="slider-container">
-                <span style={{ fontSize: '0.75rem', width: '20px' }}>a</span>
+                <span>a</span>
                 <input
                   type="range"
                   min="-3"
@@ -351,7 +357,7 @@ export default function MatrixTransform() {
                 <span className="slider-value">{formatNumber(matrix.a)}</span>
               </div>
               <div className="slider-container">
-                <span style={{ fontSize: '0.75rem', width: '20px' }}>b</span>
+                <span>b</span>
                 <input
                   type="range"
                   min="-3"
@@ -363,7 +369,7 @@ export default function MatrixTransform() {
                 <span className="slider-value">{formatNumber(matrix.b)}</span>
               </div>
               <div className="slider-container">
-                <span style={{ fontSize: '0.75rem', width: '20px' }}>c</span>
+                <span>c</span>
                 <input
                   type="range"
                   min="-3"
@@ -375,7 +381,7 @@ export default function MatrixTransform() {
                 <span className="slider-value">{formatNumber(matrix.c)}</span>
               </div>
               <div className="slider-container">
-                <span style={{ fontSize: '0.75rem', width: '20px' }}>d</span>
+                <span>d</span>
                 <input
                   type="range"
                   min="-3"
@@ -387,87 +393,72 @@ export default function MatrixTransform() {
                 <span className="slider-value">{formatNumber(matrix.d)}</span>
               </div>
             </div>
-          </div>
 
-          {/* 预设矩阵 */}
-          <div style={{
-            background: 'var(--background)',
-            borderRadius: '8px',
-            padding: '1rem',
-            marginBottom: '1rem'
-          }}>
-            <h4 style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-              预设矩阵
-            </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-              {Object.keys(PRESETS).map(key => (
-                <button
-                  key={key}
-                  className="btn btn-secondary"
-                  onClick={() => applyPreset(key)}
-                  style={{ fontSize: '0.75rem', padding: '0.5rem' }}
-                >
-                  {PRESET_LABELS[key]}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 显示选项 */}
-          <div style={{
-            background: 'var(--background)',
-            borderRadius: '8px',
-            padding: '1rem'
-          }}>
-            <h4 style={{ marginBottom: '0.75rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
-              显示选项
-            </h4>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={showEigenvectors}
-                onChange={(e) => setShowEigenvectors(e.target.checked)}
-              />
-              特征向量
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
-              <input
-                type="checkbox"
-                checked={showDeterminant}
-                onChange={(e) => setShowDeterminant(e.target.checked)}
-              />
-              行列式信息
-            </label>
-          </div>
-        </div>
-
-        {/* 右侧可视化区域 */}
-        <div>
-          {error && (
-            <div className="error-message">
-              <span style={{ marginRight: '8px' }}>⚠️</span>
-              {error}
-            </div>
-          )}
-
-          {loading && !data && (
-            <div className="loading">加载中...</div>
-          )}
-
-          {data && (
-            <>
-              <div className="visualization-container">
-                <Plot
-                  data={buildPlotData()}
-                  layout={{ ...layout, width: 700, height: 550 } as any}
-                  config={{ responsive: true, scrollZoom: true }}
-                />
+            <div className="form-section">
+              <h4 className="form-section-title">预设矩阵</h4>
+              <div className="preset-group">
+                {Object.keys(PRESETS).map((key) => (
+                  <button key={key} className="preset-chip" onClick={() => applyPreset(key)}>
+                    {PRESET_LABELS[key]}
+                  </button>
+                ))}
               </div>
+            </div>
 
-              {/* 信息面板 */}
+            <div className="form-section">
+              <h4 className="form-section-title">显示选项</h4>
+              <label className="form-label">
+                <input
+                  type="checkbox"
+                  checked={showEigenvectors}
+                  onChange={(e) => setShowEigenvectors(e.target.checked)}
+                />
+                特征向量
+              </label>
+              <label className="form-label">
+                <input
+                  type="checkbox"
+                  checked={showDeterminant}
+                  onChange={(e) => setShowDeterminant(e.target.checked)}
+                />
+                行列式信息
+              </label>
+            </div>
+          </ControlPanel>
+        }
+        visualization={
+          <>
+            {error && <ErrorState message={error} />}
+            {loading && !data && <LoadingState text="正在计算可视化数据..." />}
+            {data && (
+              <VisualizationCard
+                title="2×2 矩阵变换可视化"
+                subtitle="拖动图表可平移，滚轮可缩放"
+                loading={loading}
+              >
+                <div style={{ position: 'absolute', inset: 0, padding: 'var(--space-2)' }}>
+                  <Plot
+                    data={buildPlotData()}
+                    layout={layout}
+                    config={{ responsive: true, scrollZoom: true }}
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                </div>
+              </VisualizationCard>
+            )}
+            {!data && !loading && (
+              <div className="empty-state">
+                <div className="empty-state-icon">🔢</div>
+                <p>输入矩阵参数或选择预设，开始探索线性变换</p>
+              </div>
+            )}
+          </>
+        }
+        infoPanels={
+          data ? (
+            <>
               {showDeterminant && data.determinant && (
-                <div className="info-panel" style={{ background: 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
-                  <h4>行列式信息</h4>
+                <CollapsibleSection title="行列式信息" defaultExpanded={true} variant="success">
                   <div className="info-item">
                     <span>det(A)</span>
                     <span>{data.determinant.value.toFixed(3)}</span>
@@ -476,49 +467,52 @@ export default function MatrixTransform() {
                     <span>解释</span>
                     <span>{data.determinant.interpretation}</span>
                   </div>
-                </div>
+                </CollapsibleSection>
               )}
 
               {showEigenvectors && data.eigenvectors && data.eigenvectors.length > 0 && (
-                <div className="info-panel" style={{ background: 'rgba(139, 92, 246, 0.05)', borderColor: 'rgba(139, 92, 246, 0.2)' }}>
-                  <h4>特征值与特征向量</h4>
+                <CollapsibleSection title="特征值与特征向量" defaultExpanded={true}>
                   {data.eigenvectors.map((ev, idx) => (
                     <div key={idx} className="info-item">
-                      <span>λ{idx + 1} = {ev.lambda.toFixed(3)}</span>
-                      <span>v{idx + 1} = [{ev.v[0].toFixed(3)}, {ev.v[1].toFixed(3)}]</span>
+                      <span>
+                        λ{idx + 1} = {ev.lambda.toFixed(3)}
+                      </span>
+                      <span>
+                        v{idx + 1} = [{ev.v[0].toFixed(3)}, {ev.v[1].toFixed(3)}]
+                      </span>
                     </div>
                   ))}
-                </div>
+                </CollapsibleSection>
               )}
 
               {showEigenvectors && (!data.eigenvectors || data.eigenvectors.length === 0) && (
-                <div className="info-panel">
-                  <h4>特征值</h4>
-                  <p style={{ fontSize: '0.875rem' }}>
-                    λ₁ = {formatEigenValue(data.eigenvalues[0])}, λ₂ = {formatEigenValue(data.eigenvalues[1])}
+                <CollapsibleSection title="特征值" defaultExpanded={true}>
+                  <p>
+                    λ₁ = {formatEigenValue(data.eigenvalues[0])}, λ₂ ={' '}
+                    {formatEigenValue(data.eigenvalues[1])}
                     <br />
-                    <span style={{ color: 'var(--text-secondary)' }}>
-                      (复特征值，无实特征向量)
-                    </span>
+                    <span style={{ color: 'var(--text-secondary)' }}>(复特征值，无实特征向量)</span>
                   </p>
-                </div>
+                </CollapsibleSection>
               )}
 
-              <div className="info-panel">
-                <h4>图例说明</h4>
-                <p style={{ fontSize: '0.875rem' }}>
-                  <span style={{ color: '#94a3b8' }}>···</span> 原始单位圆/网格<br/>
-                  <span style={{ color: '#10b981' }}>●</span> 变换后的椭圆<br/>
-                  <span style={{ color: '#ef4444' }}>—</span> 变换后 x 方向基向量 (e₁ →)<br/>
-                  <span style={{ color: '#3b82f6' }}>—</span> 变换后 y 方向基向量 (e₂ →)<br/>
+              <CollapsibleSection title="图例说明" defaultExpanded={false}>
+                <p>
+                  <span style={{ color: '#94a3b8' }}>···</span> 原始单位圆/网格
+                  <br />
+                  <span style={{ color: '#10b981' }}>●</span> 变换后的椭圆
+                  <br />
+                  <span style={{ color: '#ef4444' }}>—</span> 变换后 x 方向基向量 (e₁ →)
+                  <br />
+                  <span style={{ color: '#3b82f6' }}>—</span> 变换后 y 方向基向量 (e₂ →)
+                  <br />
                   <span style={{ color: '#8b5cf6' }}>--</span> 特征向量方向
                 </p>
-              </div>
+              </CollapsibleSection>
             </>
-          )}
-        </div>
-      </div>
-      </div>
+          ) : null
+        }
+      />
     </div>
   )
 }

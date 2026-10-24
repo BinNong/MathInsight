@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Link } from 'react-router-dom'
 import Plot from 'react-plotly.js'
 import { vectorFieldApi, SolidType, GaussSolidPreset, GaussTheoremData } from '../services/api'
+import PageHeader from '../components/PageHeader'
+import LoadingState from '../components/LoadingState'
+import ErrorState from '../components/ErrorState'
 
 // ============ 默认预设 ============
 
@@ -11,22 +13,22 @@ const DEFAULT_GAUSS_SOLIDS: GaussSolidPreset[] = [
     name: '单位球体',
     description: 'x² + y² + z² ≤ 1',
     type: 'sphere',
-    params: { r: 1 }
+    params: { r: 1 },
   },
   {
     id: 'cube',
     name: '立方体',
     description: '|x| ≤ 1, |y| ≤ 1, |z| ≤ 1',
     type: 'cube',
-    params: { half: 1 }
+    params: { half: 1 },
   },
   {
     id: 'cylinder_solid',
     name: '圆柱体',
     description: 'x² + y² ≤ 1, 0 ≤ z ≤ 2',
     type: 'cylinder',
-    params: { r: 1, h: 2 }
-  }
+    params: { r: 1, h: 2 },
+  },
 ]
 
 const DEFAULT_VECTOR_FIELD_PRESETS = [
@@ -34,7 +36,7 @@ const DEFAULT_VECTOR_FIELD_PRESETS = [
   { id: 'constant', name: '恒定场 F=(1,1,1)', P: '1', Q: '1', R: '1' },
   { id: 'rotation_z', name: '旋转场 F=(-y,x,0)', P: '-y', Q: 'x', R: '0' },
   { id: 'source', name: '源场 F=(x,y,0)', P: 'x', Q: 'y', R: '0' },
-  { id: 'vortex', name: '涡旋场 F=(-z,0,x)', P: '-z', Q: '0', R: 'x' }
+  { id: 'vortex', name: '涡旋场 F=(-z,0,x)', P: '-z', Q: '0', R: 'x' },
 ]
 
 // ============ 类型定义 ============
@@ -62,7 +64,7 @@ const DEFAULT_STATE: GaussTheoremState = {
   solidHalf: 1,
   solidHeight: 2,
   showSurface: true,
-  showVolume: false
+  showVolume: false,
 }
 
 // ============ 主组件 ============
@@ -112,7 +114,7 @@ export default function GaussTheorem() {
         R: state.R,
         solid_type: state.solidType,
         solid_params: solidParams,
-        resolution: state.resolution
+        resolution: state.resolution,
       })
 
       if (response.success) {
@@ -127,23 +129,35 @@ export default function GaussTheorem() {
     } finally {
       setLoading(false)
     }
-  }, [state.P, state.Q, state.R, state.solidType, state.solidRadius, state.solidHalf, state.solidHeight, state.resolution])
+  }, [
+    state.P,
+    state.Q,
+    state.R,
+    state.solidType,
+    state.solidRadius,
+    state.solidHalf,
+    state.solidHeight,
+    state.resolution,
+  ])
 
   // 当参数变化时重新计算
   useEffect(() => {
     fetchGaussTheorem()
   }, [fetchGaussTheorem])
 
-  const handleStateChange = <K extends keyof GaussTheoremState>(key: K, value: GaussTheoremState[K]) => {
-    setState(prev => ({ ...prev, [key]: value }))
+  const handleStateChange = <K extends keyof GaussTheoremState>(
+    key: K,
+    value: GaussTheoremState[K]
+  ) => {
+    setState((prev) => ({ ...prev, [key]: value }))
   }
 
-  const applyVectorField = (preset: typeof DEFAULT_VECTOR_FIELD_PRESETS[0]) => {
-    setState(prev => ({ ...prev, P: preset.P, Q: preset.Q, R: preset.R }))
+  const applyVectorField = (preset: (typeof DEFAULT_VECTOR_FIELD_PRESETS)[0]) => {
+    setState((prev) => ({ ...prev, P: preset.P, Q: preset.Q, R: preset.R }))
   }
 
   const applySolid = (preset: GaussSolidPreset) => {
-    setState(prev => {
+    setState((prev) => {
       const newState = { ...prev, solidType: preset.type }
       if (preset.type === 'sphere') {
         newState.solidRadius = preset.params.r || 1
@@ -182,7 +196,7 @@ export default function GaussTheorem() {
           showscale: false,
           opacity: 0.5,
           name: '闭合曲面 S',
-          hoverongaps: false
+          hoverongaps: false,
         })
       } else if (solid.type === 'cylinder' && Array.isArray(solid.x) && Array.isArray(solid.x[0])) {
         plots.push({
@@ -194,12 +208,18 @@ export default function GaussTheorem() {
           showscale: false,
           opacity: 0.5,
           name: '圆柱侧面',
-          hoverongaps: false
+          hoverongaps: false,
         })
       } else if (solid.type === 'cube' && Array.isArray(solid.x)) {
         // 绘制立方体的6个面
-        const cubeColors = ['rgba(100,149,237,0.3)', 'rgba(100,149,237,0.3)', 'rgba(100,149,237,0.3)',
-                          'rgba(100,149,237,0.3)', 'rgba(100,149,237,0.3)', 'rgba(100,149,237,0.3)']
+        const cubeColors = [
+          'rgba(100,149,237,0.3)',
+          'rgba(100,149,237,0.3)',
+          'rgba(100,149,237,0.3)',
+          'rgba(100,149,237,0.3)',
+          'rgba(100,149,237,0.3)',
+          'rgba(100,149,237,0.3)',
+        ]
         for (let i = 0; i < 6; i++) {
           if (solid.x[i] && solid.y[i] && solid.z[i]) {
             plots.push({
@@ -212,7 +232,7 @@ export default function GaussTheorem() {
               name: i === 0 ? '立方体表面' : undefined,
               i: [0, 1, 2, 3],
               j: [1, 2, 3, 0],
-              k: [2, 3, 0, 1]
+              k: [2, 3, 0, 1],
             })
           }
         }
@@ -234,15 +254,15 @@ export default function GaussTheorem() {
 
       for (let i = 0; i < 180; i += skip) {
         for (let j = 0; j < 360; j += skip) {
-          const phi = i * Math.PI / 180
-          const theta = j * Math.PI / 180
+          const phi = (i * Math.PI) / 180
+          const theta = (j * Math.PI) / 180
 
           const px = r * Math.sin(phi) * Math.cos(theta)
           const py = r * Math.sin(phi) * Math.sin(theta)
           const pz = r * Math.cos(phi)
 
           // 法向量向外
-          const norm = Math.sqrt(px*px + py*py + pz*pz)
+          const norm = Math.sqrt(px * px + py * py + pz * pz)
           const nx = px / norm
           const ny = py / norm
           const nz = pz / norm
@@ -262,10 +282,10 @@ export default function GaussTheorem() {
         z: lineZ,
         line: {
           color: 'red',
-          width: 3
+          width: 3,
         },
         hoverinfo: 'none',
-        name: '外法向量'
+        name: '外法向量',
       })
 
       // 箭头末端点
@@ -275,14 +295,14 @@ export default function GaussTheorem() {
 
       for (let i = 0; i < 180; i += skip) {
         for (let j = 0; j < 360; j += skip) {
-          const phi = i * Math.PI / 180
-          const theta = j * Math.PI / 180
+          const phi = (i * Math.PI) / 180
+          const theta = (j * Math.PI) / 180
 
           const px = r * Math.sin(phi) * Math.cos(theta)
           const py = r * Math.sin(phi) * Math.sin(theta)
           const pz = r * Math.cos(phi)
 
-          const norm = Math.sqrt(px*px + py*py + pz*pz)
+          const norm = Math.sqrt(px * px + py * py + pz * pz)
           const nx = px / norm
           const ny = py / norm
           const nz = pz / norm
@@ -302,10 +322,10 @@ export default function GaussTheorem() {
         marker: {
           color: 'red',
           size: 3,
-          symbol: 'arrow-up'
+          symbol: 'arrow-up',
         },
         hoverinfo: 'none',
-        name: '外法向量'
+        name: '外法向量',
       })
     }
 
@@ -324,12 +344,12 @@ export default function GaussTheorem() {
 
       // 立方体6个面的中心点和法向量
       const faces = [
-        { cx: half, cy: 0, cz: 0, nx: 1, ny: 0, nz: 0 },   // x=max
+        { cx: half, cy: 0, cz: 0, nx: 1, ny: 0, nz: 0 }, // x=max
         { cx: -half, cy: 0, cz: 0, nx: -1, ny: 0, nz: 0 }, // x=min
-        { cx: 0, cy: half, cz: 0, nx: 0, ny: 1, nz: 0 },   // y=max
-        { cx: 0, cy: -half, cz: 0, nx: 0, ny: -1, nz: 0 },  // y=min
-        { cx: 0, cy: 0, cz: half, nx: 0, ny: 0, nz: 1 },    // z=max
-        { cx: 0, cy: 0, cz: -half, nx: 0, ny: 0, nz: -1 }   // z=min
+        { cx: 0, cy: half, cz: 0, nx: 0, ny: 1, nz: 0 }, // y=max
+        { cx: 0, cy: -half, cz: 0, nx: 0, ny: -1, nz: 0 }, // y=min
+        { cx: 0, cy: 0, cz: half, nx: 0, ny: 0, nz: 1 }, // z=max
+        { cx: 0, cy: 0, cz: -half, nx: 0, ny: 0, nz: -1 }, // z=min
       ]
 
       for (const face of faces) {
@@ -351,9 +371,12 @@ export default function GaussTheorem() {
         w: arrowW,
         sizemode: 'scaled',
         sizeref: 0.5,
-        colorscale: [[0, 'rgb(255,0,0)'], [1, 'rgb(255,0,0)']],
+        colorscale: [
+          [0, 'rgb(255,0,0)'],
+          [1, 'rgb(255,0,0)'],
+        ],
         showscale: false,
-        name: '外法向量'
+        name: '外法向量',
       })
     }
 
@@ -373,7 +396,7 @@ export default function GaussTheorem() {
       const arrowLength = 0.3
 
       // 圆柱侧面法向量（4个点）
-      const angles = [0, Math.PI / 2, Math.PI, 3 * Math.PI / 2]
+      const angles = [0, Math.PI / 2, Math.PI, (3 * Math.PI) / 2]
       for (const angle of angles) {
         const cx = r * Math.cos(angle)
         const cy = r * Math.sin(angle)
@@ -411,9 +434,12 @@ export default function GaussTheorem() {
         w: arrowW,
         sizemode: 'scaled',
         sizeref: 0.5,
-        colorscale: [[0, 'rgb(255,0,0)'], [1, 'rgb(255,0,0)']],
+        colorscale: [
+          [0, 'rgb(255,0,0)'],
+          [1, 'rgb(255,0,0)'],
+        ],
         showscale: false,
-        name: '外法向量'
+        name: '外法向量',
       })
     }
 
@@ -421,52 +447,60 @@ export default function GaussTheorem() {
   }, [gaussData, state.showSurface, state.solidRadius, state.solidHalf, state.solidHeight])
 
   // 图表布局
-  const layout = useMemo((): any => ({
-    title: {
-      text: `高斯散度定理验证: ${gaussData?.solid.name || '立体'}`,
-      font: { size: 14 }
-    },
-    scene: {
-      xaxis: { title: 'x', range: [-2, 2] },
-      yaxis: { title: 'y', range: [-2, 2] },
-      zaxis: { title: 'z', range: [-2, 2] },
-      aspectmode: 'cube'
-    },
-    margin: { t: 50, r: 50, b: 50, l: 50 },
-    showlegend: true,
-    legend: { x: 1.02, y: 1 }
-  }), [gaussData])
+  const layout = useMemo(
+    (): any => ({
+      title: {
+        text: `高斯散度定理验证: ${gaussData?.solid.name || '立体'}`,
+        font: { size: 14 },
+      },
+      scene: {
+        xaxis: { title: 'x', range: [-2, 2] },
+        yaxis: { title: 'y', range: [-2, 2] },
+        zaxis: { title: 'z', range: [-2, 2] },
+        aspectmode: 'cube',
+      },
+      margin: { t: 50, r: 50, b: 50, l: 50 },
+      showlegend: true,
+      legend: { x: 1.02, y: 1 },
+    }),
+    [gaussData]
+  )
 
   return (
     <div className="detail-page">
-      <header className="detail-header">
-        <Link to="/subject/calculus" className="detail-back-button">
-          ← 返回微积分
-        </Link>
-        <div className="breadcrumb">
-          <Link to="/">首页</Link>
-          <span className="breadcrumb-separator">/</span>
-          <Link to="/subject/calculus">微积分</Link>
-          <span className="breadcrumb-separator">/</span>
-          <span>高斯定理</span>
-        </div>
-        <h1 className="detail-title">高斯散度定理验证</h1>
-      </header>
+      <PageHeader
+        backTo="/subject/calculus"
+        backLabel="返回微积分"
+        breadcrumbs={[
+          { label: '首页', path: '/' },
+          { label: '微积分', path: '/subject/calculus' },
+          { label: '高斯定理' },
+        ]}
+        title="高斯散度定理验证"
+      />
 
-      <div className="content-card" style={{ margin: '2rem', maxWidth: '1600px' }}>
+      <div className="content-card" style={{ margin: '2rem auto', maxWidth: '1600px' }}>
         <div className="card-header">
           <h2>高斯散度定理可视化</h2>
           <p>验证 ∬_S F·dS = ∭_V div(F) dV</p>
         </div>
 
         {/* 控制面板 */}
-        <div style={{
-          background: 'var(--background)',
-          borderRadius: '8px',
-          padding: '1rem',
-          marginBottom: '1rem'
-        }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+        <div
+          style={{
+            background: 'var(--background)',
+            borderRadius: '8px',
+            padding: '1rem',
+            marginBottom: '1rem',
+          }}
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1rem',
+            }}
+          >
             {/* 向量场输入 */}
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label>P(x, y, z) =</label>
@@ -503,8 +537,10 @@ export default function GaussTheorem() {
                 value={state.solidType}
                 onChange={(e) => handleStateChange('solidType', e.target.value as SolidType)}
               >
-                {solidPresets.map(p => (
-                  <option key={p.id} value={p.type}>{p.name}</option>
+                {solidPresets.map((p) => (
+                  <option key={p.id} value={p.type}>
+                    {p.name}
+                  </option>
                 ))}
               </select>
             </div>
@@ -513,7 +549,10 @@ export default function GaussTheorem() {
           {/* 立体参数 */}
           {state.solidType === 'sphere' && (
             <div style={{ marginTop: '1rem' }}>
-              <div className="form-group" style={{ marginBottom: 0, display: 'inline-block', marginRight: '1rem' }}>
+              <div
+                className="form-group"
+                style={{ marginBottom: 0, display: 'inline-block', marginRight: '1rem' }}
+              >
                 <label>半径 r =</label>
                 <input
                   type="number"
@@ -521,7 +560,9 @@ export default function GaussTheorem() {
                   min="0.1"
                   max="3"
                   value={state.solidRadius}
-                  onChange={(e) => handleStateChange('solidRadius', parseFloat(e.target.value) || 1)}
+                  onChange={(e) =>
+                    handleStateChange('solidRadius', parseFloat(e.target.value) || 1)
+                  }
                 />
               </div>
             </div>
@@ -529,7 +570,10 @@ export default function GaussTheorem() {
 
           {state.solidType === 'cube' && (
             <div style={{ marginTop: '1rem' }}>
-              <div className="form-group" style={{ marginBottom: 0, display: 'inline-block', marginRight: '1rem' }}>
+              <div
+                className="form-group"
+                style={{ marginBottom: 0, display: 'inline-block', marginRight: '1rem' }}
+              >
                 <label>半边长 =</label>
                 <input
                   type="number"
@@ -545,7 +589,10 @@ export default function GaussTheorem() {
 
           {state.solidType === 'cylinder' && (
             <div style={{ marginTop: '1rem' }}>
-              <div className="form-group" style={{ marginBottom: 0, display: 'inline-block', marginRight: '1rem' }}>
+              <div
+                className="form-group"
+                style={{ marginBottom: 0, display: 'inline-block', marginRight: '1rem' }}
+              >
                 <label>半径 r =</label>
                 <input
                   type="number"
@@ -553,7 +600,9 @@ export default function GaussTheorem() {
                   min="0.1"
                   max="2"
                   value={state.solidRadius}
-                  onChange={(e) => handleStateChange('solidRadius', parseFloat(e.target.value) || 1)}
+                  onChange={(e) =>
+                    handleStateChange('solidRadius', parseFloat(e.target.value) || 1)
+                  }
                 />
               </div>
               <div className="form-group" style={{ marginBottom: 0, display: 'inline-block' }}>
@@ -564,7 +613,9 @@ export default function GaussTheorem() {
                   min="0.5"
                   max="4"
                   value={state.solidHeight}
-                  onChange={(e) => handleStateChange('solidHeight', parseFloat(e.target.value) || 2)}
+                  onChange={(e) =>
+                    handleStateChange('solidHeight', parseFloat(e.target.value) || 2)
+                  }
                 />
               </div>
             </div>
@@ -572,11 +623,18 @@ export default function GaussTheorem() {
 
           {/* 预设向量场 */}
           <div style={{ marginTop: '1rem' }}>
-            <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
+            <label
+              style={{
+                fontSize: '0.875rem',
+                color: 'var(--text-secondary)',
+                marginBottom: '0.5rem',
+                display: 'block',
+              }}
+            >
               预设向量场
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {DEFAULT_VECTOR_FIELD_PRESETS.map(preset => (
+              {DEFAULT_VECTOR_FIELD_PRESETS.map((preset) => (
                 <button
                   key={preset.id}
                   className="btn btn-secondary"
@@ -592,11 +650,18 @@ export default function GaussTheorem() {
 
           {/* 预设立体 */}
           <div style={{ marginTop: '1rem' }}>
-            <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
+            <label
+              style={{
+                fontSize: '0.875rem',
+                color: 'var(--text-secondary)',
+                marginBottom: '0.5rem',
+                display: 'block',
+              }}
+            >
               预设立体
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
-              {solidPresets.map(preset => (
+              {solidPresets.map((preset) => (
                 <button
                   key={preset.id}
                   className={`btn ${state.solidType === preset.type ? 'btn-primary' : 'btn-secondary'}`}
@@ -611,7 +676,9 @@ export default function GaussTheorem() {
 
           {/* 显示选项 */}
           <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+            >
               <input
                 type="checkbox"
                 checked={state.showSurface}
@@ -624,16 +691,13 @@ export default function GaussTheorem() {
 
         {/* 错误信息 */}
         {error && (
-          <div className="error-message" style={{ marginBottom: '1rem' }}>
-            <span style={{ marginRight: '8px' }}>⚠️</span>
-            {error}
+          <div style={{ marginBottom: '1rem' }}>
+            <ErrorState message={error} />
           </div>
         )}
 
         {/* 可视化区域 */}
-        {loading && !gaussData && (
-          <div className="loading">加载中...</div>
-        )}
+        {loading && !gaussData && <LoadingState text="正在计算高斯定理数据..." />}
 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
           {/* Plotly 图表 */}
@@ -650,14 +714,17 @@ export default function GaussTheorem() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* 高斯定理验证结果 */}
             {gaussData && gaussData.success && (
-              <div className="info-panel" style={{
-                background: gaussData.gauss_theorem.is_verified
-                  ? 'rgba(16, 185, 129, 0.05)'
-                  : 'rgba(245, 158, 11, 0.05)',
-                borderColor: gaussData.gauss_theorem.is_verified
-                  ? 'rgba(16, 185, 129, 0.2)'
-                  : 'rgba(245, 158, 11, 0.2)'
-              }}>
+              <div
+                className="info-panel"
+                style={{
+                  background: gaussData.gauss_theorem.is_verified
+                    ? 'rgba(16, 185, 129, 0.05)'
+                    : 'rgba(245, 158, 11, 0.05)',
+                  borderColor: gaussData.gauss_theorem.is_verified
+                    ? 'rgba(16, 185, 129, 0.2)'
+                    : 'rgba(245, 158, 11, 0.2)',
+                }}
+              >
                 <h4>高斯散度定理验证</h4>
                 <div style={{ fontSize: '0.875rem', marginBottom: '0.75rem' }}>
                   ∬_S F·dS = ∭_V div(F) dV
@@ -665,11 +732,15 @@ export default function GaussTheorem() {
 
                 <div className="info-item">
                   <span>左边（曲面积分）</span>
-                  <span style={{ fontWeight: 'bold' }}>{formatNumber(gaussData.gauss_theorem.surface_integral.value)}</span>
+                  <span style={{ fontWeight: 'bold' }}>
+                    {formatNumber(gaussData.gauss_theorem.surface_integral.value)}
+                  </span>
                 </div>
                 <div className="info-item">
                   <span>右边（体积分）</span>
-                  <span style={{ fontWeight: 'bold' }}>{formatNumber(gaussData.gauss_theorem.volume_integral.value)}</span>
+                  <span style={{ fontWeight: 'bold' }}>
+                    {formatNumber(gaussData.gauss_theorem.volume_integral.value)}
+                  </span>
                 </div>
                 <div className="info-item">
                   <span>差异</span>
@@ -680,12 +751,14 @@ export default function GaussTheorem() {
                   <span>{(gaussData.gauss_theorem.relative_error * 100).toFixed(2)}%</span>
                 </div>
 
-                <p style={{
-                  fontSize: '0.875rem',
-                  marginTop: '0.75rem',
-                  fontWeight: 'bold',
-                  color: gaussData.gauss_theorem.is_verified ? '#10b981' : '#f59e0b'
-                }}>
+                <p
+                  style={{
+                    fontSize: '0.875rem',
+                    marginTop: '0.75rem',
+                    fontWeight: 'bold',
+                    color: gaussData.gauss_theorem.is_verified ? '#10b981' : '#f59e0b',
+                  }}
+                >
                   {gaussData.gauss_theorem.is_verified
                     ? '✓ 高斯定理验证通过'
                     : '⚠ 验证中（存在数值误差）'}
@@ -703,7 +776,13 @@ export default function GaussTheorem() {
                     {gaussData.gauss_theorem.divergence_expression}
                   </span>
                 </div>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                <p
+                  style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--text-secondary)',
+                    marginTop: '0.25rem',
+                  }}
+                >
                   div(F) = ∂P/∂x + ∂Q/∂y + ∂R/∂z
                 </p>
               </div>
@@ -717,7 +796,13 @@ export default function GaussTheorem() {
                   <span>类型</span>
                   <span>{gaussData.solid.name}</span>
                 </div>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
+                <p
+                  style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--text-secondary)',
+                    marginTop: '0.25rem',
+                  }}
+                >
                   闭合曲面 S 包围体积 V
                 </p>
               </div>

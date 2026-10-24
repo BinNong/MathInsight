@@ -1,13 +1,27 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Plot from 'react-plotly.js'
-import { vectorFieldApi, VectorFieldData, LineIntegralData, GreensTheoremData, StreamlineData, VectorFieldPreset, PathPreset, ConservativeCheckData, PotentialData, PotentialContourData, PathIndependenceData } from '../services/api'
-import { Link } from 'react-router-dom'
+import {
+  vectorFieldApi,
+  VectorFieldData,
+  LineIntegralData,
+  GreensTheoremData,
+  StreamlineData,
+  VectorFieldPreset,
+  PathPreset,
+  ConservativeCheckData,
+  PotentialData,
+  PotentialContourData,
+  PathIndependenceData,
+} from '../services/api'
+import PageHeader from '../components/PageHeader'
+import LoadingState from '../components/LoadingState'
+import ErrorState from '../components/ErrorState'
 
 // ============ 常量定义 ============
 
-const ARROW_SCALE = 0.5           // 向量场箭头缩放比例
-const ARROW_HEAD_SIZE = 0.03      // 箭头头部大小
-const PATH_ARROW_SKIP = 20        // 路径箭头间隔点数
+const ARROW_SCALE = 0.5 // 向量场箭头缩放比例
+const ARROW_HEAD_SIZE = 0.03 // 箭头头部大小
+const PATH_ARROW_SKIP = 20 // 路径箭头间隔点数
 const MIN_VECTOR_THRESHOLD = 0.001 // 最小向量阈值
 
 // ============ 类型定义 ============
@@ -26,7 +40,7 @@ interface VectorFieldState {
 
   // 可视化选项
   showStreamlines: boolean
-  showContour: boolean  // 保守场模式：显示等值线
+  showContour: boolean // 保守场模式：显示等值线
 
   // 积分模式
   mode: VectorFieldMode
@@ -74,7 +88,7 @@ const DEFAULT_STATE: VectorFieldState = {
   streamlineTimeSpan: 3,
   startPoint: [0, 0],
   endPoint: [1, 1],
-  showPathIndependence: false
+  showPathIndependence: false,
 }
 
 // Plotly trace 类型
@@ -99,15 +113,51 @@ const DEFAULT_VECTOR_FIELD_PRESETS: VectorFieldPreset[] = [
   { id: 'radial', name: '辐射场', description: 'F = (x, y)', P: 'x', Q: 'y' },
   { id: 'shear', name: '剪切场', description: 'F = (y, 0)', P: 'y', Q: '0' },
   { id: 'saddle', name: '鞍点场', description: 'F = (x, -y)', P: 'x', Q: '-y' },
-  { id: 'vortex', name: '涡旋场', description: 'F = (-y/(x²+y²), x/(x²+y²))', P: '-y/(x**2 + y**2 + 0.1)', Q: 'x/(x**2 + y**2 + 0.1)' }
+  {
+    id: 'vortex',
+    name: '涡旋场',
+    description: 'F = (-y/(x²+y²), x/(x²+y²))',
+    P: '-y/(x**2 + y**2 + 0.1)',
+    Q: 'x/(x**2 + y**2 + 0.1)',
+  },
 ]
 
 const DEFAULT_PATH_PRESETS: PathPreset[] = [
-  { id: 'circle', name: '单位圆', description: 'x=cos(t), y=sin(t)', parametric: { x: 'cos(t)', y: 'sin(t)', t_range: [0, 2 * Math.PI] }, is_closed: true },
-  { id: 'ellipse', name: '椭圆', description: 'x=2cos(t), y=sin(t)', parametric: { x: '2*cos(t)', y: 'sin(t)', t_range: [0, 2 * Math.PI] }, is_closed: true },
-  { id: 'line_segment', name: '直线段', description: '从(-1,-1)到(1,1)', parametric: { x: 't', y: 't', t_range: [-1, 1] }, is_closed: false },
-  { id: 'parabola', name: '抛物线', description: 'y=x²', parametric: { x: 't', y: 't**2', t_range: [-1, 1] }, is_closed: false },
-  { id: 'square', name: '正方形', description: '边长为2的正方形', parametric: { segments: [] }, is_closed: true }
+  {
+    id: 'circle',
+    name: '单位圆',
+    description: 'x=cos(t), y=sin(t)',
+    parametric: { x: 'cos(t)', y: 'sin(t)', t_range: [0, 2 * Math.PI] },
+    is_closed: true,
+  },
+  {
+    id: 'ellipse',
+    name: '椭圆',
+    description: 'x=2cos(t), y=sin(t)',
+    parametric: { x: '2*cos(t)', y: 'sin(t)', t_range: [0, 2 * Math.PI] },
+    is_closed: true,
+  },
+  {
+    id: 'line_segment',
+    name: '直线段',
+    description: '从(-1,-1)到(1,1)',
+    parametric: { x: 't', y: 't', t_range: [-1, 1] },
+    is_closed: false,
+  },
+  {
+    id: 'parabola',
+    name: '抛物线',
+    description: 'y=x²',
+    parametric: { x: 't', y: 't**2', t_range: [-1, 1] },
+    is_closed: false,
+  },
+  {
+    id: 'square',
+    name: '正方形',
+    description: '边长为2的正方形',
+    parametric: { segments: [] },
+    is_closed: true,
+  },
 ]
 
 // ============ 主组件 ============
@@ -121,8 +171,13 @@ export default function VectorFieldLineIntegrals() {
   const [conservativeData, setConservativeData] = useState<ConservativeCheckData | null>(null)
   const [potentialData, setPotentialData] = useState<PotentialData | null>(null)
   const [potentialContour, setPotentialContour] = useState<PotentialContourData | null>(null)
-  const [pathIndependenceData, setPathIndependenceData] = useState<PathIndependenceData | null>(null)
-  const [presets, setPresets] = useState<{ vector_fields: VectorFieldPreset[]; paths: PathPreset[] } | null>(null)
+  const [pathIndependenceData, setPathIndependenceData] = useState<PathIndependenceData | null>(
+    null
+  )
+  const [presets, setPresets] = useState<{
+    vector_fields: VectorFieldPreset[]
+    paths: PathPreset[]
+  } | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -156,7 +211,7 @@ export default function VectorFieldLineIntegrals() {
         Q: state.Q,
         x_range: state.xRange,
         y_range: state.yRange,
-        resolution: state.resolution
+        resolution: state.resolution,
       })
 
       if (response.success) {
@@ -182,7 +237,7 @@ export default function VectorFieldLineIntegrals() {
         P: state.P,
         Q: state.Q,
         path: pathConfig,
-        num_points: 200
+        num_points: 200,
       })
 
       if (response.success) {
@@ -202,15 +257,21 @@ export default function VectorFieldLineIntegrals() {
     setLoading(true)
     setError(null)
     try {
-      const regionParams = state.regionType === 'circle'
-        ? { radius: state.regionRadius }
-        : { x_min: state.regionXMin, x_max: state.regionXMax, y_min: state.regionYMin, y_max: state.regionYMax }
+      const regionParams =
+        state.regionType === 'circle'
+          ? { radius: state.regionRadius }
+          : {
+              x_min: state.regionXMin,
+              x_max: state.regionXMax,
+              y_min: state.regionYMin,
+              y_max: state.regionYMax,
+            }
 
       const response = await vectorFieldApi.greensTheorem({
         P: state.P,
         Q: state.Q,
         region_type: state.regionType,
-        region_params: regionParams
+        region_params: regionParams,
       })
 
       if (response.success) {
@@ -223,7 +284,16 @@ export default function VectorFieldLineIntegrals() {
     } finally {
       setLoading(false)
     }
-  }, [state.P, state.Q, state.regionType, state.regionRadius, state.regionXMin, state.regionXMax, state.regionYMin, state.regionYMax])
+  }, [
+    state.P,
+    state.Q,
+    state.regionType,
+    state.regionRadius,
+    state.regionXMin,
+    state.regionXMax,
+    state.regionYMin,
+    state.regionYMax,
+  ])
 
   // 获取流线数据
   const fetchStreamlines = useCallback(async () => {
@@ -236,7 +306,7 @@ export default function VectorFieldLineIntegrals() {
         Q: state.Q,
         start_points: startPoints,
         t_span: [-state.streamlineTimeSpan, state.streamlineTimeSpan],
-        direction: 'both'
+        direction: 'both',
       })
 
       if (response.success) {
@@ -258,7 +328,7 @@ export default function VectorFieldLineIntegrals() {
     try {
       const response = await vectorFieldApi.checkConservative({
         P: state.P,
-        Q: state.Q
+        Q: state.Q,
       })
 
       if (response.success) {
@@ -280,7 +350,7 @@ export default function VectorFieldLineIntegrals() {
     try {
       const response = await vectorFieldApi.findPotential({
         P: state.P,
-        Q: state.Q
+        Q: state.Q,
       })
 
       if (response.success) {
@@ -305,7 +375,7 @@ export default function VectorFieldLineIntegrals() {
         Q: state.Q,
         x_range: state.xRange,
         y_range: state.yRange,
-        resolution: 50
+        resolution: 50,
       })
 
       if (response.success) {
@@ -330,7 +400,7 @@ export default function VectorFieldLineIntegrals() {
         Q: state.Q,
         start_point: state.startPoint,
         end_point: state.endPoint,
-        num_points: 200
+        num_points: 200,
       })
 
       if (response.success) {
@@ -347,7 +417,7 @@ export default function VectorFieldLineIntegrals() {
 
   // 构建路径配置
   const buildPathConfig = () => {
-    const preset = pathPresets.find(p => p.id === state.pathType)
+    const preset = pathPresets.find((p) => p.id === state.pathType)
 
     if (state.pathType === 'square') {
       // 正方形路径（多段）
@@ -358,8 +428,8 @@ export default function VectorFieldLineIntegrals() {
           { x: 't', y: `${-r}`, t_range: [-r, r] },
           { x: `${r}`, y: 't', t_range: [-r, r] },
           { x: 't', y: `${r}`, t_range: [r, -r] },
-          { x: `${-r}`, y: 't', t_range: [r, -r] }
-        ]
+          { x: `${-r}`, y: 't', t_range: [r, -r] },
+        ],
       }
     }
 
@@ -368,7 +438,7 @@ export default function VectorFieldLineIntegrals() {
         type: 'parametric' as const,
         x: preset.parametric.x,
         y: preset.parametric.y,
-        t_range: preset.parametric.t_range
+        t_range: preset.parametric.t_range,
       }
     }
 
@@ -377,7 +447,7 @@ export default function VectorFieldLineIntegrals() {
       type: 'parametric' as const,
       x: 'cos(t)',
       y: 'sin(t)',
-      t_range: [0, 2 * Math.PI]
+      t_range: [0, 2 * Math.PI],
     }
   }
 
@@ -421,14 +491,26 @@ export default function VectorFieldLineIntegrals() {
         }
         break
     }
-  }, [state.mode, state.showStreamlines, state.showContour, state.P, state.Q, state.showPathIndependence, state.startPoint, state.endPoint])
+  }, [
+    state.mode,
+    state.showStreamlines,
+    state.showContour,
+    state.P,
+    state.Q,
+    state.showPathIndependence,
+    state.startPoint,
+    state.endPoint,
+  ])
 
-  const handleStateChange = <K extends keyof VectorFieldState>(key: K, value: VectorFieldState[K]) => {
-    setState(prev => ({ ...prev, [key]: value }))
+  const handleStateChange = <K extends keyof VectorFieldState>(
+    key: K,
+    value: VectorFieldState[K]
+  ) => {
+    setState((prev) => ({ ...prev, [key]: value }))
   }
 
   const applyPreset = (preset: VectorFieldPreset) => {
-    setState(prev => ({ ...prev, P: preset.P, Q: preset.Q }))
+    setState((prev) => ({ ...prev, P: preset.P, Q: preset.Q }))
   }
 
   const formatNumber = (n: number): string => {
@@ -448,8 +530,8 @@ export default function VectorFieldLineIntegrals() {
     const { x, y, u, v, u_norm, v_norm } = vectorFieldData.vector_field
 
     // 防御性处理：如果 u_norm/v_norm 无效，使用 u/v
-    const uData = Array.isArray(u_norm) ? u_norm : (Array.isArray(u) ? u : [])
-    const vData = Array.isArray(v_norm) ? v_norm : (Array.isArray(v) ? v : [])
+    const uData = Array.isArray(u_norm) ? u_norm : Array.isArray(u) ? u : []
+    const vData = Array.isArray(v_norm) ? v_norm : Array.isArray(v) ? v : []
 
     // 构建箭头数据
     const lineX: (number | null)[] = []
@@ -472,9 +554,16 @@ export default function VectorFieldLineIntegrals() {
         const pv = vData[i]?.[j]
 
         // 防御性处理：检查是否为有效数字
-        if (typeof px !== 'number' || typeof py !== 'number' ||
-            typeof pu !== 'number' || typeof pv !== 'number' ||
-            isNaN(px) || isNaN(py) || isNaN(pu) || isNaN(pv)) {
+        if (
+          typeof px !== 'number' ||
+          typeof py !== 'number' ||
+          typeof pu !== 'number' ||
+          typeof pv !== 'number' ||
+          isNaN(px) ||
+          isNaN(py) ||
+          isNaN(pu) ||
+          isNaN(pv)
+        ) {
           continue
         }
 
@@ -506,7 +595,7 @@ export default function VectorFieldLineIntegrals() {
       y: lineY,
       line: { color: '#059669', width: 1.5 },
       name: 'F(x, y)',
-      hoverinfo: 'skip'
+      hoverinfo: 'skip',
     })
 
     return plots
@@ -533,7 +622,7 @@ export default function VectorFieldLineIntegrals() {
         y: cleanY.slice(0, minLen),
         line: { color: colors[idx % colors.length], width: 2 },
         name: `流线 ${idx + 1}`,
-        hovertemplate: `起点: (${streamline.start_point.x}, ${streamline.start_point.y})<extra></extra>`
+        hovertemplate: `起点: (${streamline.start_point.x}, ${streamline.start_point.y})<extra></extra>`,
       }
     })
   }, [streamlines])
@@ -559,7 +648,7 @@ export default function VectorFieldLineIntegrals() {
       y: pathY.slice(0, minLen),
       line: { color: '#ef4444', width: 3 },
       name: '路径 C',
-      fill: 'toself'
+      fill: 'toself',
     })
 
     // 向量场沿路径的箭头
@@ -578,9 +667,16 @@ export default function VectorFieldLineIntegrals() {
         const pv = v_field[i]
 
         // 防御性处理：检查是否为有效数字
-        if (typeof px !== 'number' || typeof py !== 'number' ||
-            typeof pu !== 'number' || typeof pv !== 'number' ||
-            isNaN(px) || isNaN(py) || isNaN(pu) || isNaN(pv)) {
+        if (
+          typeof px !== 'number' ||
+          typeof py !== 'number' ||
+          typeof pu !== 'number' ||
+          typeof pv !== 'number' ||
+          isNaN(px) ||
+          isNaN(py) ||
+          isNaN(pu) ||
+          isNaN(pv)
+        ) {
           continue
         }
 
@@ -602,7 +698,7 @@ export default function VectorFieldLineIntegrals() {
         y: arrowY,
         line: { color: '#f59e0b', width: 2 },
         name: 'F 沿路径',
-        hoverinfo: 'skip'
+        hoverinfo: 'skip',
       })
     }
 
@@ -628,7 +724,7 @@ export default function VectorFieldLineIntegrals() {
         line: { color: '#ef4444', width: 3 },
         name: '边界 C',
         fill: 'toself',
-        fillcolor: 'rgba(239, 68, 68, 0.1)'
+        fillcolor: 'rgba(239, 68, 68, 0.1)',
       })
     }
 
@@ -702,8 +798,10 @@ export default function VectorFieldLineIntegrals() {
 
     // 确保 xCoords 和 yCoords 的长度与 zData 维度匹配
     // 如果提取失败，使用默认值生成坐标
-    const effectiveX = xCoords.length === numCols ? xCoords : Array.from({ length: numCols }, (_, i) => i)
-    const effectiveY = yCoords.length === numRows ? yCoords : Array.from({ length: numRows }, (_, i) => i)
+    const effectiveX =
+      xCoords.length === numCols ? xCoords : Array.from({ length: numCols }, (_, i) => i)
+    const effectiveY =
+      yCoords.length === numRows ? yCoords : Array.from({ length: numRows }, (_, i) => i)
 
     // 清理 zData 中的 NaN 值
     const cleanZ = zData.map((row: number[]) =>
@@ -719,11 +817,11 @@ export default function VectorFieldLineIntegrals() {
       contours: {
         coloring: 'lines',
         showlabels: true,
-        labelfont: { size: 10, color: '#666' }
+        labelfont: { size: 10, color: '#666' },
       },
       line: { color: '#8b5cf6', width: 1 },
       name: '势函数等值线',
-      hoverinfo: 'z'
+      hoverinfo: 'z',
     })
 
     return plots
@@ -739,9 +837,9 @@ export default function VectorFieldLineIntegrals() {
 
     // 不同路径的颜色
     const pathColors = {
-      straight: '#10b981',   // 绿色 - 直线路径
-      broken: '#f59e0b',    // 橙色 - 折线路径
-      parabola: '#8b5cf6'   // 紫色 - 抛物线路径
+      straight: '#10b981', // 绿色 - 直线路径
+      broken: '#f59e0b', // 橙色 - 折线路径
+      parabola: '#8b5cf6', // 紫色 - 抛物线路径
     }
 
     // 绘制各路径
@@ -751,16 +849,27 @@ export default function VectorFieldLineIntegrals() {
           // 清理 NaN 值
           const cleanX: number[] = []
           const cleanY: number[] = []
-          for (let i = 0; i < Math.min((points.x as number[]).length, (points.y as number[]).length); i++) {
+          for (
+            let i = 0;
+            i < Math.min((points.x as number[]).length, (points.y as number[]).length);
+            i++
+          ) {
             const xVal = points.x[i]
             const yVal = points.y[i]
-            if (typeof xVal === 'number' && typeof yVal === 'number' && !isNaN(xVal) && !isNaN(yVal)) {
+            if (
+              typeof xVal === 'number' &&
+              typeof yVal === 'number' &&
+              !isNaN(xVal) &&
+              !isNaN(yVal)
+            ) {
               cleanX.push(xVal)
               cleanY.push(yVal)
             }
           }
 
-          const pathName = pathIndependenceData.integrals.find(i => i.path_type === pathType)?.path_name || pathType
+          const pathName =
+            pathIndependenceData.integrals.find((i) => i.path_type === pathType)?.path_name ||
+            pathType
           plots.push({
             type: 'scatter',
             mode: 'lines',
@@ -768,7 +877,7 @@ export default function VectorFieldLineIntegrals() {
             y: cleanY,
             line: { color: pathColors[pathType as keyof typeof pathColors] || '#666', width: 2 },
             name: pathName,
-            hovertemplate: `${pathName}<extra></extra>`
+            hovertemplate: `${pathName}<extra></extra>`,
           })
         }
       }
@@ -783,7 +892,7 @@ export default function VectorFieldLineIntegrals() {
         y: [pathIndependenceData.start_point.y],
         marker: { color: '#10b981', size: 12, symbol: 'circle' },
         name: '起点',
-        hovertemplate: `起点: (${pathIndependenceData.start_point.x.toFixed(2)}, ${pathIndependenceData.start_point.y.toFixed(2)})<extra></extra>`
+        hovertemplate: `起点: (${pathIndependenceData.start_point.x.toFixed(2)}, ${pathIndependenceData.start_point.y.toFixed(2)})<extra></extra>`,
       })
     }
 
@@ -795,7 +904,7 @@ export default function VectorFieldLineIntegrals() {
         y: [pathIndependenceData.end_point.y],
         marker: { color: '#ef4444', size: 12, symbol: 'x' },
         name: '终点',
-        hovertemplate: `终点: (${pathIndependenceData.end_point.x.toFixed(2)}, ${pathIndependenceData.end_point.y.toFixed(2)})<extra></extra>`
+        hovertemplate: `终点: (${pathIndependenceData.end_point.x.toFixed(2)}, ${pathIndependenceData.end_point.y.toFixed(2)})<extra></extra>`,
       })
     }
 
@@ -822,17 +931,25 @@ export default function VectorFieldLineIntegrals() {
     }
 
     return plots
-  }, [vectorFieldData, buildVectorFieldData, state.showContour, buildContourData, state.showPathIndependence, buildPathIndependenceData])
+  }, [
+    vectorFieldData,
+    buildVectorFieldData,
+    state.showContour,
+    buildContourData,
+    state.showPathIndependence,
+    buildPathIndependenceData,
+  ])
 
   // 构建图表数据（使用 useMemo 缓存）
   const buildPlotData = useMemo((): any[] => {
     switch (state.mode) {
-      case 'field':
+      case 'field': {
         const fieldPlots = [...buildVectorFieldData]
         if (state.showStreamlines) {
           fieldPlots.push(...buildStreamlineData)
         }
         return fieldPlots
+      }
       case 'line_integral':
         return [...buildVectorFieldData, ...buildPathData]
       case 'greens_theorem':
@@ -844,47 +961,55 @@ export default function VectorFieldLineIntegrals() {
       default:
         return buildVectorFieldData
     }
-  }, [state.mode, state.showStreamlines, buildVectorFieldData, buildStreamlineData, buildPathData, buildGreensTheoremData, buildConservativeData])
+  }, [
+    state.mode,
+    state.showStreamlines,
+    buildVectorFieldData,
+    buildStreamlineData,
+    buildPathData,
+    buildGreensTheoremData,
+    buildConservativeData,
+  ])
 
   // 图表布局（使用 useMemo 缓存）
-  const layout = useMemo((): any => ({
-    title: {
-      text: `F(x,y) = (${state.P}, ${state.Q})`,
-      font: { size: 14 }
-    },
-    xaxis: {
-      title: 'x',
-      range: state.xRange,
-      scaleanchor: 'y',
-      scaleratio: 1
-    },
-    yaxis: {
-      title: 'y',
-      range: state.yRange
-    },
-    hovermode: 'closest',
-    margin: { t: 50, r: 50, b: 50, l: 50 },
-    showlegend: true,
-    legend: { x: 1.02, y: 1 }
-  }), [state.P, state.Q, state.xRange, state.yRange])
+  const layout = useMemo(
+    (): any => ({
+      title: {
+        text: `F(x,y) = (${state.P}, ${state.Q})`,
+        font: { size: 14 },
+      },
+      xaxis: {
+        title: 'x',
+        range: state.xRange,
+        scaleanchor: 'y',
+        scaleratio: 1,
+      },
+      yaxis: {
+        title: 'y',
+        range: state.yRange,
+      },
+      hovermode: 'closest',
+      margin: { t: 50, r: 50, b: 50, l: 50 },
+      showlegend: true,
+      legend: { x: 1.02, y: 1 },
+    }),
+    [state.P, state.Q, state.xRange, state.yRange]
+  )
 
   return (
     <div className="detail-page">
-      <header className="detail-header">
-        <Link to="/subject/calculus" className="detail-back-button">
-          ← 返回微积分
-        </Link>
-        <div className="breadcrumb">
-          <Link to="/">首页</Link>
-          <span className="breadcrumb-separator">/</span>
-          <Link to="/subject/calculus">微积分</Link>
-          <span className="breadcrumb-separator">/</span>
-          <span>向量场与线积分</span>
-        </div>
-        <h1 className="detail-title">向量场与线积分/面积分</h1>
-      </header>
+      <PageHeader
+        backTo="/subject/calculus"
+        backLabel="返回微积分"
+        breadcrumbs={[
+          { label: '首页', path: '/' },
+          { label: '微积分', path: '/subject/calculus' },
+          { label: '向量场与线积分' },
+        ]}
+        title="向量场与线积分/面积分"
+      />
 
-      <div className="content-card" style={{ margin: '2rem', maxWidth: '1600px' }}>
+      <div className="content-card" style={{ margin: '2rem auto', maxWidth: '1600px' }}>
         <div className="card-header">
           <h2>向量场与线积分可视化</h2>
           <p>探索向量场、流线、线积分、格林公式等概念</p>
@@ -925,13 +1050,21 @@ export default function VectorFieldLineIntegrals() {
         </div>
 
         {/* 控制面板 */}
-        <div style={{
-          background: 'var(--background)',
-          borderRadius: '8px',
-          padding: '1rem',
-          marginBottom: '1rem'
-        }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+        <div
+          style={{
+            background: 'var(--background)',
+            borderRadius: '8px',
+            padding: '1rem',
+            marginBottom: '1rem',
+          }}
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1rem',
+            }}
+          >
             {/* 向量场输入 */}
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label>P(x, y) =</label>
@@ -960,14 +1093,18 @@ export default function VectorFieldLineIntegrals() {
                   type="number"
                   step="0.5"
                   value={state.xRange[0]}
-                  onChange={(e) => handleStateChange('xRange', [parseFloat(e.target.value) || -3, state.xRange[1]])}
+                  onChange={(e) =>
+                    handleStateChange('xRange', [parseFloat(e.target.value) || -3, state.xRange[1]])
+                  }
                 />
                 <span style={{ alignSelf: 'center' }}>~</span>
                 <input
                   type="number"
                   step="0.5"
                   value={state.xRange[1]}
-                  onChange={(e) => handleStateChange('xRange', [state.xRange[0], parseFloat(e.target.value) || 3])}
+                  onChange={(e) =>
+                    handleStateChange('xRange', [state.xRange[0], parseFloat(e.target.value) || 3])
+                  }
                 />
               </div>
             </div>
@@ -978,14 +1115,18 @@ export default function VectorFieldLineIntegrals() {
                   type="number"
                   step="0.5"
                   value={state.yRange[0]}
-                  onChange={(e) => handleStateChange('yRange', [parseFloat(e.target.value) || -3, state.yRange[1]])}
+                  onChange={(e) =>
+                    handleStateChange('yRange', [parseFloat(e.target.value) || -3, state.yRange[1]])
+                  }
                 />
                 <span style={{ alignSelf: 'center' }}>~</span>
                 <input
                   type="number"
                   step="0.5"
                   value={state.yRange[1]}
-                  onChange={(e) => handleStateChange('yRange', [state.yRange[0], parseFloat(e.target.value) || 3])}
+                  onChange={(e) =>
+                    handleStateChange('yRange', [state.yRange[0], parseFloat(e.target.value) || 3])
+                  }
                 />
               </div>
             </div>
@@ -993,7 +1134,14 @@ export default function VectorFieldLineIntegrals() {
 
           {/* 预设向量场 */}
           <div style={{ marginTop: '1rem' }}>
-            <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
+            <label
+              style={{
+                fontSize: '0.875rem',
+                color: 'var(--text-secondary)',
+                marginBottom: '0.5rem',
+                display: 'block',
+              }}
+            >
               预设向量场
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -1014,7 +1162,14 @@ export default function VectorFieldLineIntegrals() {
           {/* 根据模式显示额外控制 */}
           {(state.mode === 'line_integral' || state.mode === 'flux') && (
             <div style={{ marginTop: '1rem' }}>
-              <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
+              <label
+                style={{
+                  fontSize: '0.875rem',
+                  color: 'var(--text-secondary)',
+                  marginBottom: '0.5rem',
+                  display: 'block',
+                }}
+              >
                 积分路径
               </label>
               <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -1051,7 +1206,9 @@ export default function VectorFieldLineIntegrals() {
                     step="0.1"
                     min="0.1"
                     value={state.regionRadius}
-                    onChange={(e) => handleStateChange('regionRadius', parseFloat(e.target.value) || 1)}
+                    onChange={(e) =>
+                      handleStateChange('regionRadius', parseFloat(e.target.value) || 1)
+                    }
                   />
                 </div>
               )}
@@ -1060,8 +1217,12 @@ export default function VectorFieldLineIntegrals() {
 
           {/* 流线选项 */}
           {state.mode === 'field' && (
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <div
+              style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', alignItems: 'center' }}
+            >
+              <label
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+              >
                 <input
                   type="checkbox"
                   checked={state.showStreamlines}
@@ -1074,8 +1235,12 @@ export default function VectorFieldLineIntegrals() {
 
           {/* 保守场选项 */}
           {state.mode === 'conservative' && (
-            <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <div
+              style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem', alignItems: 'center' }}
+            >
+              <label
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+              >
                 <input
                   type="checkbox"
                   checked={state.showContour}
@@ -1083,7 +1248,9 @@ export default function VectorFieldLineIntegrals() {
                 />
                 显示势函数等值线
               </label>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+              <label
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+              >
                 <input
                   type="checkbox"
                   checked={state.showPathIndependence}
@@ -1096,43 +1263,94 @@ export default function VectorFieldLineIntegrals() {
 
           {/* 路径无关性参数 */}
           {state.mode === 'conservative' && state.showPathIndependence && (
-            <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--background)', borderRadius: '8px' }}>
+            <div
+              style={{
+                marginTop: '1rem',
+                padding: '1rem',
+                background: 'var(--background)',
+                borderRadius: '8px',
+              }}
+            >
               <h5 style={{ marginBottom: '0.75rem', fontSize: '0.9rem' }}>路径端点设置</h5>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem' }}>起点 (x, y)</label>
+                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem' }}>
+                    起点 (x, y)
+                  </label>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <input
                       type="number"
                       value={state.startPoint[0]}
-                      onChange={(e) => handleStateChange('startPoint', [parseFloat(e.target.value) || 0, state.startPoint[1]])}
-                      style={{ width: '80px', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '4px' }}
+                      onChange={(e) =>
+                        handleStateChange('startPoint', [
+                          parseFloat(e.target.value) || 0,
+                          state.startPoint[1],
+                        ])
+                      }
+                      style={{
+                        width: '80px',
+                        padding: '0.5rem',
+                        border: '1px solid var(--border)',
+                        borderRadius: '4px',
+                      }}
                       step="0.1"
                     />
                     <input
                       type="number"
                       value={state.startPoint[1]}
-                      onChange={(e) => handleStateChange('startPoint', [state.startPoint[0], parseFloat(e.target.value) || 0])}
-                      style={{ width: '80px', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '4px' }}
+                      onChange={(e) =>
+                        handleStateChange('startPoint', [
+                          state.startPoint[0],
+                          parseFloat(e.target.value) || 0,
+                        ])
+                      }
+                      style={{
+                        width: '80px',
+                        padding: '0.5rem',
+                        border: '1px solid var(--border)',
+                        borderRadius: '4px',
+                      }}
                       step="0.1"
                     />
                   </div>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem' }}>终点 (x, y)</label>
+                  <label style={{ display: 'block', fontSize: '0.85rem', marginBottom: '0.25rem' }}>
+                    终点 (x, y)
+                  </label>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <input
                       type="number"
                       value={state.endPoint[0]}
-                      onChange={(e) => handleStateChange('endPoint', [parseFloat(e.target.value) || 0, state.endPoint[1]])}
-                      style={{ width: '80px', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '4px' }}
+                      onChange={(e) =>
+                        handleStateChange('endPoint', [
+                          parseFloat(e.target.value) || 0,
+                          state.endPoint[1],
+                        ])
+                      }
+                      style={{
+                        width: '80px',
+                        padding: '0.5rem',
+                        border: '1px solid var(--border)',
+                        borderRadius: '4px',
+                      }}
                       step="0.1"
                     />
                     <input
                       type="number"
                       value={state.endPoint[1]}
-                      onChange={(e) => handleStateChange('endPoint', [state.endPoint[0], parseFloat(e.target.value) || 0])}
-                      style={{ width: '80px', padding: '0.5rem', border: '1px solid var(--border)', borderRadius: '4px' }}
+                      onChange={(e) =>
+                        handleStateChange('endPoint', [
+                          state.endPoint[0],
+                          parseFloat(e.target.value) || 0,
+                        ])
+                      }
+                      style={{
+                        width: '80px',
+                        padding: '0.5rem',
+                        border: '1px solid var(--border)',
+                        borderRadius: '4px',
+                      }}
                       step="0.1"
                     />
                   </div>
@@ -1144,15 +1362,14 @@ export default function VectorFieldLineIntegrals() {
 
         {/* 错误信息 */}
         {error && (
-          <div className="error-message" style={{ marginBottom: '1rem' }}>
-            <span style={{ marginRight: '8px' }}>⚠️</span>
-            {error}
+          <div style={{ marginBottom: '1rem' }}>
+            <ErrorState message={error} />
           </div>
         )}
 
         {/* 可视化区域 */}
         {loading && !vectorFieldData && !greensData && (
-          <div className="loading">加载中...</div>
+          <LoadingState text="正在计算向量场数据..." />
         )}
 
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
@@ -1174,14 +1391,25 @@ export default function VectorFieldLineIntegrals() {
                 <h4>向量场性质</h4>
                 <div className="info-item">
                   <span>旋度 curl(F)</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{vectorFieldData.curl.expression}</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                    {vectorFieldData.curl.expression}
+                  </span>
                 </div>
                 <div className="info-item">
                   <span>散度 div(F)</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{vectorFieldData.divergence.expression}</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                    {vectorFieldData.divergence.expression}
+                  </span>
                 </div>
-                <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', color: 'var(--text-secondary)' }}>
-                  curl(F) = ∂Q/∂x - ∂P/∂y<br />
+                <p
+                  style={{
+                    fontSize: '0.875rem',
+                    marginTop: '0.5rem',
+                    color: 'var(--text-secondary)',
+                  }}
+                >
+                  curl(F) = ∂Q/∂x - ∂P/∂y
+                  <br />
                   div(F) = ∂P/∂x + ∂Q/∂y
                 </p>
               </div>
@@ -1190,24 +1418,48 @@ export default function VectorFieldLineIntegrals() {
             {/* 线积分结果 */}
             {lineIntegralData && (state.mode === 'line_integral' || state.mode === 'flux') && (
               <>
-                <div className="info-panel" style={{ background: 'rgba(16, 185, 129, 0.05)', borderColor: 'rgba(16, 185, 129, 0.2)' }}>
+                <div
+                  className="info-panel"
+                  style={{
+                    background: 'rgba(16, 185, 129, 0.05)',
+                    borderColor: 'rgba(16, 185, 129, 0.2)',
+                  }}
+                >
                   <h4>线积分结果</h4>
                   <div className="info-item">
                     <span>∫_C F·dr</span>
                     <span>{formatNumber(lineIntegralData.integral_value)}</span>
                   </div>
-                  <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', color: 'var(--text-secondary)' }}>
+                  <p
+                    style={{
+                      fontSize: '0.875rem',
+                      marginTop: '0.5rem',
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
                     ∫_C P dx + Q dy = {formatNumber(lineIntegralData.integral_value)}
                   </p>
                 </div>
 
-                <div className="info-panel" style={{ background: 'rgba(139, 92, 246, 0.05)', borderColor: 'rgba(139, 92, 246, 0.2)' }}>
+                <div
+                  className="info-panel"
+                  style={{
+                    background: 'rgba(139, 92, 246, 0.05)',
+                    borderColor: 'rgba(139, 92, 246, 0.2)',
+                  }}
+                >
                   <h4>通量计算结果</h4>
                   <div className="info-item">
                     <span>∫_C F·n ds</span>
                     <span>{formatNumber(lineIntegralData.flux_value)}</span>
                   </div>
-                  <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', color: 'var(--text-secondary)' }}>
+                  <p
+                    style={{
+                      fontSize: '0.875rem',
+                      marginTop: '0.5rem',
+                      color: 'var(--text-secondary)',
+                    }}
+                  >
                     穿过曲线的通量 = {formatNumber(lineIntegralData.flux_value)}
                   </p>
                 </div>
@@ -1216,7 +1468,17 @@ export default function VectorFieldLineIntegrals() {
 
             {/* 格林公式验证结果 */}
             {greensData && state.mode === 'greens_theorem' && (
-              <div className="info-panel" style={{ background: greensData.greens_theorem.is_verified ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.05)', borderColor: greensData.greens_theorem.is_verified ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)' }}>
+              <div
+                className="info-panel"
+                style={{
+                  background: greensData.greens_theorem.is_verified
+                    ? 'rgba(16, 185, 129, 0.05)'
+                    : 'rgba(239, 68, 68, 0.05)',
+                  borderColor: greensData.greens_theorem.is_verified
+                    ? 'rgba(16, 185, 129, 0.2)'
+                    : 'rgba(239, 68, 68, 0.2)',
+                }}
+              >
                 <h4>格林公式验证</h4>
                 <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>
                   ∮_C P dx + Q dy = ∬_D (∂Q/∂x - ∂P/∂y) dA
@@ -1237,41 +1499,96 @@ export default function VectorFieldLineIntegrals() {
                   <span>相对误差</span>
                   <span>{(greensData.greens_theorem.relative_error * 100).toFixed(2)}%</span>
                 </div>
-                <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', fontWeight: 'bold', color: greensData.greens_theorem.is_verified ? '#10b981' : '#ef4444' }}>
-                  {greensData.greens_theorem.is_verified ? '✓ 格林公式验证通过' : '✗ 验证失败（可能由于数值误差）'}
+                <p
+                  style={{
+                    fontSize: '0.875rem',
+                    marginTop: '0.5rem',
+                    fontWeight: 'bold',
+                    color: greensData.greens_theorem.is_verified ? '#10b981' : '#ef4444',
+                  }}
+                >
+                  {greensData.greens_theorem.is_verified
+                    ? '✓ 格林公式验证通过'
+                    : '✗ 验证失败（可能由于数值误差）'}
                 </p>
               </div>
             )}
 
             {/* 保守场分析结果 */}
             {conservativeData && state.mode === 'conservative' && (
-              <div className="info-panel" style={{ background: conservativeData.is_conservative ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.05)', borderColor: conservativeData.is_conservative ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)' }}>
+              <div
+                className="info-panel"
+                style={{
+                  background: conservativeData.is_conservative
+                    ? 'rgba(16, 185, 129, 0.05)'
+                    : 'rgba(239, 68, 68, 0.05)',
+                  borderColor: conservativeData.is_conservative
+                    ? 'rgba(16, 185, 129, 0.2)'
+                    : 'rgba(239, 68, 68, 0.2)',
+                }}
+              >
                 <h4>保守场判定</h4>
                 <div className="info-item">
                   <span>旋度 curl(F)</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>{conservativeData.curl_expression}</span>
+                  <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                    {conservativeData.curl_expression}
+                  </span>
                 </div>
                 <div className="info-item">
                   <span>旋度值</span>
                   <span>{conservativeData.curl_value.toFixed(4)}</span>
                 </div>
-                <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', fontWeight: 'bold', color: conservativeData.is_conservative ? '#10b981' : '#ef4444' }}>
+                <p
+                  style={{
+                    fontSize: '0.875rem',
+                    marginTop: '0.5rem',
+                    fontWeight: 'bold',
+                    color: conservativeData.is_conservative ? '#10b981' : '#ef4444',
+                  }}
+                >
                   {conservativeData.is_conservative ? '✓ 该向量场是保守场' : '✗ 该向量场不是保守场'}
                 </p>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                  {conservativeData.is_conservative ? '沿任意闭合路径积分为零' : '旋度不为零，存在环流'}
+                <p
+                  style={{
+                    fontSize: '0.75rem',
+                    color: 'var(--text-secondary)',
+                    marginTop: '0.25rem',
+                  }}
+                >
+                  {conservativeData.is_conservative
+                    ? '沿任意闭合路径积分为零'
+                    : '旋度不为零，存在环流'}
                 </p>
               </div>
             )}
 
             {/* 势函数结果 */}
             {potentialData && state.mode === 'conservative' && (
-              <div className="info-panel" style={{ background: potentialData.is_conservative ? 'rgba(139, 92, 246, 0.05)' : undefined, borderColor: potentialData.is_conservative ? 'rgba(139, 92, 246, 0.2)' : undefined }}>
+              <div
+                className="info-panel"
+                style={{
+                  background: potentialData.is_conservative
+                    ? 'rgba(139, 92, 246, 0.05)'
+                    : undefined,
+                  borderColor: potentialData.is_conservative
+                    ? 'rgba(139, 92, 246, 0.2)'
+                    : undefined,
+                }}
+              >
                 <h4>势函数</h4>
                 {potentialData.is_conservative ? (
                   <>
                     <div style={{ marginBottom: '0.5rem' }}>
-                      <span style={{ fontFamily: 'monospace', fontSize: '0.9rem', display: 'block', padding: '0.5rem', background: 'var(--background)', borderRadius: '4px' }}>
+                      <span
+                        style={{
+                          fontFamily: 'monospace',
+                          fontSize: '0.9rem',
+                          display: 'block',
+                          padding: '0.5rem',
+                          background: 'var(--background)',
+                          borderRadius: '4px',
+                        }}
+                      >
                         f(x, y) = {potentialData.potential_function}
                       </span>
                     </div>
@@ -1279,7 +1596,13 @@ export default function VectorFieldLineIntegrals() {
                       <div>∂f/∂x = {potentialData.grad_x}</div>
                       <div>∂f/∂y = {potentialData.grad_y}</div>
                     </div>
-                    <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', color: potentialData.matches_field ? '#10b981' : '#f59e0b' }}>
+                    <p
+                      style={{
+                        fontSize: '0.875rem',
+                        marginTop: '0.5rem',
+                        color: potentialData.matches_field ? '#10b981' : '#f59e0b',
+                      }}
+                    >
                       {potentialData.matches_field ? '✓ 验证通过：∇f = F' : '⚠ 部分验证通过'}
                     </p>
                   </>
@@ -1292,41 +1615,94 @@ export default function VectorFieldLineIntegrals() {
             )}
 
             {/* 路径无关性验证结果 */}
-            {pathIndependenceData && state.mode === 'conservative' && state.showPathIndependence && (
-              <div className="info-panel" style={{ background: pathIndependenceData.is_independent ? 'rgba(16, 185, 129, 0.05)' : pathIndependenceData.is_conservative ? 'rgba(245, 158, 11, 0.05)' : 'rgba(239, 68, 68, 0.05)', borderColor: pathIndependenceData.is_independent ? 'rgba(16, 185, 129, 0.2)' : pathIndependenceData.is_conservative ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)' }}>
-                <h4>路径无关性验证</h4>
-                <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                  <div>起点: ({pathIndependenceData.start_point.x.toFixed(2)}, {pathIndependenceData.start_point.y.toFixed(2)})</div>
-                  <div>终点: ({pathIndependenceData.end_point.x.toFixed(2)}, {pathIndependenceData.end_point.y.toFixed(2)})</div>
-                </div>
-                {pathIndependenceData.integrals.map((integral, idx) => (
-                  <div key={idx} className="info-item" style={{ marginBottom: '0.25rem' }}>
-                    <span>{integral.path_name}</span>
-                    <span>{formatNumber(integral.value)}</span>
+            {pathIndependenceData &&
+              state.mode === 'conservative' &&
+              state.showPathIndependence && (
+                <div
+                  className="info-panel"
+                  style={{
+                    background: pathIndependenceData.is_independent
+                      ? 'rgba(16, 185, 129, 0.05)'
+                      : pathIndependenceData.is_conservative
+                        ? 'rgba(245, 158, 11, 0.05)'
+                        : 'rgba(239, 68, 68, 0.05)',
+                    borderColor: pathIndependenceData.is_independent
+                      ? 'rgba(16, 185, 129, 0.2)'
+                      : pathIndependenceData.is_conservative
+                        ? 'rgba(245, 158, 11, 0.2)'
+                        : 'rgba(239, 68, 68, 0.2)',
+                  }}
+                >
+                  <h4>路径无关性验证</h4>
+                  <div style={{ fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                    <div>
+                      起点: ({pathIndependenceData.start_point.x.toFixed(2)},{' '}
+                      {pathIndependenceData.start_point.y.toFixed(2)})
+                    </div>
+                    <div>
+                      终点: ({pathIndependenceData.end_point.x.toFixed(2)},{' '}
+                      {pathIndependenceData.end_point.y.toFixed(2)})
+                    </div>
                   </div>
-                ))}
-                <div style={{ marginTop: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.5rem' }}>
-                  {pathIndependenceData.differences.map((diff, idx) => (
-                    <div key={idx} style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                      {diff.pair}: Δ = {formatNumber(diff.difference)}
+                  {pathIndependenceData.integrals.map((integral, idx) => (
+                    <div key={idx} className="info-item" style={{ marginBottom: '0.25rem' }}>
+                      <span>{integral.path_name}</span>
+                      <span>{formatNumber(integral.value)}</span>
                     </div>
                   ))}
+                  <div
+                    style={{
+                      marginTop: '0.5rem',
+                      borderTop: '1px solid var(--border)',
+                      paddingTop: '0.5rem',
+                    }}
+                  >
+                    {pathIndependenceData.differences.map((diff, idx) => (
+                      <div
+                        key={idx}
+                        style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}
+                      >
+                        {diff.pair}: Δ = {formatNumber(diff.difference)}
+                      </div>
+                    ))}
+                  </div>
+                  <p
+                    style={{
+                      fontSize: '0.875rem',
+                      marginTop: '0.5rem',
+                      fontWeight: 'bold',
+                      color: pathIndependenceData.is_independent
+                        ? '#10b981'
+                        : pathIndependenceData.is_conservative
+                          ? '#f59e0b'
+                          : '#ef4444',
+                    }}
+                  >
+                    {pathIndependenceData.is_independent
+                      ? '✓ 路径无关性验证成功：各路径积分值相等'
+                      : pathIndependenceData.is_conservative
+                        ? '⚠ 保守场假设下各路径积分应相等'
+                        : '✗ 该向量场不是保守场'}
+                  </p>
+                  <p
+                    style={{
+                      fontSize: '0.75rem',
+                      color: 'var(--text-secondary)',
+                      marginTop: '0.25rem',
+                    }}
+                  >
+                    {pathIndependenceData.message}
+                  </p>
                 </div>
-                <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', fontWeight: 'bold', color: pathIndependenceData.is_independent ? '#10b981' : pathIndependenceData.is_conservative ? '#f59e0b' : '#ef4444' }}>
-                  {pathIndependenceData.is_independent ? '✓ 路径无关性验证成功：各路径积分值相等' : pathIndependenceData.is_conservative ? '⚠ 保守场假设下各路径积分应相等' : '✗ 该向量场不是保守场'}
-                </p>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-                  {pathIndependenceData.message}
-                </p>
-              </div>
-            )}
+              )}
 
             {/* 图例说明 */}
             <div className="info-panel">
               <h4>图例说明</h4>
               <div style={{ fontSize: '0.875rem' }}>
                 <p>
-                  <span style={{ color: '#059669' }}>—</span> 向量场 F(x, y)<br />
+                  <span style={{ color: '#059669' }}>—</span> 向量场 F(x, y)
+                  <br />
                   <span style={{ color: '#ef4444' }}>—</span> 积分路径 C<br />
                   <span style={{ color: '#f59e0b' }}>—</span> F 沿路径的向量
                 </p>
@@ -1337,10 +1713,17 @@ export default function VectorFieldLineIntegrals() {
             <div className="info-panel">
               <h4>数学公式</h4>
               <div style={{ fontSize: '0.875rem', fontFamily: 'monospace' }}>
-                <p><strong>线积分：</strong> ∫_C F·dr</p>
-                <p><strong>通量：</strong> ∫_C F·n ds</p>
-                <p><strong>格林公式：</strong><br />
-                ∮_C P dx + Q dy = ∬_D (∂Q/∂x - ∂P/∂y) dA</p>
+                <p>
+                  <strong>线积分：</strong> ∫_C F·dr
+                </p>
+                <p>
+                  <strong>通量：</strong> ∫_C F·n ds
+                </p>
+                <p>
+                  <strong>格林公式：</strong>
+                  <br />
+                  ∮_C P dx + Q dy = ∬_D (∂Q/∂x - ∂P/∂y) dA
+                </p>
               </div>
             </div>
           </div>

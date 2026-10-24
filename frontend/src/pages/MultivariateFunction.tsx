@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import Plot from 'react-plotly.js'
 import { multivariateApi, ComputeSurfaceData, Preset } from '../services/api'
-import { Link } from 'react-router-dom'
+import PageHeader from '../components/PageHeader'
+import LoadingState from '../components/LoadingState'
+import ErrorState from '../components/ErrorState'
 
 interface MultivariateState {
   function: string
@@ -24,7 +26,7 @@ const DEFAULT_STATE: MultivariateState = {
   resolution: 50,
   contourLevels: 20,
   showGradient: true,
-  showTangentPlane: true
+  showTangentPlane: true,
 }
 
 export default function MultivariateFunction() {
@@ -59,7 +61,7 @@ export default function MultivariateFunction() {
         resolution: state.resolution,
         contour_levels: state.contourLevels,
         show_gradient: state.showGradient,
-        show_tangent_plane: state.showTangentPlane
+        show_tangent_plane: state.showTangentPlane,
       })
       if (response.success) {
         setData(response)
@@ -77,12 +79,15 @@ export default function MultivariateFunction() {
     fetchData()
   }, [fetchData])
 
-  const handleStateChange = <K extends keyof MultivariateState>(key: K, value: MultivariateState[K]) => {
-    setState(prev => ({ ...prev, [key]: value }))
+  const handleStateChange = <K extends keyof MultivariateState>(
+    key: K,
+    value: MultivariateState[K]
+  ) => {
+    setState((prev) => ({ ...prev, [key]: value }))
   }
 
   const applyPreset = (func: string) => {
-    setState(prev => ({ ...prev, function: func }))
+    setState((prev) => ({ ...prev, function: func }))
   }
 
   const formatNumber = (n: number): string => {
@@ -105,7 +110,7 @@ export default function MultivariateFunction() {
       colorscale: 'Viridis',
       colorbar: { title: 'z', len: 0.5 },
       hovertemplate: 'x: %{x:.2f}<br>y: %{y:.2f}<br>z: %{z:.2f}<extra></extra>',
-      showscale: true
+      showscale: true,
     })
 
     // 梯度场（3D 带箭头的向量）
@@ -180,10 +185,10 @@ export default function MultivariateFunction() {
           z: lineZ,
           line: {
             color: '#ff6b35',
-            width: 3
+            width: 3,
           },
           name: '梯度场',
-          hoverinfo: 'skip'
+          hoverinfo: 'skip',
         })
       }
     }
@@ -198,7 +203,7 @@ export default function MultivariateFunction() {
         z: [data.point.z],
         marker: { size: 8, color: '#ef4444' },
         name: '观察点',
-        hovertemplate: `x: ${formatNumber(data.point.x)}<br>y: ${formatNumber(data.point.y)}<br>z: ${formatNumber(data.point.z)}<extra></extra>`
+        hovertemplate: `x: ${formatNumber(data.point.x)}<br>y: ${formatNumber(data.point.y)}<br>z: ${formatNumber(data.point.z)}<extra></extra>`,
       })
 
       // 梯度向量 (3D) - 观察点处
@@ -210,12 +215,12 @@ export default function MultivariateFunction() {
           plots.push({
             type: 'scatter3d',
             mode: 'lines',
-            x: [data.point.x, data.point.x + df_dx / mag * scale],
-            y: [data.point.y, data.point.y + df_dy / mag * scale],
+            x: [data.point.x, data.point.x + (df_dx / mag) * scale],
+            y: [data.point.y, data.point.y + (df_dy / mag) * scale],
             z: [data.point.z, data.point.z + scale],
             line: { color: '#3b82f6', width: 4 },
             name: '梯度方向',
-            hovertemplate: '梯度方向（函数增长最快）<extra></extra>'
+            hovertemplate: '梯度方向（函数增长最快）<extra></extra>',
           })
         }
       }
@@ -228,11 +233,14 @@ export default function MultivariateFunction() {
         x: data.tangent_plane.x,
         y: data.tangent_plane.y,
         z: data.tangent_plane.z,
-        colorscale: [[0, 'rgba(239, 68, 68, 0.3)'], [1, 'rgba(239, 68, 68, 0.3)']],
+        colorscale: [
+          [0, 'rgba(239, 68, 68, 0.3)'],
+          [1, 'rgba(239, 68, 68, 0.3)'],
+        ],
         showscale: false,
         opacity: 0.5,
         name: '切平面',
-        hovertemplate: '切平面<extra></extra>'
+        hovertemplate: '切平面<extra></extra>',
       })
     }
 
@@ -249,12 +257,12 @@ export default function MultivariateFunction() {
     plots.push({
       type: 'contour',
       x: data.contour.x[0],
-      y: data.contour.y.map(row => row[0]),
+      y: data.contour.y.map((row) => row[0]),
       z: data.contour.z,
       ncontours: state.contourLevels,
       colorscale: 'Viridis',
       colorbar: { title: 'z', len: 0.5 },
-      hovertemplate: 'x: %{x:.2f}<br>y: %{y:.2f}<br>z: %{z:.2f}<extra></extra>'
+      hovertemplate: 'x: %{x:.2f}<br>y: %{y:.2f}<br>z: %{z:.2f}<extra></extra>',
     })
 
     // 梯度场（带箭头的向量）
@@ -305,7 +313,7 @@ export default function MultivariateFunction() {
         y: lineY,
         line: { color: '#ff6b35', width: 2.5 },
         name: '梯度场',
-        hoverinfo: 'skip'
+        hoverinfo: 'skip',
       })
     }
 
@@ -318,7 +326,7 @@ export default function MultivariateFunction() {
         y: [data.point.y],
         marker: { size: 12, color: '#ef4444', symbol: 'circle-open', line: { width: 3 } },
         name: '观察点',
-        hovertemplate: `x: ${formatNumber(data.point.x)}<br>y: ${formatNumber(data.point.y)}<extra></extra>`
+        hovertemplate: `x: ${formatNumber(data.point.x)}<br>y: ${formatNumber(data.point.y)}<extra></extra>`,
       })
 
       // 梯度向量 (2D) - 观察点处
@@ -330,12 +338,17 @@ export default function MultivariateFunction() {
           plots.push({
             type: 'scatter',
             mode: 'lines+markers',
-            x: [data.point.x, data.point.x + df_dx / mag * scale],
-            y: [data.point.y, data.point.y + df_dy / mag * scale],
+            x: [data.point.x, data.point.x + (df_dx / mag) * scale],
+            y: [data.point.y, data.point.y + (df_dy / mag) * scale],
             line: { color: '#3b82f6', width: 3 },
             marker: { size: 8, color: '#3b82f6' },
             name: '梯度',
-            hovertemplate: '梯度方向<br>dx: ' + formatNumber(df_dx) + '<br>dy: ' + formatNumber(df_dy) + '<extra></extra>'
+            hovertemplate:
+              '梯度方向<br>dx: ' +
+              formatNumber(df_dx) +
+              '<br>dy: ' +
+              formatNumber(df_dy) +
+              '<extra></extra>',
           })
         }
       }
@@ -348,19 +361,19 @@ export default function MultivariateFunction() {
   const layout3D = {
     title: {
       text: `3D 曲面图: z = ${state.function}`,
-      font: { size: 14 }
+      font: { size: 14 },
     },
     scene: {
       xaxis: { title: 'x', range: state.xRange },
       yaxis: { title: 'y', range: state.yRange },
       zaxis: { title: 'z' },
       camera: {
-        eye: { x: 1.5, y: 1.5, z: 1.2 }
-      }
+        eye: { x: 1.5, y: 1.5, z: 1.2 },
+      },
     },
     margin: { t: 50, r: 20, b: 50, l: 50 },
     showlegend: true,
-    legend: { x: 0, y: 1 }
+    legend: { x: 0, y: 1 },
   }
 
   // 2D 等高线布局
@@ -370,46 +383,51 @@ export default function MultivariateFunction() {
       font: { size: 14 },
       y: 0.98,
       x: 0.02,
-      xanchor: 'left'
+      xanchor: 'left',
     },
     xaxis: { title: 'x', range: state.xRange },
     yaxis: { title: 'y', range: state.yRange, scaleanchor: 'x' as const, scaleratio: 1 },
     hovermode: 'closest',
     margin: { t: 50, r: 50, b: 50, l: 50 },
     showlegend: true,
-    legend: { x: 1.02, y: 1 }
+    legend: { x: 1.02, y: 1 },
   }
 
   return (
     <div className="detail-page">
-      <header className="detail-header">
-        <Link to="/subject/calculus" className="detail-back-button">
-          ← 返回微积分
-        </Link>
-        <div className="breadcrumb">
-          <Link to="/">首页</Link>
-          <span className="breadcrumb-separator">/</span>
-          <Link to="/subject/calculus">微积分</Link>
-          <span className="breadcrumb-separator">/</span>
-          <span>多元函数可视化</span>
-        </div>
-        <h1 className="detail-title">多元函数可视化</h1>
-      </header>
+      <PageHeader
+        backTo="/subject/calculus"
+        backLabel="返回微积分"
+        breadcrumbs={[
+          { label: '首页', path: '/' },
+          { label: '微积分', path: '/subject/calculus' },
+          { label: '多元函数可视化' },
+        ]}
+        title="多元函数可视化"
+      />
 
-      <div className="content-card" style={{ margin: '2rem', maxWidth: '1600px' }}>
+      <div className="content-card" style={{ margin: '2rem auto', maxWidth: '1600px' }}>
         <div className="card-header">
           <h2>多元函数可视化</h2>
           <p>输入二元函数 z = f(x, y)，观察 3D 曲面图和等高线图</p>
         </div>
 
         {/* 控制面板 */}
-        <div style={{
-          background: 'var(--background)',
-          borderRadius: '8px',
-          padding: '1rem',
-          marginBottom: '1rem'
-        }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+        <div
+          style={{
+            background: 'var(--background)',
+            borderRadius: '8px',
+            padding: '1rem',
+            marginBottom: '1rem',
+          }}
+        >
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '1rem',
+            }}
+          >
             {/* 函数输入 */}
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label>f(x, y) =</label>
@@ -449,14 +467,18 @@ export default function MultivariateFunction() {
                   type="number"
                   step="0.5"
                   value={state.xRange[0]}
-                  onChange={(e) => handleStateChange('xRange', [parseFloat(e.target.value) || -3, state.xRange[1]])}
+                  onChange={(e) =>
+                    handleStateChange('xRange', [parseFloat(e.target.value) || -3, state.xRange[1]])
+                  }
                 />
                 <span style={{ alignSelf: 'center' }}>~</span>
                 <input
                   type="number"
                   step="0.5"
                   value={state.xRange[1]}
-                  onChange={(e) => handleStateChange('xRange', [state.xRange[0], parseFloat(e.target.value) || 3])}
+                  onChange={(e) =>
+                    handleStateChange('xRange', [state.xRange[0], parseFloat(e.target.value) || 3])
+                  }
                 />
               </div>
             </div>
@@ -469,14 +491,18 @@ export default function MultivariateFunction() {
                   type="number"
                   step="0.5"
                   value={state.yRange[0]}
-                  onChange={(e) => handleStateChange('yRange', [parseFloat(e.target.value) || -3, state.yRange[1]])}
+                  onChange={(e) =>
+                    handleStateChange('yRange', [parseFloat(e.target.value) || -3, state.yRange[1]])
+                  }
                 />
                 <span style={{ alignSelf: 'center' }}>~</span>
                 <input
                   type="number"
                   step="0.5"
                   value={state.yRange[1]}
-                  onChange={(e) => handleStateChange('yRange', [state.yRange[0], parseFloat(e.target.value) || 3])}
+                  onChange={(e) =>
+                    handleStateChange('yRange', [state.yRange[0], parseFloat(e.target.value) || 3])
+                  }
                 />
               </div>
             </div>
@@ -484,7 +510,14 @@ export default function MultivariateFunction() {
 
           {/* 预设函数 */}
           <div style={{ marginTop: '1rem' }}>
-            <label style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginBottom: '0.5rem', display: 'block' }}>
+            <label
+              style={{
+                fontSize: '0.875rem',
+                color: 'var(--text-secondary)',
+                marginBottom: '0.5rem',
+                display: 'block',
+              }}
+            >
               预设函数
             </label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -504,7 +537,9 @@ export default function MultivariateFunction() {
 
           {/* 显示选项 */}
           <div style={{ marginTop: '1rem', display: 'flex', gap: '1.5rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+            >
               <input
                 type="checkbox"
                 checked={state.showGradient}
@@ -512,7 +547,9 @@ export default function MultivariateFunction() {
               />
               显示梯度场
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+            <label
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}
+            >
               <input
                 type="checkbox"
                 checked={state.showTangentPlane}
@@ -525,16 +562,13 @@ export default function MultivariateFunction() {
 
         {/* 错误信息 */}
         {error && (
-          <div className="error-message" style={{ marginBottom: '1rem' }}>
-            <span style={{ marginRight: '8px' }}>⚠️</span>
-            {error}
+          <div style={{ marginBottom: '1rem' }}>
+            <ErrorState message={error} />
           </div>
         )}
 
         {/* 可视化区域 - 左右分区 */}
-        {loading && !data && (
-          <div className="loading">加载中...</div>
-        )}
+        {loading && !data && <LoadingState text="正在计算曲面数据..." />}
 
         {data && data.success && (
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
@@ -562,13 +596,22 @@ export default function MultivariateFunction() {
 
         {/* 偏导数信息 */}
         {data && data.partial_derivatives && (
-          <div className="info-panel" style={{
-            marginTop: '1rem',
-            background: 'rgba(59, 130, 246, 0.05)',
-            borderColor: 'rgba(59, 130, 246, 0.2)'
-          }}>
+          <div
+            className="info-panel"
+            style={{
+              marginTop: '1rem',
+              background: 'rgba(59, 130, 246, 0.05)',
+              borderColor: 'rgba(59, 130, 246, 0.2)',
+            }}
+          >
             <h4>偏导数信息（观察点）</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '1rem',
+              }}
+            >
               <div className="info-item">
                 <span>∂f/∂x</span>
                 <span>{formatNumber(data.partial_derivatives.df_dx)}</span>
@@ -583,25 +626,34 @@ export default function MultivariateFunction() {
               </div>
               <div className="info-item">
                 <span>梯度模长</span>
-                <span>{formatNumber(Math.sqrt(
-                  data.partial_derivatives.df_dx ** 2 +
-                  data.partial_derivatives.df_dy ** 2
-                ))}</span>
+                <span>
+                  {formatNumber(
+                    Math.sqrt(
+                      data.partial_derivatives.df_dx ** 2 + data.partial_derivatives.df_dy ** 2
+                    )
+                  )}
+                </span>
               </div>
             </div>
-            <p style={{ fontSize: '0.875rem', marginTop: '0.5rem', color: 'var(--text-secondary)' }}>
-              偏导数表达式: ∂f/∂x = {data.partial_derivatives.df_dx_expr}, ∂f/∂y = {data.partial_derivatives.df_dy_expr}
+            <p
+              style={{ fontSize: '0.875rem', marginTop: '0.5rem', color: 'var(--text-secondary)' }}
+            >
+              偏导数表达式: ∂f/∂x = {data.partial_derivatives.df_dx_expr}, ∂f/∂y ={' '}
+              {data.partial_derivatives.df_dy_expr}
             </p>
           </div>
         )}
 
         {/* 切平面方程 */}
         {data && data.tangent_plane && (
-          <div className="info-panel" style={{
-            marginTop: '1rem',
-            background: 'rgba(239, 68, 68, 0.05)',
-            borderColor: 'rgba(239, 68, 68, 0.2)'
-          }}>
+          <div
+            className="info-panel"
+            style={{
+              marginTop: '1rem',
+              background: 'rgba(239, 68, 68, 0.05)',
+              borderColor: 'rgba(239, 68, 68, 0.2)',
+            }}
+          >
             <h4>切平面方程</h4>
             <p style={{ fontFamily: 'monospace', fontSize: '1rem' }}>
               {data.tangent_plane.equation}
@@ -612,16 +664,28 @@ export default function MultivariateFunction() {
         {/* 图例说明 */}
         <div className="info-panel" style={{ marginTop: '1rem' }}>
           <h4>图例说明</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.5rem', fontSize: '0.875rem' }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+              gap: '0.5rem',
+              fontSize: '0.875rem',
+            }}
+          >
             <p>
-              <span style={{ color: '#10b981' }}>●</span> 3D 曲面: 函数 z = f(x,y)<br/>
-              <span style={{ color: '#ef4444' }}>●</span> 观察点位置<br/>
-              <span style={{ color: '#3b82f6' }}>—</span> 梯度方向（函数增长最快）<br/>
+              <span style={{ color: '#10b981' }}>●</span> 3D 曲面: 函数 z = f(x,y)
+              <br />
+              <span style={{ color: '#ef4444' }}>●</span> 观察点位置
+              <br />
+              <span style={{ color: '#3b82f6' }}>—</span> 梯度方向（函数增长最快）
+              <br />
               <span style={{ color: 'rgba(239, 68, 68, 0.5)' }}>■</span> 切平面
             </p>
             <p>
-              <span style={{ color: '#9333ea' }}>●</span> 等高线: z 值相等的点连线<br/>
-              <span style={{ color: '#ef4444' }}>○</span> 等高线上的观察点<br/>
+              <span style={{ color: '#9333ea' }}>●</span> 等高线: z 值相等的点连线
+              <br />
+              <span style={{ color: '#ef4444' }}>○</span> 等高线上的观察点
+              <br />
               <span style={{ color: '#3b82f6' }}>—</span> 梯度向量在 xy 平面投影
             </p>
           </div>
