@@ -9,5 +9,6 @@ __pycache__
 venv
 backend/media
 backend/downloads
+backend/data
 .DS_Store
 *.log

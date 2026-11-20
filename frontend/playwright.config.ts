@@ -9,7 +9,7 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: process.env.CI ? 1 : 2,
   reporter: 'list',
   use: {
     baseURL: 'http://localhost:5173',
@@ -20,6 +20,12 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      testIgnore: ['**/ui-mobile.spec.ts'],
+    },
+    {
+      name: 'chromium-mobile',
+      use: { ...devices['iPhone 13'], browserName: 'chromium' },
+      testMatch: ['**/ui-mobile.spec.ts'],
     },
   ],
   webServer: {

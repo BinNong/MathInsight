@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useWorldStore } from '../store'
 
 const LINES = [
@@ -17,6 +17,11 @@ export default function Dialog() {
   const lockControls = useWorldStore((s) => s.lockControls)
   const [idx, setIdx] = useState(0)
 
+  const close = useCallback(() => {
+    setDialogOpen(false)
+    lockControls?.()
+  }, [lockControls, setDialogOpen])
+
   useEffect(() => {
     if (open) setIdx(0)
   }, [open])
@@ -24,18 +29,17 @@ export default function Dialog() {
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.code === 'Escape') setDialogOpen(false)
+      if (e.code === 'Escape') {
+        e.preventDefault()
+        close()
+      }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, setDialogOpen])
+  }, [close, open])
 
   if (!open) return null
 
-  const close = () => {
-    setDialogOpen(false)
-    lockControls?.()
-  }
   const goto = (route: string, title: string) => {
     setDialogOpen(false)
     openOverlay({ route, title })
@@ -45,7 +49,7 @@ export default function Dialog() {
 
   return (
     <div className="world-dialog-wrap" onClick={(e) => e.stopPropagation()}>
-      <div className="world-dialog">
+      <div className="world-dialog" role="dialog" aria-label="数灵对话">
         <div className="world-dialog-name">✦ 数灵 · 数学导师</div>
         <p className="world-dialog-text">{LINES[idx]}</p>
         <div className="world-dialog-actions">

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import Plot from 'react-plotly.js'
+import Plot from '../components/Plot'
 import { linearAlgebraApi, MatrixTransformData } from '../services/api'
 import PageHeader from '../components/PageHeader'
 import ControlPanel from '../components/ControlPanel'
@@ -185,9 +185,13 @@ export default function MatrixTransform() {
     }
 
     // 原始单位圆 (灰色)
+    const originalUnitCircle = {
+      x: Array.from({ length: 101 }, (_, i) => Math.cos((i / 100) * 2 * Math.PI)),
+      y: Array.from({ length: 101 }, (_, i) => Math.sin((i / 100) * 2 * Math.PI)),
+    }
     plots.push({
-      x: data.unit_circle.x,
-      y: data.unit_circle.y,
+      x: originalUnitCircle.x,
+      y: originalUnitCircle.y,
       type: 'scatter',
       mode: 'lines',
       fill: 'tozeroy',
@@ -243,8 +247,8 @@ export default function MatrixTransform() {
           y: [0, ev.v[1] * scale],
           type: 'scatter',
           mode: 'lines+markers',
-          line: { color: '#8b5cf6', width: 2, dash: 'dash' },
-          marker: { size: 6, color: '#8b5cf6' },
+          line: { color: '#8a6d3b', width: 2, dash: 'dash' },
+          marker: { size: 6, color: '#8a6d3b' },
           name: `λ${idx + 1} = ${ev.lambda.toFixed(2)}`,
           showlegend: true,
         })
@@ -506,7 +510,7 @@ export default function MatrixTransform() {
                   <br />
                   <span style={{ color: '#3b82f6' }}>—</span> 变换后 y 方向基向量 (e₂ →)
                   <br />
-                  <span style={{ color: '#8b5cf6' }}>--</span> 特征向量方向
+                  <span style={{ color: '#8a6d3b' }}>--</span> 特征向量方向
                 </p>
               </CollapsibleSection>
             </>

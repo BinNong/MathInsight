@@ -1,5 +1,32 @@
 import { client } from './client'
 
+interface ApiEnvelope<T> {
+  success: boolean
+  data?: T
+  error?: string
+}
+
+function unwrapApiResponse<T>(response: ApiEnvelope<T>): T {
+  if (!response.success) {
+    throw new Error(response.error || '请求失败')
+  }
+  if (response.data == null) {
+    throw new Error('服务器响应缺少数据')
+  }
+  const result = response.data as T & { success?: boolean; error?: string }
+  if (result.success === false) {
+    throw new Error(result.error || '计算失败')
+  }
+  return response.data
+}
+
+function ensureSuccess<T extends { success: boolean; error?: string }>(response: T): T {
+  if (!response.success) {
+    throw new Error(response.error || '计算失败')
+  }
+  return response
+}
+
 // ============ 向量场与线积分 API ============
 
 export interface VectorFieldRequest {
@@ -488,9 +515,9 @@ export const vectorFieldApi = {
   },
 
   // 获取预设
-  async getPresets(): Promise<{ success: boolean; data?: VectorFieldPresetsData; error?: string }> {
+  async getPresets(): Promise<VectorFieldPresetsData & { success: boolean; error?: string }> {
     const response = await client.get('/vector-field/presets')
-    return response.data
+    return ensureSuccess(response.data)
   },
 
   // 保守场判定
@@ -540,7 +567,8 @@ export const vectorFieldApi = {
   // 获取3D预设向量场
   async getPresets3d(): Promise<{ success: boolean; vector_fields: VectorField3DPreset[] }> {
     const response = await client.get('/vector-field/presets-3d')
-    return response.data
+    const data = unwrapApiResponse<{ vector_fields: VectorField3DPreset[] }>(response.data)
+    return { success: true, ...data }
   },
 
   // ============ 曲面积分 API ============

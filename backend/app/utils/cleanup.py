@@ -79,6 +79,20 @@ def cleanup_manim_temp_files(downloads_dir: str, max_age_hours: Optional[int] = 
                         continue
         _remove_empty_dirs(cache_dir)
 
+    tasks_dir = os.path.join(downloads_dir, '.tasks')
+    if os.path.isdir(tasks_dir):
+        for filename in os.listdir(tasks_dir):
+            if not filename.endswith('.json'):
+                continue
+            file_path = os.path.join(tasks_dir, filename)
+            try:
+                if now - os.path.getmtime(file_path) > max_age_seconds:
+                    os.remove(file_path)
+                    removed_count += 1
+            except Exception:
+                continue
+        _remove_empty_dirs(tasks_dir)
+
     return removed_count
 
 

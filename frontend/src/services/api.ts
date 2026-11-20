@@ -15,7 +15,7 @@
  * 本文件继续重新导出所有内容，避免一次性修改所有页面导入。
  */
 
-export { client, API_PREFIX } from './api/client'
+export { client, API_PREFIX, ApiError, getApiErrorMessage } from './api/client'
 
 export type {
   EpsilonDeltaRequest,
@@ -123,6 +123,14 @@ export { vectorFieldApi } from './api/vectorField'
 
 export type { GenerateAnimationRequest, GenerateAnimationResponse } from './api/manim'
 export { manimApi } from './api/manim'
+
+export type {
+  AuthUser,
+  AuthResult,
+  RegisterRequest,
+  LoginRequest,
+} from './api/auth'
+export { authApi } from './api/auth'
 
 export type {
   SolverSubject,

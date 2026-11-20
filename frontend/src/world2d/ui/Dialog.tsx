@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useWorld2DStore } from '../store'
 import { getWorld } from '../data/world'
 import { getInterior } from '../data/interiors'
+import { getDungeon } from '../data/dungeon'
 import { loadAssets } from '../engine/assets'
 import { npcPortrait } from '../engine/sprites'
 
@@ -13,27 +14,30 @@ const NPC_COLORS: Record<string, string> = {
   luobida: '#fda4af',
   newton: '#93c5fd',
   laibunizi: '#fcd34d',
+  mijing: '#fda4af',
 }
 
-/** 全场景 NPC 查找（小镇 + 三间修炼馆） */
+/** 全场景 NPC 查找（小镇 + 三间修炼馆 + 秘境） */
 function findNpc(id: string | null) {
   if (!id) return null
-  const outdoor = getWorld().npcs.find((n) => n.id === id)
+  const outdoor = getWorld().npcs.find((n) => n.id === id && !n.noInteract)
   if (outdoor) return outdoor
   for (const hall of ['limit', 'derivative', 'integral'] as const) {
-    const hit = getInterior(hall).npcs.find((n) => n.id === id)
+    const hit = getInterior(hall).npcs.find((n) => n.id === id && !n.noInteract)
     if (hit) return hit
   }
-  return null
+  return getDungeon().npcs.find((n) => n.id === id && !n.noInteract) ?? null
 }
 
-/** NPC 对话框：打字机效果 + 像素头像；修炼馆导师附带修炼入口 */
+/** NPC 对话框：打字机效果 + 像素头像；导师与守关人附带对应入口 */
 export default function Dialog() {
   const npcId = useWorld2DStore((s) => s.dialogNpc)
   const setDialogNpc = useWorld2DStore((s) => s.setDialogNpc)
   const openOverlay = useWorld2DStore((s) => s.openOverlay)
   const setTraining = useWorld2DStore((s) => s.setTraining)
   const setCodex = useWorld2DStore((s) => s.setCodex)
+  const requestTrialStart = useWorld2DStore((s) => s.requestTrialStart)
+  const trialStatus = useWorld2DStore((s) => s.trialStatus)
   const [idx, setIdx] = useState(0)
   const [typed, setTyped] = useState(0)
   const [portraits, setPortraits] = useState<Record<string, string>>({})
@@ -42,16 +46,31 @@ export default function Dialog() {
 
   useEffect(() => {
     let cancelled = false
-    loadAssets().then((a) => {
-      if (cancelled) return
-      const map: Record<string, string> = {}
-      for (const k of ['wizard', 'knight', 'peasant', 'keeper', 'host', 'scholar', 'sage']) map[k] = npcPortrait(a, k)
-      setPortraits(map)
-    })
+    loadAssets()
+      .then((a) => {
+        if (cancelled) return
+        const map: Record<string, string> = {}
+        for (const k of [
+          'wizard',
+          'knight',
+          'peasant',
+          'keeper',
+          'host',
+          'scholar',
+          'sage',
+          'rogue',
+          'barmaid',
+        ])
+          map[k] = npcPortrait(a, k)
+        setPortraits(map)
+      })
+      .catch(() => {
+        if (!cancelled) setPortraits({})
+      })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [npcId])
 
   useEffect(() => {
     setIdx(0)
@@ -101,7 +120,9 @@ export default function Dialog() {
     <div className="world-dialog-wrap">
       <div className="world-dialog world2d-dialog">
         <div className="world2d-dialog-head">
-          {portraits[npc.sprite] && <img className="world2d-portrait" src={portraits[npc.sprite]} alt={npc.name} />}
+          {portraits[npc.sprite] && (
+            <img className="world2d-portrait" src={portraits[npc.sprite]} alt={npc.name} />
+          )}
           <div className="world-dialog-name" style={{ color }}>
             {npc.name}
           </div>
@@ -139,7 +160,22 @@ export default function Dialog() {
                   📖 修炼手札
                 </button>
               )}
-              <button className={npc.training ? 'world-btn' : 'world-btn primary'} onClick={() => setDialogNpc(null)}>
+              {npc.trial && (
+                <button
+                  className="world-btn primary"
+                  disabled={Boolean(trialStatus)}
+                  onClick={() => {
+                    setDialogNpc(null)
+                    requestTrialStart()
+                  }}
+                >
+                  {trialStatus ? `第 ${trialStatus.wave} 波试炼进行中` : '开始试炼'}
+                </button>
+              )}
+              <button
+                className={npc.training ? 'world-btn' : 'world-btn primary'}
+                onClick={() => setDialogNpc(null)}
+              >
                 继续探索
               </button>
               {npc.links?.map((l) => (

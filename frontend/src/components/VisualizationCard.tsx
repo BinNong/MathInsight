@@ -18,7 +18,7 @@ export default function VisualizationCard({
   rightAction,
 }: VisualizationCardProps) {
   return (
-    <div className="visualization-card">
+    <section className="visualization-card" aria-label={title} aria-busy={loading}>
       {(title || subtitle || rightAction) && (
         <div className="visualization-header">
           <div>
@@ -30,13 +30,13 @@ export default function VisualizationCard({
       )}
       <div className="visualization-body">
         {loading && (
-          <div className="updating-overlay">
-            <div className="loading-spinner" />
+          <div className="updating-overlay" role="status" aria-live="polite">
+            <div className="loading-spinner" aria-hidden="true" />
             {loadingText}
           </div>
         )}
         {children}
       </div>
-    </div>
+    </section>
   )
 }

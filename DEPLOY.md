@@ -22,12 +22,12 @@ https://nongbin.site/mathinsight
 
 ```bash
 cd frontend
-npm install
-npx vite build    # 用 vite build 跳过 tsc 类型检查
+npm ci
+npm run build
 cd ..
 ```
 
-> 注意：项目已修复 TypeScript 类型错误，直接使用 `npm run build` 即可。
+> `npm run build` 会先执行 TypeScript 检查，再进行 Vite 生产构建，不应跳过检查。
 
 ## 第一步：上传项目到服务器
 
@@ -64,10 +64,30 @@ vim backend/.env
 
 ```env
 FLASK_DEBUG=false
+SECRET_KEY=用 python3 -c "import secrets; print(secrets.token_urlsafe(48))" 生成的随机串
 ANTHROPIC_API_KEY=你的密钥
 ANTHROPIC_BASE_URL=https://api.minimaxi.com/anthropic
 ANTHROPIC_MODEL=claude-sonnet-4-20250514
 ```
+
+> `SECRET_KEY` 用于签名登录令牌，生产环境务必设置为随机强密钥。若不设置，服务会自动生成并持久化到 `backend/data/secret_key`，但建议显式配置。
+
+### 用户账号与邀请码
+
+站点已启用登录鉴权：**未登录无法使用任何功能**，注册必须提供有效邀请码。
+
+在服务器上生成邀请码（进入项目目录）：
+
+```bash
+cd /home/ubuntu/mathinsight
+./backend/.venv/bin/python backend/manage_invites.py create 5 --note "第一批用户"
+# 查看使用情况
+./backend/.venv/bin/python backend/manage_invites.py list
+```
+
+容器内可执行：`docker exec mathinsight-backend python manage_invites.py create 5`
+
+每个邀请码仅能注册一个账号。账号数据保存在 SQLite 数据库，位于持久化卷 `/var/www/mathinsight/data/mathinsight.db`（**请务必保留并备份此目录**，删除会导致全部账号失效）。
 
 ## 第三步：执行部署脚本
 
@@ -77,9 +97,12 @@ chmod +x deploy.sh
 ```
 
 脚本自动完成：
-1. 检查是否有 npm，有则编译前端；无则使用已上传的 dist 文件
-2. 将静态文件复制到 `/var/www/mathinsight/`
-3. 构建并启动 Flask Docker 容器（端口 5001）
+1. 预检 `backend/.env` 和 Docker，使用 `npm ci && npm run build` 编译前端；无 npm 时使用已上传的 dist 文件
+2. 将静态文件复制到 `/var/www/mathinsight/`，并设置下载目录供 UID 10001 的非 root 容器用户写入
+3. 以单 worker、2 CPU、4GB 内存和 256 PID 上限构建并启动 Flask Docker 容器（端口 5001）
+4. 等待容器健康检查通过，失败时输出最近日志并以非零状态退出
+
+单 worker 是有意的部署约束：当前 Manim 任务状态保存在单进程和本机文件中，多 worker 会把其他进程的执行中任务误判为失败。需要横向扩展时，应先迁移到共享任务队列与跨进程取消机制。
 
 ## 第四步：配置 Nginx（手动）
 
@@ -127,8 +150,9 @@ docker ps | grep mathinsight
 # 查看容器日志
 docker logs mathinsight-backend
 
-# 测试 API
-curl http://127.0.0.1:5001/api/health
+# 测试 API 与容器健康状态
+curl --fail http://127.0.0.1:5001/api/health
+docker inspect --format '{{.State.Health.Status}}' mathinsight-backend
 ```
 
 浏览器访问 `https://nongbin.site/mathinsight` 确认页面正常。

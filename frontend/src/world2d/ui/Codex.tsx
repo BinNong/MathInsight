@@ -46,15 +46,21 @@ export default function Codex() {
       <div className="world2d-quiz world2d-codex">
         <div className="world2d-quiz-head">
           <span className="world2d-quiz-badge">📖 修炼手札 · 微积分</span>
-          <button className="world2d-x" onClick={() => setCodex(false)}>✕</button>
+          <button className="world2d-x" onClick={() => setCodex(false)}>
+            ✕
+          </button>
         </div>
 
         <div className="world2d-codex-stats">
           <span>修炼 {sessions} 组</span>
           <span>答题 {totalAnswered} 道</span>
-          <span>正确率 {totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0}%</span>
+          <span>
+            正确率 {totalAnswered > 0 ? Math.round((totalCorrect / totalAnswered) * 100) : 0}%
+          </span>
           <span>最佳连对 {bestStreak}</span>
-          <span>精通 {mastered.length}/{TOPICS.length}</span>
+          <span>
+            精通 {mastered.length}/{TOPICS.length}
+          </span>
           {maxHpBonus > 0 && <span className="world2d-codex-bonus">生命上限 +{maxHpBonus}</span>}
           {maxMpBonus > 0 && <span className="world2d-codex-bonus">灵感上限 +{maxMpBonus}</span>}
         </div>
@@ -74,7 +80,10 @@ export default function Codex() {
                       <span className={`world2d-topic-lv lv${lv}`}>{MASTERY_LABEL[lv]}</span>
                     </div>
                     <div className="world2d-codex-bar">
-                      <div className={`world2d-codex-bar-fill lv${lv}`} style={{ width: `${pct}%` }} />
+                      <div
+                        className={`world2d-codex-bar-fill lv${lv}`}
+                        style={{ width: `${pct}%` }}
+                      />
                     </div>
                     <div className="world2d-codex-topic-meta">
                       {p ? `${p.correct}/${p.answered} 正确` : '尚未答题'}

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Plot from 'react-plotly.js'
+import Plot from '../components/Plot'
 import type { Data, Layout } from 'plotly.js'
 import { integrationApi, RiemannSumRequest, RiemannSumData, ConvergenceData } from '../services/api'
 
@@ -53,9 +53,13 @@ export default function RiemannIntegral() {
   const [error, setError] = useState<string | null>(null)
   const plotRef = useRef<any>(null)
   const [isUpdating, setIsUpdating] = useState(false)
-  const [isAnimating, setIsAnimating] = useState(false)
-  const [animationProgress, setAnimationProgress] = useState(0)
-  const animationRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [animationStatus, setAnimationStatus] = useState<
+    'static' | 'playing' | 'paused' | 'complete'
+  >('static')
+  const [animationProgress, setAnimationProgress] = useState(defaultRequest.n)
+  const isAnimating = animationStatus === 'playing'
+  const isPaused = animationStatus === 'paused'
+  const isAnimationInProgress = isAnimating || isPaused
 
   // 获取黎曼和数据
   const fetchRiemannData = useCallback(
@@ -141,25 +145,17 @@ export default function RiemannIntegral() {
     [request]
   )
 
-  // 初始加载
   useEffect(() => {
     setLoading(true)
-    if (activeTab === 'riemann') {
-      fetchRiemannData(true)
-    } else {
-      fetchConvergenceData(true)
-    }
-  }, [])
-
-  // 参数变化时重新获取
-  useEffect(() => {
-    setLoading(true)
-    if (activeTab === 'riemann') {
-      fetchRiemannData(true)
-    } else {
-      fetchConvergenceData(true)
-    }
-  }, [request.function, request.a, request.b, request.n, request.method, activeTab])
+    const timer = window.setTimeout(() => {
+      if (activeTab === 'riemann') {
+        fetchRiemannData(true)
+      } else {
+        fetchConvergenceData(true)
+      }
+    }, 200)
+    return () => window.clearTimeout(timer)
+  }, [activeTab, fetchRiemannData, fetchConvergenceData])
 
   const handleInputChange = (field: keyof RiemannSumRequest, value: any) => {
     setRequest((prev) => ({ ...prev, [field]: value }))
@@ -182,56 +178,47 @@ export default function RiemannIntegral() {
     return m ? m.label : method
   }
 
-  // 开始动画
   const startAnimation = () => {
     if (!riemannData || riemannData.n <= 0) return
 
-    setIsAnimating(true)
-    setAnimationProgress(0)
+    if (!isPaused || animationProgress >= riemannData.n) {
+      setAnimationProgress(0)
+    }
+    setAnimationStatus('playing')
+  }
 
-    // 根据分割数调整动画速度
+  const pauseAnimation = () => {
+    if (isAnimating) setAnimationStatus('paused')
+  }
+
+  const resetAnimation = () => {
+    setAnimationStatus('static')
+    setAnimationProgress(riemannData?.n ?? request.n)
+  }
+
+  useEffect(() => {
+    if (!isAnimating || !riemannData || animationProgress >= riemannData.n) return
+
     const totalRects = riemannData.n
-    const duration = Math.min(2000, Math.max(500, totalRects * 30)) // 500ms-2s
-    const interval = duration / totalRects // 每个矩形的间隔
+    const duration = Math.min(2000, Math.max(500, totalRects * 30))
+    const nextProgress = animationProgress + 1
+    const timer = window.setTimeout(() => {
+      setAnimationProgress(nextProgress)
+      if (nextProgress >= totalRects) setAnimationStatus('complete')
+    }, duration / totalRects)
 
-    if (animationRef.current) clearInterval(animationRef.current)
+    return () => window.clearTimeout(timer)
+  }, [animationProgress, isAnimating, riemannData])
 
-    let current = 0
-    animationRef.current = setInterval(() => {
-      current++
-      setAnimationProgress(current)
-      if (current >= totalRects) {
-        stopAnimation()
-      }
-    }, interval)
-  }
-
-  // 停止动画
-  const stopAnimation = () => {
-    if (animationRef.current) {
-      clearInterval(animationRef.current)
-      animationRef.current = null
-    }
-    setIsAnimating(false)
-    setAnimationProgress(riemannData?.n || 0)
-  }
-
-  // 清理动画
   useEffect(() => {
-    return () => {
-      if (animationRef.current) clearInterval(animationRef.current)
-    }
-  }, [])
-
-  // 参数变化时停止动画
-  useEffect(() => {
-    stopAnimation()
-  }, [request.function, request.a, request.b, request.n, request.method])
+    setAnimationStatus('static')
+    setAnimationProgress(riemannData?.n ?? request.n)
+  }, [activeTab, request.function, request.a, request.b, request.n, request.method, riemannData])
 
   // 计算当前已显示矩形的累加面积
   const getAnimatedArea = () => {
     if (!riemannData) return 0
-    const visibleCount = isAnimating ? animationProgress : riemannData.n
+    const visibleCount = animationProgress
     const dx = (request.b - request.a) / riemannData.n
     let sum = 0
     for (let i = 0; i < Math.min(visibleCount, riemannData.rectangles.height.length); i++) {
@@ -252,7 +239,7 @@ export default function RiemannIntegral() {
           type: 'scatter',
           mode: 'lines',
           name: 'f(x)',
-          line: { color: '#4f46e5', width: 3 },
+          line: { color: '#9c3b2e', width: 3 },
         },
         // 黎曼矩形（根据动画进度显示）
         ...(riemannData.rectangles.x_left.length > 0
@@ -275,13 +262,13 @@ export default function RiemannIntegral() {
             ]
           : []),
         // 下一个待绘制矩形（高亮提示）
-        ...(isAnimating && animationProgress < riemannData.n
+        ...(isAnimationInProgress && animationProgress < riemannData.n
           ? [
               {
                 x: [riemannData.rectangles.x_left[animationProgress]],
                 y: [riemannData.rectangles.height[animationProgress]],
                 type: 'bar',
-                name: '正在绘制',
+                name: isAnimating ? '正在绘制' : '当前矩形',
                 marker: {
                   color: 'rgba(251, 191, 36, 0.6)',
                   line: { color: '#fbbf24', width: 2 },
@@ -385,7 +372,7 @@ export default function RiemannIntegral() {
             type: 'scatter',
             mode: 'lines+markers',
             name: '梯形法',
-            line: { color: '#8b5cf6', width: 2 },
+            line: { color: '#8a6d3b', width: 2 },
           },
           // 辛普森法
           {
@@ -527,17 +514,39 @@ export default function RiemannIntegral() {
                   </div>
                   <div className="form-group">
                     <label>动画</label>
-                    <button
-                      className="btn btn-primary"
-                      onClick={isAnimating ? stopAnimation : startAnimation}
-                      disabled={!riemannData}
+                    <div
                       style={{
-                        width: '100%',
-                        background: isAnimating ? 'var(--warning)' : undefined,
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: 'var(--space-2)',
                       }}
                     >
-                      {isAnimating ? '停止' : '播放动画'}
-                    </button>
+                      <button
+                        className="btn btn-primary"
+                        onClick={isAnimating ? pauseAnimation : startAnimation}
+                        disabled={!riemannData || isUpdating}
+                        style={{
+                          width: '100%',
+                          background: isAnimating ? 'var(--warning)' : undefined,
+                        }}
+                      >
+                        {isAnimating
+                          ? '暂停'
+                          : isPaused
+                            ? '继续'
+                            : animationStatus === 'complete'
+                              ? '重新播放'
+                              : '播放动画'}
+                      </button>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={resetAnimation}
+                        disabled={!riemannData || animationStatus === 'static'}
+                        style={{ width: '100%' }}
+                      >
+                        重置
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -605,7 +614,13 @@ export default function RiemannIntegral() {
                       }}
                     >
                       <span>
-                        {isAnimating ? '绘制中' : '已绘制'}{' '}
+                        {isAnimating
+                          ? '绘制中'
+                          : isPaused
+                            ? '已暂停'
+                            : animationStatus === 'complete'
+                              ? '已完成'
+                              : '已绘制'}{' '}
                         {Math.min(animationProgress, riemannData.n)} / {riemannData.n} 个矩形
                       </span>
                       <span className="slider-value">累加面积: {getAnimatedArea().toFixed(6)}</span>
@@ -613,7 +628,9 @@ export default function RiemannIntegral() {
                     <div className="progress-bar">
                       <div
                         className={`progress-bar-fill ${isAnimating ? 'animated' : ''}`}
-                        style={{ width: `${(animationProgress / riemannData.n) * 100}%` }}
+                        style={{
+                          width: `${(Math.min(animationProgress, riemannData.n) / riemannData.n) * 100}%`,
+                        }}
                       />
                     </div>
                   </CollapsibleSection>
@@ -637,21 +654,21 @@ export default function RiemannIntegral() {
                       <div
                         className="info-item"
                         style={{
-                          background: isAnimating ? 'rgba(251, 191, 36, 0.1)' : undefined,
-                          borderRadius: isAnimating ? 'var(--radius-md)' : undefined,
+                          background: isAnimationInProgress ? 'rgba(251, 191, 36, 0.1)' : undefined,
+                          borderRadius: isAnimationInProgress ? 'var(--radius-md)' : undefined,
                         }}
                       >
-                        <span>{isAnimating ? '当前累加' : '矩形总面积'}</span>
+                        <span>{isAnimationInProgress ? '当前累加' : '矩形总面积'}</span>
                         <span
                           style={{
                             fontWeight: 'bold',
-                            color: isAnimating ? 'var(--warning)' : 'var(--primary)',
+                            color: isAnimationInProgress ? 'var(--warning)' : 'var(--primary)',
                           }}
                         >
                           {getAnimatedArea().toFixed(6)}
                         </span>
                       </div>
-                      {riemannData.exact_value !== null && !isAnimating && (
+                      {riemannData.exact_value !== null && !isAnimationInProgress && (
                         <>
                           <div className="info-item">
                             <span>精确值</span>
@@ -690,7 +707,7 @@ export default function RiemannIntegral() {
                       </span>
                       {isAnimating && (
                         <div style={{ marginTop: 'var(--space-2)', color: 'var(--warning)' }}>
-                          点击"停止"可查看当前累加结果
+                          点击"暂停"可保留当前帧和累加结果
                         </div>
                       )}
                     </div>

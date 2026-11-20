@@ -3,6 +3,8 @@
 
 集中处理 API 路由中常见的请求体验证逻辑，避免在每个路由模块中重复定义。
 """
+import math
+from numbers import Number
 from typing import Any, Tuple, List
 
 
@@ -17,6 +19,8 @@ def validate_request_data(data: dict, required_fields: list = None) -> Tuple[boo
     Returns:
         (is_valid, error_message)
     """
+    if not isinstance(data, dict):
+        return False, 'Request body must be a JSON object'
     if not data:
         return False, 'Request body is required'
     if required_fields:
@@ -27,11 +31,16 @@ def validate_request_data(data: dict, required_fields: list = None) -> Tuple[boo
 
 
 def safe_float(value: Any, field_name: str) -> Tuple[bool, float | str]:
-    """安全地将值转换为 float"""
-    try:
-        return True, float(value)
-    except (TypeError, ValueError):
+    """安全地将值转换为有限 float"""
+    if isinstance(value, bool):
         return False, f'{field_name} must be a number'
+    try:
+        result = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return False, f'{field_name} must be a number'
+    if not math.isfinite(result):
+        return False, f'{field_name} must be a finite number'
+    return True, result
 
 
 def safe_int(value: Any, field_name: str, min_value: int = None, max_value: int = None) -> Tuple[bool, int | str]:
@@ -47,10 +56,19 @@ def safe_int(value: Any, field_name: str, min_value: int = None, max_value: int 
     Returns:
         (is_valid, int_value_or_error_message)
     """
+    if isinstance(value, bool):
+        return False, f'{field_name} must be an integer'
     try:
         result = int(value)
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return False, f'{field_name} must be an integer'
+
+    if isinstance(value, Number):
+        try:
+            if not math.isfinite(value) or value != result:
+                return False, f'{field_name} must be an integer'
+        except (TypeError, ValueError, OverflowError):
+            return False, f'{field_name} must be an integer'
 
     if min_value is not None and result < min_value:
         return False, f'{field_name} must be at least {min_value}'
@@ -62,7 +80,7 @@ def safe_int(value: Any, field_name: str, min_value: int = None, max_value: int 
 
 def safe_float_list(value: Any, field_name: str, expected_length: int = None) -> Tuple[bool, List[float] | str]:
     """
-    安全地将值转换为 float 列表
+    安全地将值转换为有限 float 列表
 
     Args:
         value: 要转换的值
@@ -74,10 +92,13 @@ def safe_float_list(value: Any, field_name: str, expected_length: int = None) ->
     """
     if not isinstance(value, list):
         return False, f'{field_name} must be a list'
-    try:
-        result = [float(v) for v in value]
-    except (TypeError, ValueError):
-        return False, f'{field_name} must be a list of numbers'
+
+    result = []
+    for item in value:
+        is_valid, converted = safe_float(item, field_name)
+        if not is_valid:
+            return False, f'{field_name} must be a list of finite numbers'
+        result.append(converted)
 
     if expected_length is not None and len(result) != expected_length:
         return False, f'{field_name} must have exactly {expected_length} elements'

@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import Plot from 'react-plotly.js'
+import Plot from '../components/Plot'
 import { multivariateApi, ComputeSurfaceData, Preset } from '../services/api'
 import PageHeader from '../components/PageHeader'
 import LoadingState from '../components/LoadingState'
@@ -38,13 +38,18 @@ export default function MultivariateFunction() {
 
   // 获取预设函数
   useEffect(() => {
-    const fetchPresets = async () => {
-      const response = await multivariateApi.getPresets()
-      if (response.success) {
-        setPresets(response.presets)
-      }
+    let active = true
+    multivariateApi
+      .getPresets()
+      .then((response) => {
+        if (active) setPresets(response.presets)
+      })
+      .catch(() => {
+        if (active) setError('预设加载失败，请检查服务连接')
+      })
+    return () => {
+      active = false
     }
-    fetchPresets()
   }, [])
 
   // 获取可视化数据
@@ -66,10 +71,10 @@ export default function MultivariateFunction() {
       if (response.success) {
         setData(response)
       } else {
-        setError(response.error || '计算失败')
+        setError('计算失败，请检查函数与参数')
       }
-    } catch (err: any) {
-      setError('无法连接到服务器')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '无法连接到服务器')
     } finally {
       setLoading(false)
     }
@@ -571,7 +576,7 @@ export default function MultivariateFunction() {
         {loading && !data && <LoadingState text="正在计算曲面数据..." />}
 
         {data && data.success && (
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+          <div className="responsive-two-column">
             {/* 3D 曲面图 */}
             <div style={{ background: '#fff', borderRadius: '8px', padding: '0.5rem' }}>
               <Plot

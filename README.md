@@ -43,10 +43,7 @@ cd backend
 cp .env.example .env
 ```
 
-编辑 `.env` 文件，填入你的 LLM API 密钥（Manim 动画生成功能需要）：
-
-- **Anthropic**：配置 `ANTHROPIC_API_KEY` 和 `ANTHROPIC_BASE_URL`
-- **OpenAI**：配置 `OPENAI_API_KEY` 和 `OPENAI_BASE_URL`
+编辑 `.env` 文件，填入你的 LLM API 密钥（AI 解题与 Manim 动画生成功能需要）。当前服务使用 Anthropic Messages API，请配置 `ANTHROPIC_API_KEY`、`ANTHROPIC_BASE_URL` 和 `ANTHROPIC_MODEL`，可使用官方或兼容端点。`OPENAI_*` 仅保留旧配置回退，不代表支持 OpenAI 官方 SDK 调用。
 
 > ⚠️ **注意**：`.env` 文件已加入 `.gitignore`，请勿将其提交到版本控制，避免 API 密钥泄露。
 
@@ -54,8 +51,12 @@ cp .env.example .env
 
 ```bash
 cd backend
-pip install -r requirements.txt
+python3.12 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
 ```
+
+Manim 需要 Cairo/Pango 等系统库；macOS 本地如缺少编译环境，可直接使用项目 Dockerfile 构建完整运行环境。
 
 ### 3. 启动后端服务
 
@@ -70,7 +71,7 @@ python run.py
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -92,11 +93,14 @@ npm run dev
 | **AI 数学动画生成** | 基于 LLM 自动生成 Manim 动画与同步讲解字幕 | ✅ 已完成 |
 | **数学解题助手** | AI 引导分步解题、提示阶梯、相似题推荐与可视化联动 | ✅ 已完成 |
 | **知识学习地图** | 高等数学概念知识图谱，前置关系可视化与推荐学习路径 | ✅ 已完成 |
+| **学习工作台** | 全模块搜索、分类筛选、收藏、最近学习与继续学习，本机保存记录 | ✅ 已完成 |
+| **3D 数学世界** | 第一人称探索数学群岛、梯度地形与矩阵装置，联通交互实验 | ✅ 已完成 |
+| **2D 数学小镇** | 导师修炼、战斗答题、掌握度手札、秘境波次试炼与触控操作 | ✅ 已完成 |
 
 ## 技术栈
 
 - **前端**：React 18 + TypeScript + Vite + Plotly.js + KaTeX + vis-network + react-router-dom
-- **后端**：Flask + SymPy + NumPy + SciPy + Manim + Anthropic/OpenAI SDK
+- **后端**：Flask + SymPy + NumPy + SciPy + Manim + Anthropic SDK（兼容端点）
 - **测试**：pytest（后端）+ Playwright（前端 e2e）
 - **部署**：Docker + Nginx
 
@@ -104,20 +108,25 @@ npm run dev
 
 ```bash
 # 后端测试
-cd backend && python -m pytest -q
+cd backend && .venv/bin/python -m pytest -q
 
-# 前端类型检查
+# 前端类型检查、lint 与格式检查
 cd frontend && npx tsc --noEmit
-
-# 前端 lint
-cd frontend && npm run lint
+npm run lint
+npm run format:check
 
 # 前端构建
-cd frontend && npm run build
+npm run build
 
-# 前端端到端测试
-cd frontend && npm run e2e
+# 桌面端与移动端端到端测试（首次需安装 Chromium）
+npx playwright install chromium
+npm run e2e
+
+# 仅运行移动端
+npx playwright test --project=chromium-mobile
 ```
+
+Vite 默认代理 `http://localhost:5000`；端口被占用时，可在其他端口启动 Flask，并通过 `VITE_API_TARGET=http://127.0.0.1:5001 npm run dev` 指定后端。
 
 ## 部署
 
@@ -133,4 +142,5 @@ cd frontend && npm run e2e
 - 生产环境请设置强密钥并定期轮换
 - 使用 `ALLOWED_ORIGINS` 限制 CORS 来源
 - 对 `/api/manim/generate` 等资源密集型接口设置限流
-- 部署脚本默认以非 root 用户运行后端服务
+- 后端容器以 UID 10001 非 root 用户、单 worker 运行，并配置健康检查及 CPU/内存/PID 限制
+- Manim 渲染子进程仅继承白名单环境变量；AST 检查不是完整安全沙箱，公网开放前仍需独立隔离执行环境

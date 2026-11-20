@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import PageHeader from '../components/PageHeader'
 import ControlPanel from '../components/ControlPanel'
 import VisualizationCard from '../components/VisualizationCard'
@@ -198,6 +198,7 @@ function StepCard({
 
 export default function MathSolver() {
   const navigate = useNavigate()
+  const location = useLocation()
   // 会话状态持久化到全局 store（见 stores/solverStore），切换路由后不丢失
   const problem = useSolverStore((s) => s.problem)
   const subject = useSolverStore((s) => s.subject)
@@ -222,13 +223,22 @@ export default function MathSolver() {
   const [hintLoading, setHintLoading] = useState<Record<number, boolean>>({})
   const [similarLoading, setSimilarLoading] = useState(false)
   const [followUp, setFollowUp] = useState('')
-  const [activeVisualizationStep, setActiveVisualizationStep] = useState<number | null>(null)
   const resultRef = useRef<HTMLDivElement>(null)
   // 从持久化 store 恢复会话时不触发自动滚动
   const restoredRef = useRef(useSolverStore.getState().result !== null)
+  const contextHandledRef = useRef<string | null>(null)
+  const solverSessionId = useMemo(() => {
+    const text = problem || 'new-session'
+    let hash = 0
+    for (let index = 0; index < text.length; index++) {
+      hash = (hash * 31 + text.charCodeAt(index)) >>> 0
+    }
+    return `${result?.topic ?? 'new'}:${hash.toString(36)}`
+  }, [problem, result?.topic])
 
   const {
     task,
+    activeStep,
     loading: vizLoading,
     error: vizError,
     videoUrl,
@@ -238,7 +248,37 @@ export default function MathSolver() {
     createTask,
     cancelTask,
     reset: resetVisualization,
-  } = useManimTask()
+  } = useManimTask({ source: 'solver', sessionId: solverSessionId })
+
+  useEffect(() => {
+    const context = location.state as {
+      topic?: unknown
+      name?: unknown
+      subject?: unknown
+    } | null
+    const name = typeof context?.name === 'string' ? context.name.trim() : ''
+    if (!name) return
+    const contextKey = `${String(context?.topic ?? '')}:${name}`
+    if (contextHandledRef.current === contextKey) return
+    contextHandledRef.current = contextKey
+
+    clearSession(false)
+    setProblem(`请出一道围绕「${name}」的高等数学练习题，并给出分步解析。`)
+    const contextSubject = SUBJECT_OPTIONS.some((option) => option.value === context?.subject)
+      ? (context?.subject as SolverSubject)
+      : 'auto'
+    setSubject(contextSubject)
+    resetVisualization()
+    navigate(location.pathname, { replace: true, state: null })
+  }, [
+    location.state,
+    location.pathname,
+    navigate,
+    clearSession,
+    setProblem,
+    setSubject,
+    resetVisualization,
+  ])
 
   useEffect(() => {
     if (restoredRef.current) {
@@ -257,7 +297,6 @@ export default function MathSolver() {
     setLoading(true)
     setError(null)
     clearSession(true)
-    setActiveVisualizationStep(null)
     resetVisualization()
 
     try {
@@ -327,17 +366,19 @@ export default function MathSolver() {
   }
 
   const handleVisualizeStep = async (step: SolverStep) => {
-    if (!result) return
-    setActiveVisualizationStep(step.index)
+    if (!result || vizLoading) return
     const description =
       result.visualization_suggestions[step.index - 1]?.description ||
       `Create a Manim animation that visualizes the mathematical concept in this step: ${step.title}. ${step.explanation}`
 
-    await createTask({
-      description,
-      resolution: '720p',
-      fps: 30,
-    })
+    await createTask(
+      {
+        description,
+        resolution: '720p',
+        fps: 30,
+      },
+      { step: step.index }
+    )
   }
 
   const handleFollowUp = async () => {
@@ -541,7 +582,7 @@ export default function MathSolver() {
                   <VisualizationCard title="步骤可视化">
                     {isVizRunning && (
                       <div className="solver-viz-status">
-                        <LoadingState text={`正在为第 ${activeVisualizationStep} 步生成动画...`} />
+                        <LoadingState text={`正在为第 ${activeStep ?? '当前'} 步生成动画...`} />
                         <div className="progress-bar">
                           <div
                             className="progress-bar-fill animated"

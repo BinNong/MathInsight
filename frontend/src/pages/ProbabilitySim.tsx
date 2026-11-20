@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import Plot from 'react-plotly.js'
+import Plot from '../components/Plot'
 import type { Data } from 'plotly.js'
 import { probabilityApi, LLNSimulateRequest, LLNResultData } from '../services/api'
 import PageHeader from '../components/PageHeader'
@@ -74,7 +74,9 @@ export default function ProbabilitySim() {
   const [error, setError] = useState<string | null>(null)
   const [showAdvanced, setShowAdvanced] = useState(false)
 
-  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const requestIdRef = useRef(0)
+  const isComplete = data !== null && experimentState.currentIndex >= data.samples.length
+  const configurationLocked = loading || data !== null
 
   // 加载预设
   const applyPreset = (preset: Preset) => {
@@ -91,8 +93,11 @@ export default function ProbabilitySim() {
     setSampleSize(preset.params.sampleSize)
   }
 
-  // 开始模拟
+  // 开始新的模拟
   const startSimulation = useCallback(async () => {
+    const requestId = ++requestIdRef.current
+    setData(null)
+    setExperimentState({ running: false, currentIndex: 0, samples: [], cumulativeMeans: [] })
     setLoading(true)
     setError(null)
 
@@ -111,10 +116,10 @@ export default function ProbabilitySim() {
       }
 
       const response = await probabilityApi.simulateLLN(request)
+      if (requestId !== requestIdRef.current) return
 
       if (response.success) {
         setData(response.data)
-        // 初始化实验状态
         setExperimentState({
           running: true,
           currentIndex: 0,
@@ -125,63 +130,52 @@ export default function ProbabilitySim() {
         setError(response.error || '模拟失败')
       }
     } catch (err: any) {
-      setError('无法连接到服务器')
+      if (requestId === requestIdRef.current) setError('无法连接到服务器')
     } finally {
-      setLoading(false)
+      if (requestId === requestIdRef.current) setLoading(false)
     }
   }, [experimentType, p, minVal, maxVal, sampleSize])
 
-  // 动画循环
   useEffect(() => {
     if (!data || !experimentState.running) return
 
-    const batchSize = Math.max(1, Math.floor(sampleSize / 100))
-
-    const animate = () => {
+    const batchSize = Math.max(1, Math.floor(data.samples.length / 100))
+    const timer = window.setTimeout(() => {
       setExperimentState((prev) => {
-        const nextIndex = prev.currentIndex + batchSize
-
-        if (nextIndex >= data.samples.length) {
-          // 动画结束
-          if (timerRef.current) clearInterval(timerRef.current)
-          return {
-            ...prev,
-            running: false,
-            currentIndex: data.samples.length,
-            samples: data.samples,
-            cumulativeMeans: data.cumulative_means,
-          }
-        }
-
-        // 添加新批次的数据
-        const newSamples = [...data.samples.slice(0, nextIndex)]
-        const newMeans = [...data.cumulative_means.slice(0, nextIndex)]
-
+        if (!prev.running) return prev
+        const nextIndex = Math.min(prev.currentIndex + batchSize, data.samples.length)
         return {
-          ...prev,
+          running: nextIndex < data.samples.length,
           currentIndex: nextIndex,
-          samples: newSamples,
-          cumulativeMeans: newMeans,
+          samples: data.samples.slice(0, nextIndex),
+          cumulativeMeans: data.cumulative_means.slice(0, nextIndex),
         }
       })
-    }
+    }, animationSpeed)
 
-    timerRef.current = setInterval(animate, animationSpeed)
+    return () => window.clearTimeout(timer)
+  }, [data, experimentState.running, experimentState.currentIndex, animationSpeed])
 
+  useEffect(() => {
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
+      requestIdRef.current += 1
     }
-  }, [data, experimentState.running, animationSpeed, sampleSize])
+  }, [])
 
-  // 停止动画
-  const stopAnimation = () => {
-    if (timerRef.current) clearInterval(timerRef.current)
+  const pauseAnimation = () => {
     setExperimentState((prev) => ({ ...prev, running: false }))
   }
 
-  // 重置
+  const resumeSimulation = () => {
+    if (!data || isComplete) return
+    setExperimentState((prev) => ({ ...prev, running: true }))
+  }
+
   const reset = () => {
-    stopAnimation()
+    requestIdRef.current += 1
+    setLoading(false)
+    setError(null)
+    setData(null)
     setExperimentState({
       running: false,
       currentIndex: 0,
@@ -314,130 +308,140 @@ export default function ProbabilitySim() {
         visualizationTitle="收敛曲线"
         controls={
           <ControlPanel title="实验参数" subtitle="选择实验类型并调整参数">
-            <div className="form-section">
-              <h4 className="form-section-title">快速预设</h4>
-              <div className="preset-group">
-                {PRESETS.map((preset) => (
-                  <button
-                    key={preset.key}
-                    className="preset-chip"
-                    onClick={() => applyPreset(preset)}
-                  >
-                    {preset.label}
-                  </button>
-                ))}
+            <fieldset
+              className="experiment-config"
+              disabled={configurationLocked}
+              style={{ border: 0, minInlineSize: 0 }}
+            >
+              <div className="form-section">
+                <h4 className="form-section-title">快速预设</h4>
+                <div className="preset-group">
+                  {PRESETS.map((preset) => (
+                    <button
+                      key={preset.key}
+                      className="preset-chip"
+                      onClick={() => applyPreset(preset)}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
 
-            <div className="form-section">
-              <h4 className="form-section-title">实验类型</h4>
-              <TabBar
-                tabs={EXPERIMENT_TABS}
-                active={experimentType}
-                onChange={(key) => setExperimentType(key as 'coin' | 'dice')}
-              />
+              <div className="form-section">
+                <h4 className="form-section-title">实验类型</h4>
+                <TabBar
+                  tabs={EXPERIMENT_TABS}
+                  active={experimentType}
+                  onChange={(key) => setExperimentType(key as 'coin' | 'dice')}
+                />
 
-              {experimentType === 'coin' ? (
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label>正面概率 p</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="1"
-                    step="0.1"
-                    value={p}
-                    onChange={(e) => setP(parseFloat(e.target.value) || 0)}
-                  />
-                  <div className="slider-container">
+                {experimentType === 'coin' ? (
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>正面概率 p</label>
                     <input
-                      type="range"
+                      type="number"
                       min="0"
                       max="1"
-                      step="0.05"
+                      step="0.1"
                       value={p}
-                      onChange={(e) => setP(parseFloat(e.target.value))}
-                      style={{ flex: 1 }}
+                      onChange={(e) => setP(parseFloat(e.target.value) || 0)}
                     />
-                    <span className="slider-value">{p.toFixed(2)}</span>
-                  </div>
-                </div>
-              ) : (
-                <div className="form-row" style={{ marginBottom: 0 }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>最小值</label>
-                    <input
-                      type="number"
-                      value={minVal}
-                      onChange={(e) => setMinVal(parseInt(e.target.value) || 1)}
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>最大值</label>
-                    <input
-                      type="number"
-                      value={maxVal}
-                      onChange={(e) => setMaxVal(parseInt(e.target.value) || 6)}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="form-section">
-              <button
-                className="btn btn-ghost btn-sm"
-                onClick={() => setShowAdvanced(!showAdvanced)}
-              >
-                {showAdvanced ? '收起' : '展开'}高级选项 ▾
-              </button>
-              {showAdvanced && (
-                <div className="form-row" style={{ marginTop: 'var(--space-4)' }}>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>样本数量</label>
-                    <input
-                      type="number"
-                      min="100"
-                      max="10000"
-                      step="100"
-                      value={sampleSize}
-                      onChange={(e) => setSampleSize(parseInt(e.target.value) || 1000)}
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>动画速度 (ms)</label>
                     <div className="slider-container">
                       <input
                         type="range"
-                        min="10"
-                        max="500"
-                        step="10"
-                        value={animationSpeed}
-                        onChange={(e) => setAnimationSpeed(parseInt(e.target.value))}
+                        min="0"
+                        max="1"
+                        step="0.05"
+                        value={p}
+                        onChange={(e) => setP(parseFloat(e.target.value))}
                         style={{ flex: 1 }}
                       />
-                      <span className="slider-value">{animationSpeed}ms</span>
+                      <span className="slider-value">{p.toFixed(2)}</span>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
+                ) : (
+                  <div className="form-row" style={{ marginBottom: 0 }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>最小值</label>
+                      <input
+                        type="number"
+                        value={minVal}
+                        onChange={(e) => setMinVal(parseInt(e.target.value) || 1)}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>最大值</label>
+                      <input
+                        type="number"
+                        value={maxVal}
+                        onChange={(e) => setMaxVal(parseInt(e.target.value) || 6)}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="form-section">
+                <button
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                >
+                  {showAdvanced ? '收起' : '展开'}高级选项 ▾
+                </button>
+                {showAdvanced && (
+                  <div className="form-row" style={{ marginTop: 'var(--space-4)' }}>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>样本数量</label>
+                      <input
+                        type="number"
+                        min="100"
+                        max="10000"
+                        step="100"
+                        value={sampleSize}
+                        onChange={(e) => setSampleSize(parseInt(e.target.value) || 1000)}
+                      />
+                    </div>
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label>动画速度 (ms)</label>
+                      <div className="slider-container">
+                        <input
+                          type="range"
+                          min="10"
+                          max="500"
+                          step="10"
+                          value={animationSpeed}
+                          onChange={(e) => setAnimationSpeed(parseInt(e.target.value))}
+                          style={{ flex: 1 }}
+                        />
+                        <span className="slider-value">{animationSpeed}ms</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </fieldset>
 
             <div className="button-stack">
-              {!experimentState.running && experimentState.currentIndex === 0 ? (
+              {!data ? (
                 <button className="btn btn-primary" onClick={startSimulation} disabled={loading}>
                   {loading ? '加载中...' : '开始模拟'}
                 </button>
               ) : experimentState.running ? (
-                <button className="btn btn-secondary" onClick={stopAnimation}>
+                <button className="btn btn-secondary" onClick={pauseAnimation}>
                   暂停
                 </button>
+              ) : isComplete ? (
+                <button className="btn btn-primary" onClick={startSimulation}>
+                  重新模拟
+                </button>
               ) : (
-                <button className="btn btn-secondary" onClick={startSimulation}>
+                <button className="btn btn-primary" onClick={resumeSimulation}>
                   继续
                 </button>
               )}
               <button className="btn btn-secondary" onClick={reset}>
-                重置
+                重置并修改参数
               </button>
             </div>
           </ControlPanel>

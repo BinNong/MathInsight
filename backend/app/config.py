@@ -42,6 +42,12 @@ class Config:
         'http://localhost:5173,http://localhost:5000,http://127.0.0.1:5173,http://127.0.0.1:5000'
     )
 
+    # 账号系统配置
+    # SECRET_KEY 用于签名登录令牌；未设置时 auth 模块会生成并持久化随机密钥
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    # 登录令牌有效期（秒），默认 30 天
+    TOKEN_MAX_AGE = int(os.environ.get('TOKEN_MAX_AGE', str(30 * 24 * 3600)))
+
     @classmethod
     def get_llm_api_key(cls) -> str | None:
         """获取任意配置的 LLM API 密钥"""

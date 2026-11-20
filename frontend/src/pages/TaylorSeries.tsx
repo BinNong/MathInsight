@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import Plot from 'react-plotly.js'
+import Plot from '../components/Plot'
 import type { Data, Layout } from 'plotly.js'
 import { taylorApi, TaylorRequest, TaylorData, TaylorEvaluateData } from '../services/api/taylor'
 import { debounce } from '../utils/timing'
@@ -12,6 +12,7 @@ import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
 import VisualizationWorkspace from '../components/VisualizationWorkspace'
 import CollapsibleSection from '../components/CollapsibleSection'
+import RangeInput from '../components/RangeInput'
 
 interface Preset {
   label: string
@@ -174,13 +175,11 @@ export default function TaylorSeries() {
 
   useEffect(() => {
     setLoading(true)
-    fetchTaylorData(undefined, true)
-  }, [])
-
-  useEffect(() => {
-    setLoading(true)
-    fetchTaylorData(undefined, true)
-  }, [request.function, request.x0, request.max_order])
+    const timer = window.setTimeout(() => {
+      fetchTaylorData(undefined, true)
+    }, 200)
+    return () => window.clearTimeout(timer)
+  }, [fetchTaylorData])
 
   useEffect(() => {
     if (evalPoint !== null) {
@@ -290,7 +289,7 @@ export default function TaylorSeries() {
       type: 'scatter',
       mode: 'lines',
       name: 'f(x) 原函数',
-      line: { color: '#4f46e5', width: 3 },
+      line: { color: '#9c3b2e', width: 3 },
     })
 
     plots.push({
@@ -299,7 +298,7 @@ export default function TaylorSeries() {
       type: 'scatter',
       mode: 'markers',
       name: `x₀ = ${taylorData.x0}`,
-      marker: { color: '#4f46e5', size: 12, symbol: 'circle' },
+      marker: { color: '#9c3b2e', size: 12, symbol: 'circle' },
     })
 
     taylorData.taylor_polynomials.forEach((poly) => {
@@ -550,19 +549,9 @@ export default function TaylorSeries() {
 
               <div className="form-group">
                 <label>绘图范围</label>
-                <input
-                  type="text"
-                  value={`[${request.domain_range[0]}, ${request.domain_range[1]}]`}
-                  onChange={(e) => {
-                    try {
-                      const range = JSON.parse(e.target.value)
-                      if (Array.isArray(range) && range.length === 2) {
-                        handleInputChange('domain_range', range)
-                      }
-                    } catch {
-                      // 忽略非法区间输入
-                    }
-                  }}
+                <RangeInput
+                  value={request.domain_range}
+                  onCommit={(range) => handleInputChange('domain_range', range)}
                 />
               </div>
 

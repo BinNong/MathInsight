@@ -32,7 +32,32 @@ export default function Player() {
   }, [camera])
 
   useEffect(() => {
-    useWorldStore.getState().setLockControls(() => () => controlsRef.current?.lock())
+    const lock = () => {
+      const element = controlsRef.current?.domElement
+      const showFallback = () => {
+        useWorldStore
+          .getState()
+          .setObjective(
+            '当前环境无法锁定鼠标。可浏览场景并返回首页，请使用桌面 Chrome 获得完整漫游体验'
+          )
+      }
+      if (!element || typeof element.requestPointerLock !== 'function') {
+        showFallback()
+        return
+      }
+      try {
+        const request = element.requestPointerLock()
+        void Promise.resolve(request).catch(showFallback)
+      } catch {
+        showFallback()
+      }
+    }
+    useWorldStore.getState().setLockControls(lock)
+    return () => {
+      if (useWorldStore.getState().lockControls === lock) {
+        useWorldStore.getState().setLockControls(null)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -42,17 +67,28 @@ export default function Player() {
     const up = (e: KeyboardEvent) => {
       keys.current[e.code] = false
     }
+    const clearKeys = () => {
+      keys.current = {}
+    }
+    const handleLockChange = () => {
+      if (!document.pointerLockElement) clearKeys()
+    }
     window.addEventListener('keydown', down)
     window.addEventListener('keyup', up)
+    window.addEventListener('blur', clearKeys)
+    document.addEventListener('pointerlockchange', handleLockChange)
     return () => {
       window.removeEventListener('keydown', down)
       window.removeEventListener('keyup', up)
+      window.removeEventListener('blur', clearKeys)
+      document.removeEventListener('pointerlockchange', handleLockChange)
     }
   }, [])
 
   // 浮层 / 对话框打开时释放鼠标，便于点击
   useEffect(() => {
     if (overlay || dialogOpen) {
+      keys.current = {}
       document.exitPointerLock?.()
     }
   }, [overlay, dialogOpen])

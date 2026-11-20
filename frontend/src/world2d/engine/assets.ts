@@ -118,7 +118,12 @@ export function loadAssets(): Promise<Assets> {
           img.src = `${BASE}/${path}`
         })
     )
-  ).then((loaded) => Object.fromEntries(loaded) as Assets)
+  )
+    .then((loaded) => Object.fromEntries(loaded) as Assets)
+    .catch((error) => {
+      cached = null
+      throw error
+    })
   return cached
 }
 

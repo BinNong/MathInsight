@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
-import Plot from 'react-plotly.js'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import Plot from '../components/Plot'
 import {
   vectorFieldApi,
   VectorFieldData,
@@ -183,13 +183,18 @@ export default function VectorFieldLineIntegrals() {
 
   // 获取预设
   useEffect(() => {
-    const fetchPresets = async () => {
-      const response = await vectorFieldApi.getPresets()
-      if (response.success && response.data) {
-        setPresets(response.data)
-      }
+    let active = true
+    vectorFieldApi
+      .getPresets()
+      .then((response) => {
+        if (active) setPresets({ vector_fields: response.vector_fields, paths: response.paths })
+      })
+      .catch(() => {
+        if (active) setPresets(null)
+      })
+    return () => {
+      active = false
     }
-    fetchPresets()
   }, [])
 
   // 预设数据（使用 API 数据，失败时使用默认值）
@@ -201,222 +206,11 @@ export default function VectorFieldLineIntegrals() {
     return presets?.paths || DEFAULT_PATH_PRESETS
   }, [presets])
 
-  // 获取向量场数据
-  const fetchVectorField = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await vectorFieldApi.vectorField({
-        P: state.P,
-        Q: state.Q,
-        x_range: state.xRange,
-        y_range: state.yRange,
-        resolution: state.resolution,
-      })
-
-      if (response.success) {
-        setVectorFieldData(response)
-      } else {
-        setVectorFieldData(null)
-        setError(response.error || '计算失败')
-      }
-    } catch (err) {
-      setError('无法连接到服务器')
-    } finally {
-      setLoading(false)
-    }
-  }, [state.P, state.Q, state.xRange, state.yRange, state.resolution])
-
-  // 获取线积分数据
-  const fetchLineIntegral = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const pathConfig = buildPathConfig()
-      const response = await vectorFieldApi.lineIntegral({
-        P: state.P,
-        Q: state.Q,
-        path: pathConfig,
-        num_points: 200,
-      })
-
-      if (response.success) {
-        setLineIntegralData(response)
-      } else {
-        setError(response.error || '计算失败')
-      }
-    } catch (err) {
-      setError('无法连接到服务器')
-    } finally {
-      setLoading(false)
-    }
-  }, [state.P, state.Q, state.pathType, state.xRange, state.yRange])
-
-  // 获取格林公式验证数据
-  const fetchGreensTheorem = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const regionParams =
-        state.regionType === 'circle'
-          ? { radius: state.regionRadius }
-          : {
-              x_min: state.regionXMin,
-              x_max: state.regionXMax,
-              y_min: state.regionYMin,
-              y_max: state.regionYMax,
-            }
-
-      const response = await vectorFieldApi.greensTheorem({
-        P: state.P,
-        Q: state.Q,
-        region_type: state.regionType,
-        region_params: regionParams,
-      })
-
-      if (response.success) {
-        setGreensData(response)
-      } else {
-        setError(response.error || '计算失败')
-      }
-    } catch (err) {
-      setError('无法连接到服务器')
-    } finally {
-      setLoading(false)
-    }
-  }, [
-    state.P,
-    state.Q,
-    state.regionType,
-    state.regionRadius,
-    state.regionXMin,
-    state.regionXMax,
-    state.regionYMin,
-    state.regionYMax,
-  ])
-
-  // 获取流线数据
-  const fetchStreamlines = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const startPoints = JSON.parse(state.streamlineStartPoints)
-      const response = await vectorFieldApi.streamline({
-        P: state.P,
-        Q: state.Q,
-        start_points: startPoints,
-        t_span: [-state.streamlineTimeSpan, state.streamlineTimeSpan],
-        direction: 'both',
-      })
-
-      if (response.success) {
-        setStreamlines(response)
-      } else {
-        setError(response.error || '计算失败')
-      }
-    } catch (err) {
-      setError('无法连接到服务器')
-    } finally {
-      setLoading(false)
-    }
-  }, [state.P, state.Q, state.streamlineStartPoints, state.streamlineTimeSpan])
-
-  // 获取保守场判定数据
-  const fetchConservativeCheck = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await vectorFieldApi.checkConservative({
-        P: state.P,
-        Q: state.Q,
-      })
-
-      if (response.success) {
-        setConservativeData(response)
-      } else {
-        setError(response.error || '计算失败')
-      }
-    } catch (err) {
-      setError('无法连接到服务器')
-    } finally {
-      setLoading(false)
-    }
-  }, [state.P, state.Q])
-
-  // 获取势函数数据
-  const fetchPotential = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await vectorFieldApi.findPotential({
-        P: state.P,
-        Q: state.Q,
-      })
-
-      if (response.success) {
-        setPotentialData(response)
-      } else {
-        setError(response.error || '计算失败')
-      }
-    } catch (err) {
-      setError('无法连接到服务器')
-    } finally {
-      setLoading(false)
-    }
-  }, [state.P, state.Q])
-
-  // 获取势函数等值线数据
-  const fetchPotentialContour = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await vectorFieldApi.potentialContour({
-        P: state.P,
-        Q: state.Q,
-        x_range: state.xRange,
-        y_range: state.yRange,
-        resolution: 50,
-      })
-
-      if (response.success) {
-        setPotentialContour(response)
-      } else {
-        setPotentialContour(null)
-      }
-    } catch (err) {
-      setPotentialContour(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [state.P, state.Q, state.xRange, state.yRange])
-
-  // 获取路径无关性验证数据
-  const fetchPathIndependence = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await vectorFieldApi.verifyPathIndependence({
-        P: state.P,
-        Q: state.Q,
-        start_point: state.startPoint,
-        end_point: state.endPoint,
-        num_points: 200,
-      })
-
-      if (response.success) {
-        setPathIndependenceData(response)
-      } else {
-        setPathIndependenceData(null)
-      }
-    } catch (err) {
-      setPathIndependenceData(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [state.P, state.Q, state.startPoint, state.endPoint])
+  const latestRequestRef = useRef(0)
+  const lastRequestKeyRef = useRef('')
 
   // 构建路径配置
-  const buildPathConfig = () => {
+  const buildPathConfig = useCallback(() => {
     const preset = pathPresets.find((p) => p.id === state.pathType)
 
     if (state.pathType === 'square') {
@@ -449,58 +243,177 @@ export default function VectorFieldLineIntegrals() {
       y: 'sin(t)',
       t_range: [0, 2 * Math.PI],
     }
-  }
+  }, [pathPresets, state.pathType])
 
-  // 根据模式获取数据
+  // 根据完整参数获取数据；签名去重避免 StrictMode 首载重复，序号避免旧响应覆盖。
   useEffect(() => {
+    const usesPath = state.mode === 'line_integral' || state.mode === 'flux'
+    const pathConfig = usesPath ? buildPathConfig() : null
+    const requestKey = JSON.stringify({ state, pathConfig })
+    if (lastRequestKeyRef.current === requestKey) return
+    lastRequestKeyRef.current = requestKey
+
+    const requestId = ++latestRequestRef.current
+    const isLatest = () => latestRequestRef.current === requestId
+    const requests: Promise<void>[] = []
+
+    setLoading(true)
+    setError(null)
+    setVectorFieldData(null)
+
+    const performRequest = async <T extends { success: boolean; error?: string }>(
+      request: Promise<T>,
+      onSuccess: (data: T) => void
+    ): Promise<void> => {
+      try {
+        const response = await request
+        if (!response.success) {
+          throw new Error(response.error || '计算失败')
+        }
+        if (isLatest()) onSuccess(response)
+      } catch (err) {
+        if (isLatest()) {
+          setError(err instanceof Error && err.message ? err.message : '无法连接到服务器')
+        }
+      }
+    }
+
+    const fetchField = () =>
+      performRequest(
+        vectorFieldApi.vectorField({
+          P: state.P,
+          Q: state.Q,
+          x_range: state.xRange,
+          y_range: state.yRange,
+          resolution: state.resolution,
+        }),
+        setVectorFieldData
+      )
+
+    const fetchLineIntegral = () => {
+      if (!pathConfig) return
+      setLineIntegralData(null)
+      requests.push(
+        performRequest(
+          vectorFieldApi.lineIntegral({
+            P: state.P,
+            Q: state.Q,
+            path: pathConfig,
+            num_points: 200,
+          }),
+          setLineIntegralData
+        )
+      )
+    }
+
     switch (state.mode) {
       case 'field':
-        fetchVectorField()
+        requests.push(fetchField())
         if (state.showStreamlines) {
-          fetchStreamlines()
+          setStreamlines(null)
+          try {
+            const startPoints = JSON.parse(state.streamlineStartPoints)
+            requests.push(
+              performRequest(
+                vectorFieldApi.streamline({
+                  P: state.P,
+                  Q: state.Q,
+                  start_points: startPoints,
+                  t_span: [-state.streamlineTimeSpan, state.streamlineTimeSpan],
+                  direction: 'both',
+                }),
+                setStreamlines
+              )
+            )
+          } catch {
+            setError('流线起点必须是有效的 JSON 数组')
+          }
         } else {
           setStreamlines(null)
         }
         break
       case 'line_integral':
-        fetchVectorField()
-        fetchLineIntegral()
-        break
-      case 'greens_theorem':
-        fetchGreensTheorem()
-        // 格林公式也需要向量场数据用于显示
-        fetchVectorField()
-        break
       case 'flux':
-        fetchVectorField()
+        requests.push(fetchField())
         fetchLineIntegral()
         break
+      case 'greens_theorem': {
+        requests.push(fetchField())
+        setGreensData(null)
+        const regionParams =
+          state.regionType === 'circle'
+            ? { radius: state.regionRadius }
+            : {
+                x_min: state.regionXMin,
+                x_max: state.regionXMax,
+                y_min: state.regionYMin,
+                y_max: state.regionYMax,
+              }
+        requests.push(
+          performRequest(
+            vectorFieldApi.greensTheorem({
+              P: state.P,
+              Q: state.Q,
+              region_type: state.regionType,
+              region_params: regionParams,
+            }),
+            setGreensData
+          )
+        )
+        break
+      }
       case 'conservative':
-        fetchVectorField()
-        fetchConservativeCheck()
-        fetchPotential()
+        requests.push(fetchField())
+        setConservativeData(null)
+        setPotentialData(null)
+        requests.push(
+          performRequest(
+            vectorFieldApi.checkConservative({ P: state.P, Q: state.Q }),
+            setConservativeData
+          ),
+          performRequest(vectorFieldApi.findPotential({ P: state.P, Q: state.Q }), setPotentialData)
+        )
         if (state.showContour) {
-          fetchPotentialContour()
+          setPotentialContour(null)
+          requests.push(
+            performRequest(
+              vectorFieldApi.potentialContour({
+                P: state.P,
+                Q: state.Q,
+                x_range: state.xRange,
+                y_range: state.yRange,
+                resolution: 50,
+              }),
+              setPotentialContour
+            )
+          )
         } else {
           setPotentialContour(null)
         }
         if (state.showPathIndependence) {
-          fetchPathIndependence()
+          setPathIndependenceData(null)
+          requests.push(
+            performRequest(
+              vectorFieldApi.verifyPathIndependence({
+                P: state.P,
+                Q: state.Q,
+                start_point: state.startPoint,
+                end_point: state.endPoint,
+                num_points: 200,
+              }),
+              setPathIndependenceData
+            )
+          )
         } else {
           setPathIndependenceData(null)
         }
         break
     }
-  }, [
-    state.mode,
-    state.showStreamlines,
-    state.showContour,
-    state.P,
-    state.Q,
-    state.showPathIndependence,
-    state.startPoint,
-    state.endPoint,
-  ])
+
+    void Promise.all(requests).finally(() => {
+      if (isLatest()) setLoading(false)
+    })
+  }, [state, buildPathConfig])
 
   const handleStateChange = <K extends keyof VectorFieldState>(
     key: K,
@@ -605,7 +518,7 @@ export default function VectorFieldLineIntegrals() {
   const buildStreamlineData = useMemo((): PlotlyTrace[] => {
     if (!streamlines) return []
 
-    const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899']
+    const colors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b', '#8a6d3b', '#ec4899']
 
     return streamlines.streamlines.map((streamline, idx) => {
       // 防御性处理：清理 NaN 值
@@ -819,7 +732,7 @@ export default function VectorFieldLineIntegrals() {
         showlabels: true,
         labelfont: { size: 10, color: '#666' },
       },
-      line: { color: '#8b5cf6', width: 1 },
+      line: { color: '#8a6d3b', width: 1 },
       name: '势函数等值线',
       hoverinfo: 'z',
     })
@@ -839,7 +752,7 @@ export default function VectorFieldLineIntegrals() {
     const pathColors = {
       straight: '#10b981', // 绿色 - 直线路径
       broken: '#f59e0b', // 橙色 - 折线路径
-      parabola: '#8b5cf6', // 紫色 - 抛物线路径
+      parabola: '#8a6d3b', // 黄铜 - 抛物线路径
     }
 
     // 绘制各路径
@@ -1372,7 +1285,7 @@ export default function VectorFieldLineIntegrals() {
           <LoadingState text="正在计算向量场数据..." />
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+        <div className="responsive-two-column">
           {/* Plotly 图表 */}
           <div style={{ background: '#fff', borderRadius: '8px', padding: '0.5rem' }}>
             <Plot

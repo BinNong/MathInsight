@@ -7,6 +7,13 @@ from unittest.mock import patch, MagicMock
 import pytest
 
 from app.services.solver_service import MathSolverService
+from app.config import Config
+
+
+@pytest.fixture(autouse=True)
+def mock_llm_api_key():
+    with patch.object(Config, 'get_llm_api_key', return_value='test-key'):
+        yield
 
 
 class TestSolverAnalyzeEndpoint:

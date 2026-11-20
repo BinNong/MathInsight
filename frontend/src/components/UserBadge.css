@@ -1,0 +1,68 @@
+/* 右上角用户标识：纸墨风格的小印章 */
+.user-badge {
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  z-index: 200;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px 5px 6px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: rgba(251, 250, 245, 0.94);
+  box-shadow: 0 2px 8px rgba(28, 26, 23, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.user-badge-seal {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 2px;
+  background: var(--primary);
+  color: #f7f0e2;
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.user-badge-name {
+  max-width: 120px;
+  overflow: hidden;
+  color: var(--ink-2);
+  font-family: var(--font-serif);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-badge-logout {
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-3);
+  font-family: inherit;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.user-badge-logout:hover:not(:disabled) {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.user-badge-logout:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+@media (max-width: 640px) {
+  .user-badge { top: 10px; right: 12px; }
+  .user-badge-name { max-width: 76px; }
+}

@@ -15,7 +15,12 @@ export default function NpcGuide() {
   const label = useMemo(() => makeTextTexture('数灵 · 数学导师', { fontSize: 44 }), [])
 
   useEffect(() => {
-    addObstacle({ x1: NPC_POS[0] - 0.7, x2: NPC_POS[0] + 0.7, z1: NPC_POS[2] - 0.7, z2: NPC_POS[2] + 0.7 })
+    const removeObstacle = addObstacle({
+      x1: NPC_POS[0] - 0.7,
+      x2: NPC_POS[0] + 0.7,
+      z1: NPC_POS[2] - 0.7,
+      z2: NPC_POS[2] + 0.7,
+    })
 
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== 'KeyE') return
@@ -27,7 +32,10 @@ export default function NpcGuide() {
       }
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      removeObstacle()
+    }
   }, [])
 
   useFrame(({ clock }) => {

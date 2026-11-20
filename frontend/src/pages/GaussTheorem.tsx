@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import Plot from 'react-plotly.js'
+import Plot from '../components/Plot'
 import { vectorFieldApi, SolidType, GaussSolidPreset, GaussTheoremData } from '../services/api'
 import PageHeader from '../components/PageHeader'
 import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
+import { finiteAxisRange } from '../utils/plot'
 
 // ============ 默认预设 ============
 
@@ -447,24 +448,26 @@ export default function GaussTheorem() {
   }, [gaussData, state.showSurface, state.solidRadius, state.solidHalf, state.solidHeight])
 
   // 图表布局
-  const layout = useMemo(
-    (): any => ({
+  const layout = useMemo((): any => {
+    const xRange = finiteAxisRange(gaussData?.solid.x)
+    const yRange = finiteAxisRange(gaussData?.solid.y)
+    const zRange = finiteAxisRange(gaussData?.solid.z)
+    return {
       title: {
         text: `高斯散度定理验证: ${gaussData?.solid.name || '立体'}`,
         font: { size: 14 },
       },
       scene: {
-        xaxis: { title: 'x', range: [-2, 2] },
-        yaxis: { title: 'y', range: [-2, 2] },
-        zaxis: { title: 'z', range: [-2, 2] },
+        xaxis: { title: 'x', range: xRange },
+        yaxis: { title: 'y', range: yRange },
+        zaxis: { title: 'z', range: zRange },
         aspectmode: 'cube',
       },
       margin: { t: 50, r: 50, b: 50, l: 50 },
       showlegend: true,
       legend: { x: 1.02, y: 1 },
-    }),
-    [gaussData]
-  )
+    }
+  }, [gaussData])
 
   return (
     <div className="detail-page">
@@ -699,7 +702,7 @@ export default function GaussTheorem() {
         {/* 可视化区域 */}
         {loading && !gaussData && <LoadingState text="正在计算高斯定理数据..." />}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+        <div className="responsive-two-column">
           {/* Plotly 图表 */}
           <div style={{ background: '#fff', borderRadius: '8px', padding: '0.5rem' }}>
             <Plot

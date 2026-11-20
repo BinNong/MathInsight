@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import Plot from 'react-plotly.js'
+import Plot from '../components/Plot'
 import type { Data } from 'plotly.js'
 import {
   probabilityApi,
@@ -59,7 +59,9 @@ export default function CentralLimitTheorem() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const requestIdRef = useRef(0)
+  const isComplete = data !== null && animation.currentIndex >= data.sample_means.length
+  const configurationLocked = loading || data !== null
 
   // 加载分布预设
   useEffect(() => {
@@ -81,6 +83,9 @@ export default function CentralLimitTheorem() {
   }
 
   const startSimulation = useCallback(async () => {
+    const requestId = ++requestIdRef.current
+    setData(null)
+    setAnimation({ running: false, currentIndex: 0, means: [] })
     setLoading(true)
     setError(null)
 
@@ -93,6 +98,7 @@ export default function CentralLimitTheorem() {
       }
 
       const response = await probabilityApi.simulateCLT(request)
+      if (requestId !== requestIdRef.current) return
 
       if (response.success) {
         setData(response.data)
@@ -105,9 +111,9 @@ export default function CentralLimitTheorem() {
         setError(response.error || '模拟失败')
       }
     } catch (err: any) {
-      setError('无法连接到服务器')
+      if (requestId === requestIdRef.current) setError('无法连接到服务器')
     } finally {
-      setLoading(false)
+      if (requestId === requestIdRef.current) setLoading(false)
     }
   }, [distribution, params, sampleSize, numSamples])
 
@@ -115,43 +121,42 @@ export default function CentralLimitTheorem() {
   useEffect(() => {
     if (!data || !animation.running) return
 
-    const batchSize = Math.max(1, Math.floor(numSamples / 100))
-
-    const animate = () => {
+    const batchSize = Math.max(1, Math.floor(data.sample_means.length / 100))
+    const timer = window.setTimeout(() => {
       setAnimation((prev) => {
-        const nextIndex = prev.currentIndex + batchSize
-
-        if (nextIndex >= data.sample_means.length) {
-          if (timerRef.current) clearInterval(timerRef.current)
-          return {
-            running: false,
-            currentIndex: data.sample_means.length,
-            means: data.sample_means,
-          }
-        }
-
+        if (!prev.running) return prev
+        const nextIndex = Math.min(prev.currentIndex + batchSize, data.sample_means.length)
         return {
-          ...prev,
+          running: nextIndex < data.sample_means.length,
           currentIndex: nextIndex,
           means: data.sample_means.slice(0, nextIndex),
         }
       })
-    }
+    }, animationSpeed)
 
-    timerRef.current = setInterval(animate, animationSpeed)
+    return () => window.clearTimeout(timer)
+  }, [data, animation.running, animation.currentIndex, animationSpeed])
 
+  useEffect(() => {
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current)
+      requestIdRef.current += 1
     }
-  }, [data, animation.running, animationSpeed, numSamples])
+  }, [])
 
-  const stopAnimation = () => {
-    if (timerRef.current) clearInterval(timerRef.current)
+  const pauseAnimation = () => {
     setAnimation((prev) => ({ ...prev, running: false }))
   }
 
+  const resumeSimulation = () => {
+    if (!data || isComplete) return
+    setAnimation((prev) => ({ ...prev, running: true }))
+  }
+
   const reset = () => {
-    stopAnimation()
+    requestIdRef.current += 1
+    setLoading(false)
+    setError(null)
+    setData(null)
     setAnimation({ running: false, currentIndex: 0, means: [] })
   }
 
@@ -270,117 +275,127 @@ export default function CentralLimitTheorem() {
         visualizationTitle="样本均值的分布"
         controls={
           <ControlPanel title="实验参数" subtitle="选择基础分布并调整抽样参数">
-            <div className="form-section">
-              <h4 className="form-section-title">基础分布</h4>
-              <select
-                className="form-select"
-                value={distribution}
-                onChange={(e) => handleDistributionChange(e.target.value as DistributionType)}
-              >
-                {DISTRIBUTION_OPTIONS.map((opt) => (
-                  <option key={opt.key} value={opt.key}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              {currentPreset && (
-                <p
-                  className="text-secondary"
-                  style={{ fontSize: '0.875rem', marginTop: 'var(--space-2)' }}
+            <fieldset
+              className="experiment-config"
+              disabled={configurationLocked}
+              style={{ border: 0, minInlineSize: 0 }}
+            >
+              <div className="form-section">
+                <h4 className="form-section-title">基础分布</h4>
+                <select
+                  className="form-select"
+                  value={distribution}
+                  onChange={(e) => handleDistributionChange(e.target.value as DistributionType)}
                 >
-                  {currentPreset.description}
-                </p>
-              )}
-            </div>
+                  {DISTRIBUTION_OPTIONS.map((opt) => (
+                    <option key={opt.key} value={opt.key}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+                {currentPreset && (
+                  <p
+                    className="text-secondary"
+                    style={{ fontSize: '0.875rem', marginTop: 'var(--space-2)' }}
+                  >
+                    {currentPreset.description}
+                  </p>
+                )}
+              </div>
 
-            <div className="form-section">
-              <h4 className="form-section-title">分布参数</h4>
-              {renderParamInputs()}
-            </div>
+              <div className="form-section">
+                <h4 className="form-section-title">分布参数</h4>
+                {renderParamInputs()}
+              </div>
 
-            <div className="form-section">
-              <h4 className="form-section-title">抽样参数</h4>
-              <div className="form-group">
-                <label>每样本容量 n</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={10000}
-                  step={1}
-                  value={sampleSize}
-                  onChange={(e) => setSampleSize(parseInt(e.target.value) || 1)}
-                />
-                <div className="slider-container">
+              <div className="form-section">
+                <h4 className="form-section-title">抽样参数</h4>
+                <div className="form-group">
+                  <label>每样本容量 n</label>
                   <input
-                    type="range"
+                    type="number"
                     min={1}
-                    max={200}
+                    max={10000}
                     step={1}
                     value={sampleSize}
-                    onChange={(e) => setSampleSize(parseInt(e.target.value))}
-                    style={{ flex: 1 }}
+                    onChange={(e) => setSampleSize(parseInt(e.target.value) || 1)}
                   />
-                  <span className="slider-value">{sampleSize}</span>
+                  <div className="slider-container">
+                    <input
+                      type="range"
+                      min={1}
+                      max={200}
+                      step={1}
+                      value={sampleSize}
+                      onChange={(e) => setSampleSize(parseInt(e.target.value))}
+                      style={{ flex: 1 }}
+                    />
+                    <span className="slider-value">{sampleSize}</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="form-group">
-                <label>重复抽样次数</label>
-                <input
-                  type="number"
-                  min={100}
-                  max={50000}
-                  step={100}
-                  value={numSamples}
-                  onChange={(e) => setNumSamples(parseInt(e.target.value) || 100)}
-                />
-                <div className="slider-container">
+                <div className="form-group">
+                  <label>重复抽样次数</label>
                   <input
-                    type="range"
-                    min={500}
-                    max={10000}
-                    step={500}
+                    type="number"
+                    min={100}
+                    max={50000}
+                    step={100}
                     value={numSamples}
-                    onChange={(e) => setNumSamples(parseInt(e.target.value))}
-                    style={{ flex: 1 }}
+                    onChange={(e) => setNumSamples(parseInt(e.target.value) || 100)}
                   />
-                  <span className="slider-value">{numSamples}</span>
+                  <div className="slider-container">
+                    <input
+                      type="range"
+                      min={500}
+                      max={10000}
+                      step={500}
+                      value={numSamples}
+                      onChange={(e) => setNumSamples(parseInt(e.target.value))}
+                      style={{ flex: 1 }}
+                    />
+                    <span className="slider-value">{numSamples}</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>动画速度 (ms)</label>
-                <div className="slider-container">
-                  <input
-                    type="range"
-                    min={10}
-                    max={200}
-                    step={10}
-                    value={animationSpeed}
-                    onChange={(e) => setAnimationSpeed(parseInt(e.target.value))}
-                    style={{ flex: 1 }}
-                  />
-                  <span className="slider-value">{animationSpeed}ms</span>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label>动画速度 (ms)</label>
+                  <div className="slider-container">
+                    <input
+                      type="range"
+                      min={10}
+                      max={200}
+                      step={10}
+                      value={animationSpeed}
+                      onChange={(e) => setAnimationSpeed(parseInt(e.target.value))}
+                      style={{ flex: 1 }}
+                    />
+                    <span className="slider-value">{animationSpeed}ms</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            </fieldset>
 
             <div className="button-stack">
-              {!animation.running && animation.currentIndex === 0 ? (
+              {!data ? (
                 <button className="btn btn-primary" onClick={startSimulation} disabled={loading}>
                   {loading ? '计算中...' : '开始模拟'}
                 </button>
               ) : animation.running ? (
-                <button className="btn btn-secondary" onClick={stopAnimation}>
+                <button className="btn btn-secondary" onClick={pauseAnimation}>
                   暂停
                 </button>
+              ) : isComplete ? (
+                <button className="btn btn-primary" onClick={startSimulation}>
+                  重新模拟
+                </button>
               ) : (
-                <button className="btn btn-secondary" onClick={startSimulation}>
+                <button className="btn btn-primary" onClick={resumeSimulation}>
                   继续
                 </button>
               )}
               <button className="btn btn-secondary" onClick={reset}>
-                重置
+                重置并修改参数
               </button>
             </div>
           </ControlPanel>

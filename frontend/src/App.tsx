@@ -1,6 +1,14 @@
-import { Suspense, lazy } from 'react'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { Suspense, lazy, useEffect, type ReactNode } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom'
 import LoadingState from './components/LoadingState'
+import AppErrorBoundary from './components/AppErrorBoundary'
+import RouteState from './components/RouteState'
+import UserBadge from './components/UserBadge'
+import { getModuleByPath, getSubjectById } from './data/subjects'
+import { useLearningProgress } from './hooks/useLearningProgress'
+import { useAuthStore } from './stores/authStore'
+
+const AuthPage = lazy(() => import('./pages/AuthPage'))
 
 const Home = lazy(() => import('./pages/Home'))
 const SubjectPage = lazy(() => import('./pages/SubjectPage'))
@@ -23,35 +31,103 @@ const KnowledgeMap = lazy(() => import('./pages/KnowledgeMap'))
 const WorldPage = lazy(() => import('./world/WorldPage'))
 const World2DPage = lazy(() => import('./world2d/World2DPage'))
 
+function RouteEffects() {
+  const { pathname } = useLocation()
+  const { recordRecent } = useLearningProgress()
+  const learningModule = getModuleByPath(pathname)
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    const subject = pathname.startsWith('/subject/')
+      ? getSubjectById(pathname.split('/').pop())
+      : undefined
+    const title =
+      pathname === '/'
+        ? '学习工作台'
+        : pathname === '/login'
+          ? '登录'
+          : pathname === '/register'
+            ? '注册'
+            : (learningModule?.topicName ?? learningModule?.name ?? subject?.name ?? '页面未找到')
+    document.title = `${title} | MathInsight`
+  }, [pathname, learningModule])
+
+  useEffect(() => {
+    if (learningModule) recordRecent(learningModule.id)
+  }, [learningModule, recordRecent])
+
+  return null
+}
+
+function RequireAuth({ children }: { children: ReactNode }) {
+  const token = useAuthStore((s) => s.token)
+  const location = useLocation()
+  if (!token) {
+    return <Navigate to={`/login?next=${encodeURIComponent(location.pathname + location.search)}`} replace />
+  }
+  return <>{children}</>
+}
+
+function AppRoutes() {
+  const location = useLocation()
+
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register'
+
+  return (
+    <div className="app-container">
+      <RouteEffects />
+      {!isAuthPage && <UserBadge />}
+      <AppErrorBoundary key={location.pathname}>
+        <Suspense fallback={<LoadingState text="页面加载中..." />}>
+          <Routes location={location}>
+            {/* 公开路由：登录与注册 */}
+            <Route path="/login" element={<AuthPage mode="login" />} />
+            <Route path="/register" element={<AuthPage mode="register" />} />
+
+            {/* 受保护路由：需登录 */}
+            <Route element={<RequireAuth><Outlet /></RequireAuth>}>
+              <Route path="/" element={<Home />} />
+              <Route path="/subject/:subjectId" element={<SubjectPage />} />
+              <Route path="/limit" element={<EpsilonDeltaLimit />} />
+              <Route path="/derivative" element={<DerivativeTangent />} />
+              <Route path="/taylor" element={<TaylorSeries />} />
+              <Route path="/matrix" element={<MatrixTransform />} />
+              <Route path="/probability" element={<ProbabilitySim />} />
+              <Route path="/clt" element={<CentralLimitTheorem />} />
+              <Route path="/distributions" element={<ProbabilityDistributions />} />
+              <Route path="/integration" element={<RiemannIntegral />} />
+              <Route path="/multivariate" element={<MultivariateFunction />} />
+              <Route path="/vector-field" element={<VectorFieldLineIntegrals />} />
+              <Route path="/vector-field-3d" element={<VectorField3D />} />
+              <Route path="/surface-integral" element={<SurfaceIntegrals />} />
+              <Route path="/gauss-theorem" element={<GaussTheorem />} />
+              <Route path="/manim" element={<ManimAnimation />} />
+              <Route path="/solver" element={<MathSolver />} />
+              <Route path="/knowledge-map" element={<KnowledgeMap />} />
+              <Route path="/world" element={<WorldPage />} />
+              <Route path="/world-2d" element={<World2DPage />} />
+              <Route
+                path="*"
+                element={
+                  <RouteState
+                    code="404"
+                    title="这条学习路径不存在"
+                    description="链接可能已失效或输入有误。返回学习工作台，可以通过搜索重新找到需要的实验或工具。"
+                  />
+                }
+              />
+            </Route>
+          </Routes>
+        </Suspense>
+      </AppErrorBoundary>
+    </div>
+  )
+}
+
 function App() {
   return (
     <BrowserRouter basename="/mathinsight">
-      <div className="app-container">
-        <Suspense fallback={<LoadingState text="页面加载中..." />}>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/subject/:subjectId" element={<SubjectPage />} />
-            <Route path="/limit" element={<EpsilonDeltaLimit />} />
-            <Route path="/derivative" element={<DerivativeTangent />} />
-            <Route path="/taylor" element={<TaylorSeries />} />
-            <Route path="/matrix" element={<MatrixTransform />} />
-            <Route path="/probability" element={<ProbabilitySim />} />
-            <Route path="/clt" element={<CentralLimitTheorem />} />
-            <Route path="/distributions" element={<ProbabilityDistributions />} />
-            <Route path="/integration" element={<RiemannIntegral />} />
-            <Route path="/multivariate" element={<MultivariateFunction />} />
-            <Route path="/vector-field" element={<VectorFieldLineIntegrals />} />
-            <Route path="/vector-field-3d" element={<VectorField3D />} />
-            <Route path="/surface-integral" element={<SurfaceIntegrals />} />
-            <Route path="/gauss-theorem" element={<GaussTheorem />} />
-            <Route path="/manim" element={<ManimAnimation />} />
-            <Route path="/solver" element={<MathSolver />} />
-            <Route path="/knowledge-map" element={<KnowledgeMap />} />
-            <Route path="/world" element={<WorldPage />} />
-            <Route path="/world-2d" element={<World2DPage />} />
-          </Routes>
-        </Suspense>
-      </div>
+      <AppRoutes />
     </BrowserRouter>
   )
 }

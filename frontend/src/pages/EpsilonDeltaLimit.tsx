@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Plot from 'react-plotly.js'
+import Plot from '../components/Plot'
 import { calculusApi, EpsilonDeltaRequest } from '../services/api'
 import { debounce } from '../utils/timing'
 import { isValidFunctionExpression } from '../utils/math'
@@ -383,7 +383,7 @@ export default function EpsilonDeltaLimit() {
           type: 'scatter',
           mode: 'lines',
           name: 'f(x)',
-          line: { color: '#4f46e5', width: 2 },
+          line: { color: '#9c3b2e', width: 2 },
           hoverinfo: 'name+x+y',
         },
         // δ 区间内函数曲线（高亮）
@@ -393,7 +393,7 @@ export default function EpsilonDeltaLimit() {
           type: 'scatter',
           mode: 'lines',
           name: 'δ 区间内 f(x)',
-          line: { color: '#4f46e5', width: 4 },
+          line: { color: '#9c3b2e', width: 4 },
           hoverinfo: 'name+x+y',
           showlegend: false,
         },
@@ -462,7 +462,7 @@ export default function EpsilonDeltaLimit() {
           mode: 'markers',
           name: '趋近过程',
           marker: {
-            color: currentApproachPoints.map((p) => (p.side === 'left' ? '#8b5cf6' : '#06b6d4')),
+            color: currentApproachPoints.map((p) => (p.side === 'left' ? '#8a6d3b' : '#06b6d4')),
             size: 6,
             opacity: currentApproachPoints.map(
               (_, i) => 0.3 + 0.7 * (i / (currentApproachPoints.length || 1))
@@ -481,7 +481,7 @@ export default function EpsilonDeltaLimit() {
                 mode: 'markers',
                 name: '当前点',
                 marker: {
-                  color: latestPoint.side === 'left' ? '#8b5cf6' : '#06b6d4',
+                  color: latestPoint.side === 'left' ? '#8a6d3b' : '#06b6d4',
                   size: 14,
                   symbol: 'diamond',
                   line: { color: '#ffffff', width: 2 },
@@ -848,7 +848,7 @@ export default function EpsilonDeltaLimit() {
 
               <CollapsibleSection title="图例说明" defaultExpanded={false} variant="success">
                 <p>
-                  <span style={{ color: '#4f46e5' }}>●</span> 主函数曲线 f(x)，δ 区间内加粗显示
+                  <span style={{ color: '#9c3b2e' }}>●</span> 主函数曲线 f(x)，δ 区间内加粗显示
                   <br />
                   <span style={{ color: '#f59e0b' }}>--</span> ε 带：y = L ± ε 范围内的水平带
                   <br />
@@ -856,7 +856,7 @@ export default function EpsilonDeltaLimit() {
                   <br />
                   <span style={{ color: '#ef4444' }}>●</span> 极限点（空心表示 x₀ 处无定义）
                   <br />
-                  <span style={{ color: '#8b5cf6' }}>◆</span> 左侧趋近点 &nbsp;
+                  <span style={{ color: '#8a6d3b' }}>◆</span> 左侧趋近点 &nbsp;
                   <span style={{ color: '#06b6d4' }}>◆</span> 右侧趋近点
                 </p>
               </CollapsibleSection>

@@ -57,10 +57,7 @@ export default function ProbabilityRain() {
     []
   )
 
-  const title = useMemo(
-    () => makeTextTexture('概率之岛 · 两枚骰子点数之和', { fontSize: 46 }),
-    []
-  )
+  const title = useMemo(() => makeTextTexture('概率之岛 · 两枚骰子点数之和', { fontSize: 46 }), [])
   const doneLabel = useMemo(
     () => makeTextTexture('直方图正收敛到理论分布 —— 大数定律', { fontSize: 36 }),
     []
@@ -70,13 +67,14 @@ export default function ProbabilityRain() {
   const binColors = useMemo(() => {
     const from = new THREE.Color('#f472b6')
     const to = new THREE.Color('#8b5cf6')
-    return Array.from({ length: BIN_COUNT }, (_, i) =>
-      from.clone().lerp(to, i / (BIN_COUNT - 1))
-    )
+    return Array.from({ length: BIN_COUNT }, (_, i) => from.clone().lerp(to, i / (BIN_COUNT - 1)))
   }, [])
 
   const binLabels = useMemo(
-    () => Array.from({ length: BIN_COUNT }, (_, i) => makeTextTexture(String(i + 2), { fontSize: 40, bg: '' })),
+    () =>
+      Array.from({ length: BIN_COUNT }, (_, i) =>
+        makeTextTexture(String(i + 2), { fontSize: 40, bg: '' })
+      ),
     []
   )
 

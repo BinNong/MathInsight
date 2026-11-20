@@ -485,6 +485,8 @@ SUBTITLES
                     if line.startswith("class "):
                         break
                     result_lines.append(line)
+                else:
+                    result_lines.append(line)
             if result_lines:
                 code = "\n".join(result_lines).strip()
                 if "def construct" in code:
@@ -510,7 +512,7 @@ SUBTITLES
             match = re.search(pattern, content, re.DOTALL)
         if not match:
             # 兼容裸 JSON 数组
-            pattern = r"(\\[\\s\\S]*?\"start\"\\s*:\\s*\\d+(?:\\.\\d+)?[\\s\\S]*?\\])"
+            pattern = r"(\[[\s\S]*?\"start\"\s*:\s*\d+(?:\.\d+)?[\s\S]*?\])"
             match = re.search(pattern, content, re.DOTALL)
         if not match:
             return []
@@ -751,6 +753,16 @@ SUBTITLES
                 "--disable_caching",
             ]
 
+            render_env = {
+                key: os.environ[key]
+                for key in (
+                    'PATH', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TZ', 'HOME',
+                    'XDG_CACHE_HOME', 'TMPDIR', 'FONTCONFIG_PATH', 'FONTCONFIG_FILE',
+                )
+                if key in os.environ
+            }
+            render_env.setdefault('LANG', 'C.UTF-8')
+            render_env['PYTHONDONTWRITEBYTECODE'] = '1'
             process = subprocess.Popen(
                 cmd,
                 stdout=subprocess.PIPE,
@@ -758,12 +770,14 @@ SUBTITLES
                 text=True,
                 cwd=temp_dir,
                 start_new_session=True,
+                env=render_env,
             )
 
             timeout = res_cfg["timeout"]
             start_time = time.time()
             output_lines = []
             finished = threading.Event()
+            timed_out = False
 
             def reader():
                 """持续读取子进程输出"""
@@ -786,6 +800,7 @@ SUBTITLES
             while not finished.is_set():
                 elapsed = time.time() - start_time
                 if elapsed > timeout:
+                    timed_out = True
                     break
                 if cancel_event.is_set():
                     break
@@ -801,7 +816,7 @@ SUBTITLES
             # 超时或取消时结束子进程
             if process.poll() is None:
                 try:
-                    os.killpg(os.getpgid(process.pid), 9)
+                    os.killpg(process.pid, 9)
                 except Exception:
                     process.kill()
             process.wait()
@@ -813,10 +828,10 @@ SUBTITLES
             if cancel_event.is_set():
                 return None, render_log, "任务已取消"
 
-            if process.returncode is None or (process.returncode != 0 and not self._video_exists(temp_dir, output_filename, res_cfg)):
-                # 判定为超时或渲染失败
-                if process.returncode is None:
-                    return None, render_log, f"渲染超时（超过 {timeout} 秒），请简化动画描述"
+            if timed_out:
+                return None, render_log, f"渲染超时（超过 {timeout} 秒），请简化动画描述"
+
+            if process.returncode != 0 and not self._video_exists(temp_dir, output_filename, res_cfg):
                 error = render_log or "Unknown error during rendering"
                 return None, render_log, error
 

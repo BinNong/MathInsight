@@ -24,7 +24,24 @@ from app.utils.math_utils import (
 )
 
 # NumPy 2.0 起 np.trapz 更名为 np.trapezoid，此处做双版本兼容
-_trapezoid = getattr(np, 'trapezoid', np.trapz)
+_trapezoid = np.trapezoid if hasattr(np, 'trapezoid') else np.trapz
+
+MAX_DERIVATIVE_ORDER = 10
+MAX_TAYLOR_ORDER = 10
+
+
+def _validate_order(order: int, maximum: int, field_name: str) -> int:
+    if isinstance(order, bool) or not isinstance(order, (int, np.integer)):
+        raise ValueError(f'{field_name} 必须是整数')
+    if order < 0 or order > maximum:
+        raise ValueError(f'{field_name} 必须在 0-{maximum} 之间')
+    return int(order)
+
+
+def _as_finite_array(values: Any, shape: tuple) -> np.ndarray:
+    array = np.asarray(values, dtype=float)
+    array = np.broadcast_to(array, shape)
+    return np.where(np.isfinite(array), array, 0.0)
 
 
 class CalculusService:
@@ -322,7 +339,7 @@ class CalculusService:
             float: 极限值 L
         """
         x = sp.Symbol('x')
-        func = sp.sympify(func_str)
+        func = _safe_parse(func_str)
         L = sp.limit(func, x, x0)
         return float(L)
 
@@ -341,8 +358,9 @@ class CalculusService:
         Returns:
             dict: 包含各阶导数的曲线数据
         """
+        order = _validate_order(order, MAX_DERIVATIVE_ORDER, 'order')
         x = sp.Symbol('x')
-        func = sp.sympify(func_str)
+        func = _safe_parse(func_str)
         domain = domain_range or [x0 - 2, x0 + 2]
 
         curves = []
@@ -502,8 +520,9 @@ class CalculusService:
         Returns:
             dict: 包含可视化所需的所有数据
         """
+        max_order = _validate_order(max_order, MAX_TAYLOR_ORDER, 'max_order')
         x = sp.Symbol('x')
-        func = sp.sympify(func_str)
+        func = _safe_parse(func_str)
         domain = domain_range or [x0 - 2, x0 + 2]
 
         # 原函数曲线
@@ -704,6 +723,7 @@ class CalculusService:
         """
         在指定点评估泰勒多项式的逼近效果
         """
+        max_order = _validate_order(max_order, MAX_TAYLOR_ORDER, 'max_order')
         return evaluate_taylor_at_point(func_str, x0, evaluate_at, max_order)
 
     @staticmethod
@@ -723,6 +743,9 @@ class CalculusService:
         Returns:
             dict: 包含可视化所需的所有数据
         """
+        if isinstance(n, bool) or not isinstance(n, (int, np.integer)) or not 1 <= n <= 1000:
+            raise ValueError('n 必须在 1-1000 之间')
+
         x = sp.Symbol('x')
         func = _safe_parse(func_str)
 
@@ -737,16 +760,15 @@ class CalculusService:
         elif method == 'midpoint':
             sample_points = np.array([a + (i + 0.5) * dx for i in range(n)])
         elif method == 'random':
-            np.random.seed(42)  # 保证可复现性
-            sample_points = np.array([a + np.random.uniform(i * dx, (i + 1) * dx) for i in range(n)])
+            rng = np.random.default_rng(42)
+            sample_points = a + (np.arange(n) + rng.random(n)) * dx
         else:
             sample_points = np.array([a + (i + 0.5) * dx for i in range(n)])  # 默认中点法
 
         # 计算每个矩形的面积
         f_numeric = sp.lambdify(x, func, 'numpy')
         try:
-            heights_arr = f_numeric(sample_points)
-            heights_arr = np.where(np.isnan(heights_arr) | np.isinf(heights_arr), 0, heights_arr)
+            heights_arr = _as_finite_array(f_numeric(sample_points), sample_points.shape)
             heights = heights_arr.tolist()
         except (TypeError, ValueError):
             heights = []
@@ -897,8 +919,7 @@ class CalculusService:
                         sample_points = np.linspace(a + dx / 2, b - dx / 2, n)
 
                     try:
-                        f_values = f_numeric(sample_points)
-                        f_values = np.where(np.isnan(f_values) | np.isinf(f_values), 0, f_values)
+                        f_values = _as_finite_array(f_numeric(sample_points), sample_points.shape)
                         approximation = float(np.sum(f_values) * dx)
                     except (TypeError, ValueError):
                         approximation = 0.0
@@ -907,8 +928,7 @@ class CalculusService:
                     # 梯形法
                     x_points = np.linspace(a, b, n + 1)
                     try:
-                        y_values = f_numeric(x_points)
-                        y_values = np.where(np.isnan(y_values) | np.isinf(y_values), 0, y_values)
+                        y_values = _as_finite_array(f_numeric(x_points), x_points.shape)
                         approximation = float(_trapezoid(y_values, x_points))
                     except (TypeError, ValueError):
                         approximation = 0.0
@@ -921,8 +941,7 @@ class CalculusService:
                         n_even = 4
                     x_points = np.linspace(a, b, n_even + 1)
                     try:
-                        y_values = f_numeric(x_points)
-                        y_values = np.where(np.isnan(y_values) | np.isinf(y_values), 0, y_values)
+                        y_values = _as_finite_array(f_numeric(x_points), x_points.shape)
                         approximation = float(simpson(y_values, x_points))
                     except (TypeError, ValueError):
                         approximation = 0.0

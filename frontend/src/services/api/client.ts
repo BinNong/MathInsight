@@ -1,4 +1,5 @@
 import axios, { AxiosError } from 'axios'
+import { useAuthStore } from '../../stores/authStore'
 
 /**
  * API 基础路径前缀
@@ -44,10 +45,35 @@ export function getApiErrorMessage(err: unknown, fallback = '操作失败，请�
   return fallback
 }
 
+/**
+ * 请求拦截器：注入登录令牌。
+ * 后端还通过 httpOnly Cookie 兜底，因此媒体资源请求无需此拦截器也能鉴权。
+ */
+client.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().token
+  if (token) {
+    config.headers = config.headers ?? {}
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
+})
+
 client.interceptors.response.use(
   (response) => response,
   (error: AxiosError<{ error?: string }>) => {
     const message = error.response?.data?.error || error.message || '网络请求失败'
-    return Promise.reject(new ApiError(message, error.response?.status, error))
+    const status = error.response?.status
+
+    // 登录态失效：清除本地令牌并跳转登录页（登录接口自身的 401 不处理）
+    if (status === 401 && !error.config?.url?.startsWith('/auth/')) {
+      useAuthStore.getState().logout()
+      const current = window.location.pathname
+      const loginPath = '/mathinsight/login'
+      if (!current.startsWith(loginPath)) {
+        window.location.assign(`${loginPath}?next=${encodeURIComponent(current + window.location.search)}`)
+      }
+    }
+
+    return Promise.reject(new ApiError(message, status, error))
   }
 )

@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useWorld2DStore, useMasteryStore, masteryLevel, MASTERY_LABEL } from '../store'
-import { HALLS, TOPICS, QUESTION_BANK, pickQuestions, pickHallQuestions, topicName, type BankQuestion } from '../data/questions'
+import {
+  HALLS,
+  TOPICS,
+  QUESTION_BANK,
+  pickQuestions,
+  pickHallQuestions,
+  topicName,
+  type BankQuestion,
+} from '../data/questions'
 
 const SESSION_COUNT = 5
 const QUESTION_SECONDS = 15
@@ -81,12 +89,16 @@ export default function Training() {
     if (topicId === 'retry') {
       mode = 'retry'
       const wrongIds = new Set<string>()
-      for (const tid of HALLS[hall].topics) for (const id of topics[tid]?.wrong ?? []) wrongIds.add(id)
+      for (const tid of HALLS[hall].topics)
+        for (const id of topics[tid]?.wrong ?? []) wrongIds.add(id)
       qs = QUESTION_BANK.filter((q) => wrongIds.has(q.id))
         .sort(() => Math.random() - 0.5)
         .slice(0, SESSION_COUNT)
     } else {
-      qs = topicId === 'mixed' ? pickHallQuestions(hall, SESSION_COUNT) : pickQuestions(topicId, SESSION_COUNT)
+      qs =
+        topicId === 'mixed'
+          ? pickHallQuestions(hall, SESSION_COUNT)
+          : pickQuestions(topicId, SESSION_COUNT)
     }
     if (qs.length === 0) return
     setSess({ qs, idx: 0, correct: 0, streak: 0, bestStreak: 0, mode, adept: [], mastered: [] })
@@ -124,11 +136,23 @@ export default function Training() {
     // 结算（错题重练：奖励减半、不给顿悟）
     const retry = s.mode === 'retry'
     const mp = retry ? s.correct * 6 + s.bestStreak : s.correct * 8 + s.bestStreak * 2
-    const score = retry ? s.correct : s.correct * 2 + (s.correct === s.qs.length && s.qs.length > 0 ? 4 : 0)
+    const score = retry
+      ? s.correct
+      : s.correct * 2 + (s.correct === s.qs.length && s.qs.length > 0 ? 4 : 0)
     const buffSec = !retry && s.correct >= 4 ? 90 : 0
     setTrainingReward({ mp, score, buffSec })
     finishSession()
-    setResult({ total: s.qs.length, correct: s.correct, bestStreak: s.bestStreak, mp, score, buffSec, mode: s.mode, adept: s.adept, mastered: s.mastered })
+    setResult({
+      total: s.qs.length,
+      correct: s.correct,
+      bestStreak: s.bestStreak,
+      mp,
+      score,
+      buffSec,
+      mode: s.mode,
+      adept: s.adept,
+      mastered: s.mastered,
+    })
     setPhase('result')
   }
 
@@ -137,7 +161,7 @@ export default function Training() {
     if (!hall) return
     const onKey = (e: KeyboardEvent) => {
       if (e.code === 'Escape') {
-        if (phase !== 'session') setTraining(null)
+        setTraining(null)
         return
       }
       if (phase === 'session') {
@@ -172,9 +196,14 @@ export default function Training() {
           <>
             <div className="world2d-quiz-head">
               <span className="world2d-quiz-badge">{def.name} · 答题修炼</span>
-              <button className="world2d-x" onClick={() => setTraining(null)}>✕</button>
+              <button className="world2d-x" onClick={() => setTraining(null)}>
+                ✕
+              </button>
             </div>
-            <p className="world2d-training-desc">选择知识点开始 5 题连答；答对得灵感与知识点，一组答对 ≥4 题获得「顿悟」。知识点首次「熟练」生命上限 +10、首次「精通」生命+10·灵感+10。</p>
+            <p className="world2d-training-desc">
+              选择知识点开始 5 题连答；答对得灵感与知识点，一组答对 ≥4
+              题获得「顿悟」。知识点首次「熟练」生命上限 +10、首次「精通」生命+10·灵感+10。
+            </p>
             <div className="world2d-topic-list">
               {topicList.map((t) => {
                 const lv = masteryLevel(topics[t.id])
@@ -197,7 +226,9 @@ export default function Training() {
               {wrongCount > 0 && (
                 <button className="world2d-topic retry" onClick={() => startSession('retry')}>
                   <span className="world2d-topic-name">✎ 错题重练</span>
-                  <span className="world2d-topic-desc">本馆 {wrongCount} 道错题，答对移出错题本（奖励减半、无顿悟）</span>
+                  <span className="world2d-topic-desc">
+                    本馆 {wrongCount} 道错题，答对移出错题本（奖励减半、无顿悟）
+                  </span>
                 </button>
               )}
             </div>
@@ -211,10 +242,24 @@ export default function Training() {
                 {sess!.mode === 'retry' ? '✎ 错题重练 · ' : ''}
                 {topicName(q.topic)} · 第 {sess!.idx + 1}/{sess!.qs.length} 题
               </span>
-              <span className={`world2d-quiz-timer${left <= 4 ? ' urgent' : ''}`}>{left.toFixed(1)}s</span>
+              <span className={`world2d-quiz-timer${left <= 4 ? ' urgent' : ''}`}>
+                {left.toFixed(1)}s
+              </span>
+              <button
+                type="button"
+                className="world2d-x"
+                aria-label="退出本组修炼"
+                title="退出本组修炼"
+                onClick={() => setTraining(null)}
+              >
+                ✕
+              </button>
             </div>
             <div className="world2d-quiz-timer-track">
-              <div className="world2d-quiz-timer-fill" style={{ width: `${(left / QUESTION_SECONDS) * 100}%` }} />
+              <div
+                className="world2d-quiz-timer-fill"
+                style={{ width: `${(left / QUESTION_SECONDS) * 100}%` }}
+              />
             </div>
             <p className="world2d-quiz-q">{q.q}</p>
             <div className="world2d-quiz-options">
@@ -244,7 +289,9 @@ export default function Training() {
                 </button>
               </div>
             ) : (
-              <p className="world2d-quiz-tip">按 1-4 快捷作答 · 每题 {QUESTION_SECONDS} 秒 · 答完显示解析</p>
+              <p className="world2d-quiz-tip">
+                按 1-4 快捷作答 · 每题 {QUESTION_SECONDS} 秒 · 答完显示解析
+              </p>
             )}
           </>
         )}
@@ -256,26 +303,57 @@ export default function Training() {
             </div>
             <div className="world2d-result">
               <div className="world2d-result-score">
-                {result.correct}<span>/{result.total}</span>
+                {result.correct}
+                <span>/{result.total}</span>
               </div>
               <div className="world2d-result-lines">
-                <div>最佳连对 <strong>{result.bestStreak}</strong></div>
-                <div>灵感 <strong className="gain">+{result.mp}</strong></div>
-                <div>知识点 <strong className="gain">+{result.score}</strong></div>
+                <div>
+                  最佳连对 <strong>{result.bestStreak}</strong>
+                </div>
+                <div>
+                  灵感 <strong className="gain">+{result.mp}</strong>
+                </div>
+                <div>
+                  知识点 <strong className="gain">+{result.score}</strong>
+                </div>
                 {result.adept.map((t) => (
-                  <div key={t} className="world2d-result-master">💪 「{topicName(t)}」首次熟练！生命上限 +10</div>
+                  <div key={t} className="world2d-result-master">
+                    💪 「{topicName(t)}」首次熟练！生命上限 +10
+                  </div>
                 ))}
                 {result.mastered.map((t) => (
-                  <div key={t} className="world2d-result-master">🎓 「{topicName(t)}」首次精通！生命 +10 · 灵感上限 +10</div>
+                  <div key={t} className="world2d-result-master">
+                    🎓 「{topicName(t)}」首次精通！生命 +10 · 灵感上限 +10
+                  </div>
                 ))}
-                {result.buffSec > 0 && <div className="world2d-result-buff">✨ 顿悟觉醒：{result.buffSec} 秒内伤害 ×1.25</div>}
-                {result.mode === 'retry' && <div className="world2d-result-tip">错题重练 · 奖励减半；答对的题已移出错题本</div>}
-                {result.mode === 'normal' && result.correct < result.total && <div className="world2d-result-tip">错题已收入手札（Tab 查看），温故而知新</div>}
+                {result.buffSec > 0 && (
+                  <div className="world2d-result-buff">
+                    ✨ 顿悟觉醒：{result.buffSec} 秒内伤害 ×1.25
+                  </div>
+                )}
+                {result.mode === 'retry' && (
+                  <div className="world2d-result-tip">
+                    错题重练 · 奖励减半；答对的题已移出错题本
+                  </div>
+                )}
+                {result.mode === 'normal' && result.correct < result.total && (
+                  <div className="world2d-result-tip">错题已收入手札（Tab 查看），温故而知新</div>
+                )}
               </div>
             </div>
             <div className="world2d-result-actions">
-              <button className="world-btn primary" onClick={() => setPhase('menu')}>再来一组</button>
-              <button className="world-btn" onClick={() => setTraining(null)}>离开修炼馆</button>
+              <button className="world-btn primary" onClick={() => setPhase('menu')}>
+                再来一组
+              </button>
+              <button
+                className="world-btn"
+                onClick={() => {
+                  setTraining(null)
+                  window.dispatchEvent(new Event('mathinsight:leave-hall'))
+                }}
+              >
+                离开修炼馆
+              </button>
             </div>
           </>
         )}

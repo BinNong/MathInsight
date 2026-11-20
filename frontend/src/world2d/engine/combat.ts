@@ -174,7 +174,16 @@ export interface QuizQuestion {
 
 type Fx =
   | { kind: 'ring'; t: number; dur: number; x: number; y: number; r: number; color: string }
-  | { kind: 'glyphs'; t: number; dur: number; x: number; y: number; symbols: string[]; color: string; spread: number }
+  | {
+      kind: 'glyphs'
+      t: number
+      dur: number
+      x: number
+      y: number
+      symbols: string[]
+      color: string
+      spread: number
+    }
   | { kind: 'matrix'; t: number; dur: number; cx: number; cy: number; size: number; tickT: number }
   | { kind: 'storm'; t: number; dur: number; x: number; y: number; full: boolean }
 
@@ -248,7 +257,7 @@ class Mob {
     public spawnX: number,
     public spawnY: number,
     mult: MobMult = {},
-    displayName?: string,
+    displayName?: string
   ) {
     this.spec = MOB_SPECS[kind]
     this.x = spawnX
@@ -335,7 +344,7 @@ export class Combat {
   constructor(
     private assets: Assets,
     world: WorldData,
-    private hooks: CombatHooks,
+    private hooks: CombatHooks
   ) {
     for (const def of world.mobSpawns) this.spawnMob(def)
   }
@@ -384,7 +393,9 @@ export class Combat {
 
   /** 测试/调试：存活怪物位置 */
   mobPositions(): { x: number; y: number; kind: MobKind; hp: number }[] {
-    return this.mobs.filter((m) => !m.dying).map((m) => ({ x: m.x, y: m.y, kind: m.kind, hp: m.hp }))
+    return this.mobs
+      .filter((m) => !m.dying)
+      .map((m) => ({ x: m.x, y: m.y, kind: m.kind, hp: m.hp }))
   }
 
   /** 存活怪物数（秘境波次判定） */
@@ -460,15 +471,31 @@ export class Combat {
     if (!this.canCast('integral', player)) return false
     this.mp -= SKILL_META.integral.cost
     this.cds.integral = SKILL_META.integral.cd
-    const inRange = this.mobs.filter((m) => !m.dying && Math.hypot(m.x - player.x, m.y - player.y) <= 3.2)
+    const inRange = this.mobs.filter(
+      (m) => !m.dying && Math.hypot(m.x - player.x, m.y - player.y) <= 3.2
+    )
     for (const m of inRange) {
       const dmg = Math.round((20 + 6 * inRange.length) * this.dmgMult)
       this.hurtMob(m, dmg, '#7dd3fc')
     }
-    this.fxs.push({ kind: 'ring', t: 0, dur: 0.55, x: player.x, y: player.y, r: 3.2, color: '#7dd3fc' })
     this.fxs.push({
-      kind: 'glyphs', t: 0, dur: 0.9, x: player.x, y: player.y - 0.6,
-      symbols: Array.from({ length: 12 }, () => '∫'), color: '#93c5fd', spread: 3.2,
+      kind: 'ring',
+      t: 0,
+      dur: 0.55,
+      x: player.x,
+      y: player.y,
+      r: 3.2,
+      color: '#7dd3fc',
+    })
+    this.fxs.push({
+      kind: 'glyphs',
+      t: 0,
+      dur: 0.9,
+      x: player.x,
+      y: player.y - 0.6,
+      symbols: Array.from({ length: 12 }, () => '∫'),
+      color: '#93c5fd',
+      spread: 3.2,
     })
     if (inRange.length > 0) this.shakeT = Math.max(this.shakeT, 0.18)
     this.addFloater(player.x, player.y - 1.6, `∫ 命中 ${inRange.length} 只`, '#7dd3fc', 13)
@@ -532,7 +559,13 @@ export class Combat {
       }
       this.fxs.push({ kind: 'storm', t: 0, dur: 1.5, x: player.x, y: player.y, full: correct })
       this.shakeT = Math.max(this.shakeT, correct ? 0.5 : 0.25)
-      this.addFloater(player.x, player.y - 2, correct ? 'Σ 完美施法！' : 'Σ 施法瑕疵…', correct ? '#fcd34d' : '#94a3b8', 15)
+      this.addFloater(
+        player.x,
+        player.y - 2,
+        correct ? 'Σ 完美施法！' : 'Σ 施法瑕疵…',
+        correct ? '#fcd34d' : '#94a3b8',
+        15
+      )
     })
     return true
   }
@@ -560,12 +593,23 @@ export class Combat {
       this.score += gained
       this.addFloater(m.x, m.y - 1.8, `+${gained} 知识点`, '#6ee7b7', 12)
       this.fxs.push({
-        kind: 'glyphs', t: 0, dur: 0.8, x: m.x, y: m.y - 0.5,
-        symbols: Array.from({ length: 7 }, () => GLYPH_SET[Math.floor(Math.random() * GLYPH_SET.length)]),
-        color: '#c4b5fd', spread: 1.6,
+        kind: 'glyphs',
+        t: 0,
+        dur: 0.8,
+        x: m.x,
+        y: m.y - 0.5,
+        symbols: Array.from(
+          { length: 7 },
+          () => GLYPH_SET[Math.floor(Math.random() * GLYPH_SET.length)]
+        ),
+        color: '#c4b5fd',
+        spread: 1.6,
       })
       if (this.respawnOn) {
-        this.respawns.push({ def: { kind: m.kind, tx: Math.floor(m.spawnX), ty: Math.floor(m.spawnY) }, t: 18 })
+        this.respawns.push({
+          def: { kind: m.kind, tx: Math.floor(m.spawnX), ty: Math.floor(m.spawnY) },
+          t: 18,
+        })
       }
     } else if (m.state === 'idle') {
       m.state = 'chase' // 被打醒
@@ -600,6 +644,15 @@ export class Combat {
     return true
   }
 
+  /** 玩家受伤（怪物伤害与调试驱动共用同一入口） */
+  hurtPlayer(amount: number) {
+    if (amount <= 0 || this.hp <= 0) return
+    this.hp = Math.max(0, this.hp - amount)
+    this.sinceHurt = 0
+    this.hooks.damagePlayer(amount)
+    this.pushHud()
+  }
+
   /** 直接治疗（秘境波间奖励） */
   heal(amount: number) {
     this.hp = Math.min(this.maxHp, this.hp + amount)
@@ -617,6 +670,7 @@ export class Combat {
   respawn() {
     this.hp = this.maxHp
     this.mp = Math.max(this.mp, this.maxMp / 2)
+    this.pushHud()
   }
 
   /** 调试/测试：灵感拉满（验证大招） */
@@ -708,11 +762,10 @@ export class Combat {
           if (m.attackCd <= 0) {
             m.attackCd = 1.3
             m.lungeT = 0.24
-            const base = m.spec.dmg[0] + Math.floor(Math.random() * (m.spec.dmg[1] - m.spec.dmg[0] + 1))
+            const base =
+              m.spec.dmg[0] + Math.floor(Math.random() * (m.spec.dmg[1] - m.spec.dmg[0] + 1))
             const dmg = Math.round(base * m.dmgMult)
-            this.hp = Math.max(0, this.hp - dmg)
-            this.sinceHurt = 0
-            this.hooks.damagePlayer(dmg)
+            this.hurtPlayer(dmg)
           }
           m.dirX = dx >= 0 ? 1 : -1
         } else {
@@ -875,7 +928,11 @@ export class Combat {
   }
 
   /** 怪物绘制项（交给 loop 的 y 排序列表，闭包捕获 ctx/cam） */
-  mobDrawItems(ctx: CanvasRenderingContext2D, camX: number, camY: number): { sortY: number; draw: () => void }[] {
+  mobDrawItems(
+    ctx: CanvasRenderingContext2D,
+    camX: number,
+    camY: number
+  ): { sortY: number; draw: () => void }[] {
     const items: { sortY: number; draw: () => void }[] = []
     for (const m of this.mobs) {
       const sheet = m.dying ? m.spec.death : m.moving ? m.spec.run : m.spec.idle
@@ -951,7 +1008,14 @@ export class Combat {
   }
 
   /** 屏幕空间特效：符号喷发 / 级数风暴 / 伤害飘字（在 vignette 前调用） */
-  drawScreenFx(ctx: CanvasRenderingContext2D, camX: number, camY: number, scale: number, vw: number, vh: number) {
+  drawScreenFx(
+    ctx: CanvasRenderingContext2D,
+    camX: number,
+    camY: number,
+    scale: number,
+    vw: number,
+    vh: number
+  ) {
     const toSX = (wx: number) => (wx * TILE_SRC - camX) * scale
     const toSY = (wy: number) => (wy * TILE_SRC - camY) * scale
     for (const fx of this.fxs) {
@@ -975,7 +1039,9 @@ export class Combat {
         const p = fx.t / fx.dur
         const ox = toSX(fx.x)
         const oy = toSY(fx.y)
-        const colors = fx.full ? ['#fcd34d', '#f0abfc', '#7dd3fc', '#ffffff'] : ['#94a3b8', '#cbd5e1']
+        const colors = fx.full
+          ? ['#fcd34d', '#f0abfc', '#7dd3fc', '#ffffff']
+          : ['#94a3b8', '#cbd5e1']
         ctx.save()
         // 开场白闪
         if (p < 0.22) {
@@ -997,12 +1063,17 @@ export class Combat {
         for (let i = 0; i < n; i++) {
           const seed = i * 2.399963 // 黄金角散布
           const ang = seed + fx.t * 1.5
-          const rr = (12 + p * (fx.full ? 12 : 7) * TILE_SRC) * scale * (0.35 + ((i * 37) % 10) / 14)
+          const rr =
+            (12 + p * (fx.full ? 12 : 7) * TILE_SRC) * scale * (0.35 + ((i * 37) % 10) / 14)
           const alpha = Math.sin(Math.min(p, 1) * Math.PI)
           ctx.globalAlpha = alpha * 0.95
           ctx.fillStyle = colors[i % colors.length]
           ctx.font = `700 ${16 + ((i * 13) % 14)}px Georgia, serif`
-          ctx.fillText(GLYPH_SET[i % GLYPH_SET.length], ox + Math.cos(ang) * rr, oy + Math.sin(ang) * rr * 0.72)
+          ctx.fillText(
+            GLYPH_SET[i % GLYPH_SET.length],
+            ox + Math.cos(ang) * rr,
+            oy + Math.sin(ang) * rr * 0.72
+          )
         }
         ctx.restore()
       }

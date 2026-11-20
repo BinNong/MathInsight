@@ -58,7 +58,13 @@ export class Particles {
     }
   }
 
-  private drawPortal(ctx: CanvasRenderingContext2D, e: Emitter, camX: number, camY: number, t: number) {
+  private drawPortal(
+    ctx: CanvasRenderingContext2D,
+    e: Emitter,
+    camX: number,
+    camY: number,
+    t: number
+  ) {
     for (const s of e.sparks) {
       const life = (t * 0.55 + s.seed) % 1
       const ang = s.seed * Math.PI * 2 + t * 0.7
@@ -72,7 +78,13 @@ export class Particles {
     ctx.globalAlpha = 1
   }
 
-  private drawEmber(ctx: CanvasRenderingContext2D, e: Emitter, camX: number, camY: number, t: number) {
+  private drawEmber(
+    ctx: CanvasRenderingContext2D,
+    e: Emitter,
+    camX: number,
+    camY: number,
+    t: number
+  ) {
     for (const s of e.sparks) {
       const life = (t * 0.8 + s.seed) % 1
       const wobble = Math.sin(t * 5 + s.seed * 40) * 3

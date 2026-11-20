@@ -9,9 +9,18 @@ import { HALLS, type HallId } from '../data/questions'
 import { useWorld2DStore, useMasteryStore } from '../store'
 import { TILE_SRC, SCALE, prerenderGround, drawWaterRipples } from './ground'
 import { loadAssets } from './assets'
-import { heroFrame, heroActionFrame, actionDuration, npcFrame, type Dir, type MoveState, type HeroAction } from './sprites'
+import {
+  heroFrame,
+  heroActionFrame,
+  actionDuration,
+  npcFrame,
+  type Dir,
+  type MoveState,
+  type HeroAction,
+} from './sprites'
 import { Particles } from './particles'
 import { Combat } from './combat'
+import { Trial, type TrialPhase } from './trial'
 
 const WALK_SPEED = 5.2 // 瓦片/秒
 const RUN_SPEED = 8.4
@@ -31,6 +40,13 @@ export interface GameHandle {
   fillMp: () => void
   /** 调试/测试：当前场景 */
   scene: () => string
+  enterDungeon: () => void
+  leaveDungeon: () => void
+  startTrial: () => void
+  clearWave: () => void
+  damagePlayer: (amount: number) => void
+  killPlayer: () => void
+  trial: () => { active: boolean; wave: number; phase: TrialPhase; best: number }
 }
 
 interface Interactable {
@@ -82,12 +98,23 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
       player.animT = 0
     },
     onQuiz: (q, resolve) => {
-      useWorld2DStore.getState().setQuiz({ ...q, resolve })
+      useWorld2DStore.getState().setQuiz({ ...q, kind: 'ult', resolve })
     },
     syncHud: (snap) => {
       useWorld2DStore.getState().setCombatHud(snap)
     },
   })
+
+  const trial = new Trial({
+    combat,
+    onQuiz: (q, resolve) => {
+      useWorld2DStore.getState().setQuiz({ ...q, kind: 'trial', resolve })
+    },
+    setStatus: (status) => useWorld2DStore.getState().setTrialStatus(status),
+    setObjective: (objective) => useWorld2DStore.getState().setObjective(objective),
+    recordBest: (wave) => useMasteryStore.getState().recordTrialBest(wave),
+  })
+  let handledTrialRequest = useWorld2DStore.getState().trialStartRequest
 
   /** 当前是否可移动 */
   const canMove = () => {
@@ -108,29 +135,41 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
   /** 当前是否可施放技能（受击/挥剑不打断施法） */
   const canCast = () => {
     const s = useWorld2DStore.getState()
-    return s.started && !s.overlay && !s.dialogNpc && !s.quiz && !s.training && !s.codex && player.state !== 'death'
+    return (
+      s.started &&
+      !s.overlay &&
+      !s.dialogNpc &&
+      !s.quiz &&
+      !s.training &&
+      !s.codex &&
+      player.state !== 'death'
+    )
   }
 
   /** 场景切换：重算地面/粒子/怪物，玩家落到新场景出生点 */
   let snapCam = false
   const switchScene = (target: SceneId) => {
+    const s = useWorld2DStore.getState()
+    trial.stop()
+    s.setTrialStatus(null)
+    handledTrialRequest = s.trialStartRequest
     scene = target
-    world = target === 'outdoor' ? getWorld() : target === 'dungeon' ? getDungeon() : getInterior(target)
+    world =
+      target === 'outdoor' ? getWorld() : target === 'dungeon' ? getDungeon() : getInterior(target)
     groundCanvas = prerenderGround(assets, world)
     particles = new Particles(world)
-    combat.setWorld(world)
+    combat.setWorld(world, target !== 'dungeon')
     player.x = world.spawn.x
     player.y = world.spawn.y
     player.state = 'idle'
     player.animT = 0
     player.dir = 'down'
     snapCam = true
-    const s = useWorld2DStore.getState()
     s.setObjective(
       target === 'outdoor'
         ? '探索微积分大陆：拜访导师、进屋答题修炼，当心森林里的混沌兽'
         : target === 'dungeon'
-          ? '微积分秘境：肃清一波波混沌兽，答对守关人的题目即可回血；到门口按 E 返回小镇'
+          ? '与秘境守关人对话开始试炼；每波清场后答题恢复，到门口按 E 返回小镇'
           : `在「${HALLS[target].name}」与${HALLS[target].mentorName}对话开始修炼；到门口按 E 返回小镇`
     )
     s.setPrompt(null)
@@ -152,7 +191,15 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
       if (s.started && !s.overlay && !s.dialogNpc && !s.quiz && !s.training) s.setCodex(!s.codex)
       return
     }
-    if (e.code === 'KeyE' && s.started && !s.overlay && !s.dialogNpc && !s.quiz && !s.training && !s.codex) {
+    if (
+      e.code === 'KeyE' &&
+      s.started &&
+      !s.overlay &&
+      !s.dialogNpc &&
+      !s.quiz &&
+      !s.training &&
+      !s.codex
+    ) {
       tryInteract()
     }
     if (canCast()) {
@@ -171,10 +218,14 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
   const onMouseDown = (e: MouseEvent) => {
     if (e.button === 0 && e.target === canvas) trySlash()
   }
+  const onLeaveHall = () => {
+    if (scene !== 'outdoor') switchScene('outdoor')
+  }
   window.addEventListener('keydown', onKeyDown)
   window.addEventListener('keyup', onKeyUp)
   window.addEventListener('blur', onBlur)
   window.addEventListener('mousedown', onMouseDown)
+  window.addEventListener('mathinsight:leave-hall', onLeaveHall)
 
   // ---- 画布尺寸 ----
   const resize = () => {
@@ -195,13 +246,15 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
     const x1 = Math.floor(x + hw)
     const y0 = Math.floor(y - hh)
     const y1 = Math.floor(y + hh)
-    for (let ty = y0; ty <= y1; ty++) for (let tx = x0; tx <= x1; tx++) if (isSolid(tx, ty)) return true
+    for (let ty = y0; ty <= y1; ty++)
+      for (let tx = x0; tx <= x1; tx++) if (isSolid(tx, ty)) return true
     return false
   }
 
   const nearestInteractable = (): Interactable | null => {
     let best: Interactable | null = null
     world.npcs.forEach((n, i) => {
+      if (n.noInteract) return
       const d = Math.hypot(player.x - (n.tx + 0.5), player.y - (n.ty + 0.7))
       const range = n.interactDist ?? 1.6
       if (d < range && (!best || d < best.dist)) {
@@ -229,7 +282,8 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
     if (!it) return
     const s = useWorld2DStore.getState()
     if (it.kind === 'npc') s.setDialogNpc(world.npcs[it.index].id)
-    else if (it.kind === 'portal') s.openOverlay({ route: world.portals[it.index].route, title: world.portals[it.index].title })
+    else if (it.kind === 'portal')
+      s.openOverlay({ route: world.portals[it.index].route, title: world.portals[it.index].title })
     else {
       const door: DoorDef = world.doors[it.index]
       switchScene(door.target === 'outdoor' ? 'outdoor' : door.target)
@@ -240,6 +294,10 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
   const update = (dt: number) => {
     const s = useWorld2DStore.getState()
     const active = s.started && !s.overlay && !s.dialogNpc && !s.quiz && !s.training && !s.codex
+    if (s.trialStartRequest !== handledTrialRequest) {
+      handledTrialRequest = s.trialStartRequest
+      if (scene === 'dungeon') trial.start()
+    }
     playerFlash = Math.max(0, playerFlash - dt)
 
     // 修炼结算奖励（Training UI 提交，这里应用到战斗状态）
@@ -263,11 +321,17 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
           player.state = 'idle'
           player.animT = 0
           player.dir = 'down'
+          if (scene === 'dungeon') {
+            trial.stop()
+            combat.setWorld(world, false)
+          }
           combat.respawn()
           s.setObjective(
             scene === 'outdoor'
               ? '探索微积分大陆：拜访导师、进屋答题修炼，当心森林里的混沌兽'
-              : `在「${HALLS[scene as HallId].name}」与${HALLS[scene as HallId].mentorName}对话开始修炼；到门口按 E 返回小镇`
+              : scene === 'dungeon'
+                ? '本次试炼已结束。与守关人对话可重新开始，或到门口返回小镇'
+                : `在「${HALLS[scene].name}」与${HALLS[scene].mentorName}对话开始修炼；到门口按 E 返回小镇`
           )
         }
       } else if (player.animT >= dur) {
@@ -301,7 +365,12 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
         player.animT = 0
       }
       player.animT += dt
-    } else if (player.state !== 'idle' && player.state !== 'slice' && player.state !== 'hit' && player.state !== 'death') {
+    } else if (
+      player.state !== 'idle' &&
+      player.state !== 'slice' &&
+      player.state !== 'hit' &&
+      player.state !== 'death'
+    ) {
       player.state = 'idle'
       player.animT = 0
     } else if (player.state === 'idle') {
@@ -312,14 +381,21 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
 
     // 战斗更新（答题/浮层打开时全场冻结）
     combat.update(dt, player, !active)
+    trial.update(dt, active && scene === 'dungeon' && player.state !== 'death')
 
     // 相机平滑跟随 + 边界钳制（源像素）；切场景时立即到位
     const vw = canvas.width / SCALE
     const vh = canvas.height / SCALE
     const mapPxW = world.width * TILE_SRC
     const mapPxH = world.height * TILE_SRC
-    const targetX = mapPxW <= vw ? (mapPxW - vw) / 2 : Math.min(Math.max(player.x * TILE_SRC - vw / 2, 0), mapPxW - vw)
-    const targetY = mapPxH <= vh ? (mapPxH - vh) / 2 : Math.min(Math.max(player.y * TILE_SRC - vh * 0.55, 0), mapPxH - vh)
+    const targetX =
+      mapPxW <= vw
+        ? (mapPxW - vw) / 2
+        : Math.min(Math.max(player.x * TILE_SRC - vw / 2, 0), mapPxW - vw)
+    const targetY =
+      mapPxH <= vh
+        ? (mapPxH - vh) / 2
+        : Math.min(Math.max(player.y * TILE_SRC - vh * 0.55, 0), mapPxH - vh)
     if (snapCam) {
       cam.x = targetX
       cam.y = targetY
@@ -340,12 +416,21 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
   }
 
   // ---- 对象绘制 ----
-  const objectFrame = (o: WorldObject, t: number): { img: HTMLImageElement; sx: number; sy: number; sw: number; sh: number } => {
+  const objectFrame = (
+    o: WorldObject,
+    t: number
+  ): { img: HTMLImageElement; sx: number; sy: number; sw: number; sh: number } => {
     const img = assets[o.img]
     if (o.frames) {
       const f = o.frames
       const idxF = Math.floor(t * f.fps) % f.count
-      return { img, sx: f.axis === 'x' ? idxF * f.w : 0, sy: f.axis === 'y' ? idxF * f.h : 0, sw: f.w, sh: f.h }
+      return {
+        img,
+        sx: f.axis === 'x' ? idxF * f.w : 0,
+        sy: f.axis === 'y' ? idxF * f.h : 0,
+        sw: f.w,
+        sh: f.h,
+      }
     }
     if (o.rect) return { img, sx: o.rect.x, sy: o.rect.y, sw: o.rect.w, sh: o.rect.h }
     return { img, sx: 0, sy: 0, sw: img.width, sh: img.height }
@@ -516,7 +601,8 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
     for (const it of combat.mobDrawItems(ctx, camX, camY)) items.push(it)
     // 玩家
     {
-      const isAction = player.state === 'slice' || player.state === 'hit' || player.state === 'death'
+      const isAction =
+        player.state === 'slice' || player.state === 'hit' || player.state === 'death'
       const f = isAction
         ? heroActionFrame(assets, player.state as HeroAction, player.dir, player.animT)
         : heroFrame(assets, player.dir, player.state as MoveState, player.animT)
@@ -533,7 +619,17 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
             ctx.drawImage(f.img, f.sx, f.sy, f.sw, f.sh, -f.sw / 2, wy - f.sh - cam.y, f.sw, f.sh)
             ctx.restore()
           } else {
-            ctx.drawImage(f.img, f.sx, f.sy, f.sw, f.sh, Math.round(wx - f.sw / 2 - camX), Math.round(wy - f.sh - cam.y), f.sw, f.sh)
+            ctx.drawImage(
+              f.img,
+              f.sx,
+              f.sy,
+              f.sw,
+              f.sh,
+              Math.round(wx - f.sw / 2 - camX),
+              Math.round(wy - f.sh - cam.y),
+              f.sw,
+              f.sh
+            )
           }
         },
       })
@@ -572,7 +668,14 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
       ctx.fillRect(0, 0, vw, vh)
     }
     // 暗角
-    const vg = ctx.createRadialGradient(vw / 2, vh / 2, Math.min(vw, vh) * 0.42, vw / 2, vh / 2, Math.max(vw, vh) * 0.78)
+    const vg = ctx.createRadialGradient(
+      vw / 2,
+      vh / 2,
+      Math.min(vw, vh) * 0.42,
+      vw / 2,
+      vh / 2,
+      Math.max(vw, vh) * 0.78
+    )
     vg.addColorStop(0, 'rgba(20, 10, 40, 0)')
     vg.addColorStop(1, 'rgba(20, 10, 40, 0.28)')
     ctx.fillStyle = vg
@@ -593,12 +696,15 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
 
   return {
     stop: () => {
+      trial.stop()
+      useWorld2DStore.getState().setTrialStatus(null)
       cancelAnimationFrame(raf)
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
       window.removeEventListener('blur', onBlur)
       window.removeEventListener('mousedown', onMouseDown)
       window.removeEventListener('resize', resize)
+      window.removeEventListener('mathinsight:leave-hall', onLeaveHall)
     },
     teleport: (x: number, y: number) => {
       player.x = x
@@ -607,5 +713,17 @@ export async function startGame(canvas: HTMLCanvasElement): Promise<GameHandle> 
     mobPositions: () => combat.mobPositions(),
     fillMp: () => combat.fillMp(),
     scene: () => scene,
+    enterDungeon: () => switchScene('dungeon'),
+    leaveDungeon: () => switchScene('outdoor'),
+    startTrial: () => trial.start(),
+    clearWave: () => combat.setWorld(world, scene !== 'dungeon'),
+    damagePlayer: (amount: number) => combat.hurtPlayer(amount),
+    killPlayer: () => combat.hurtPlayer(combat.hp),
+    trial: () => ({
+      active: trial.active,
+      wave: trial.wave,
+      phase: trial.phase,
+      best: useMasteryStore.getState().trialBest,
+    }),
   }
 }

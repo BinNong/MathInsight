@@ -17,8 +17,6 @@ export interface TrialStatus {
 
 interface TrialHooks {
   combat: Combat
-  /** 世界是否未冻结（答题/对话打开时暂停倒计时） */
-  isActive: () => boolean
   onQuiz: (q: QuizQuestion, resolve: (correct: boolean) => void) => void
   setStatus: (s: TrialStatus | null) => void
   setObjective: (t: string) => void
@@ -57,7 +55,11 @@ const BOSS_WARRIOR: Pick<WaveDef, 'mult' | 'name'> = {
 /** 第 n 波出怪表（n 从 1 开始；每 5 波 Boss；8 波后血量渐增） */
 function makeWave(n: number): WaveDef[] {
   const hpMult = n > 8 ? 1 + (n - 8) * 0.12 : 1
-  const m = (k: MobKind, at: keyof typeof PTS): WaveDef => ({ kind: k, at, mult: hpMult > 1 ? { hp: hpMult } : undefined })
+  const m = (k: MobKind, at: keyof typeof PTS): WaveDef => ({
+    kind: k,
+    at,
+    mult: hpMult > 1 ? { hp: hpMult } : undefined,
+  })
   if (n % 5 === 0) {
     const boss = n % 10 === 0 ? BOSS_WARRIOR : BOSS_SHAMAN
     const bossMult = hpMult > 1 ? { ...boss.mult, hp: (boss.mult?.hp ?? 1) * hpMult } : boss.mult
@@ -73,15 +75,31 @@ function makeWave(n: number): WaveDef[] {
     3: [m('orcRogue', 'D'), m('orcRogue', 'E'), m('skeleton', 'A'), m('skeleton', 'B')],
     4: [m('skelRogue', 'D'), m('skelRogue', 'E'), m('orc', 'F'), m('orc', 'G')],
     6: [m('orcWarrior', 'F'), m('mage', 'G'), m('skelRogue', 'D'), m('skelRogue', 'E')],
-    7: [m('orcShaman', 'G'), m('orcRogue', 'D'), m('orcRogue', 'E'), m('skeleton', 'A'), m('skeleton', 'B')],
+    7: [
+      m('orcShaman', 'G'),
+      m('orcRogue', 'D'),
+      m('orcRogue', 'E'),
+      m('skeleton', 'A'),
+      m('skeleton', 'B'),
+    ],
     8: [m('skelWarrior', 'F'), m('skelWarrior', 'G'), m('mage', 'C'), m('orcRogue', 'D')],
-    9: [m('orcWarrior', 'F'), m('orcWarrior', 'G'), m('orcShaman', 'C'), m('skelRogue', 'D'), m('skelRogue', 'E')],
+    9: [
+      m('orcWarrior', 'F'),
+      m('orcWarrior', 'G'),
+      m('orcShaman', 'C'),
+      m('skelRogue', 'D'),
+      m('skelRogue', 'E'),
+    ],
   }
   if (table[n]) return table[n]
   // 10 波以后：循环组合并持续强化
   const pool: [MobKind, keyof typeof PTS][] = [
-    ['orcWarrior', 'F'], ['skelWarrior', 'G'], ['orcShaman', 'C'],
-    ['orcRogue', 'D'], ['skelRogue', 'E'], ['mage', 'H'],
+    ['orcWarrior', 'F'],
+    ['skelWarrior', 'G'],
+    ['orcShaman', 'C'],
+    ['orcRogue', 'D'],
+    ['skelRogue', 'E'],
+    ['mage', 'H'],
   ]
   const count = Math.min(4 + Math.floor((n - 11) / 2), 6)
   return Array.from({ length: count }, (_, i) => {
@@ -112,11 +130,10 @@ export class Trial {
     this.hooks.setObjective('秘境试炼：肃清每一波混沌兽；波间答题可恢复伤势')
   }
 
-  /** 玩家死亡或离开秘境：结算并复位 */
+  /** 玩家死亡或离开秘境：结束本次试炼；最佳纪录只统计已肃清波次 */
   stop() {
     if (!this.running) return
     this.running = false
-    if (this.wave > 0) this.hooks.recordBest(this.wave)
     this.hooks.setStatus(null)
   }
 
@@ -138,19 +155,33 @@ export class Trial {
   private spawnWave() {
     this.phase = 'fighting'
     const defs = makeWave(this.wave)
-    this.hooks.combat.spawnWave(defs.map((d) => ({ kind: d.kind, x: PTS[d.at][0], y: PTS[d.at][1], mult: d.mult, name: d.name })))
+    this.hooks.combat.spawnWave(
+      defs.map((d) => ({
+        kind: d.kind,
+        x: PTS[d.at][0],
+        y: PTS[d.at][1],
+        mult: d.mult,
+        name: d.name,
+      }))
+    )
     const boss = defs.find((d) => d.name)
-    this.hooks.combat.notify(9.5, 6.4, boss ? `⚠ ${boss.name} 降临！` : `第 ${this.wave} 波来袭！`, boss ? '#fca5a5' : '#fdba74', 16)
+    this.hooks.combat.notify(
+      9.5,
+      6.4,
+      boss ? `⚠ ${boss.name} 降临！` : `第 ${this.wave} 波来袭！`,
+      boss ? '#fca5a5' : '#fdba74',
+      16
+    )
     this.push()
   }
 
   private cleared() {
     this.phase = 'cleared'
+    this.hooks.recordBest(this.wave)
     this.push()
     const c = this.hooks.combat
     c.grantReward({ mp: 15, score: this.wave, buffSec: 0 })
     c.notify(9.5, 6.4, `第 ${this.wave} 波已肃清！`, '#6ee7b7', 15)
-    this.hooks.recordBest(this.wave)
     // 波间答题：答对全愈 + 顿悟，答错半愈
     this.hooks.onQuiz(randomCalculusQuestion(), (correct) => {
       if (!this.running) return
@@ -177,7 +208,13 @@ export class Trial {
       const tick = Math.ceil(this.t)
       if (tick !== this.lastTick && tick > 0 && tick <= 3) {
         this.lastTick = tick
-        this.hooks.combat.notify(9.5, 6.4, this.wave === 0 ? `试炼开始 · ${tick}` : `${tick}`, '#fdba74', 18)
+        this.hooks.combat.notify(
+          9.5,
+          6.4,
+          this.wave === 0 ? `试炼开始 · ${tick}` : `${tick}`,
+          '#fdba74',
+          18
+        )
       }
       if (this.t <= 0) {
         this.wave++

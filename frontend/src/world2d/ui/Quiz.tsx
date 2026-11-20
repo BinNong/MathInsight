@@ -50,11 +50,18 @@ export default function Quiz() {
     <div className="world2d-quiz-wrap">
       <div className="world2d-quiz">
         <div className="world2d-quiz-head">
-          <span className="world2d-quiz-badge">Σ 级数风暴 · 灵感凝聚</span>
-          <span className={`world2d-quiz-timer${left <= 3 ? ' urgent' : ''}`}>{left.toFixed(1)}s</span>
+          <span className="world2d-quiz-badge">
+            {quiz.kind === 'trial' ? '秘境试炼 · 波间顿悟' : 'Σ 级数风暴 · 灵感凝聚'}
+          </span>
+          <span className={`world2d-quiz-timer${left <= 3 ? ' urgent' : ''}`}>
+            {left.toFixed(1)}s
+          </span>
         </div>
         <div className="world2d-quiz-timer-track">
-          <div className="world2d-quiz-timer-fill" style={{ width: `${(left / QUIZ_SECONDS) * 100}%` }} />
+          <div
+            className="world2d-quiz-timer-fill"
+            style={{ width: `${(left / QUIZ_SECONDS) * 100}%` }}
+          />
         </div>
         <p className="world2d-quiz-q">{quiz.q}</p>
         <div className="world2d-quiz-options">
@@ -65,14 +72,23 @@ export default function Quiz() {
               else if (i === picked) cls += ' wrong'
             }
             return (
-              <button key={i} className={cls} disabled={picked !== null} onClick={() => finishRef.current(i)}>
+              <button
+                key={i}
+                className={cls}
+                disabled={picked !== null}
+                onClick={() => finishRef.current(i)}
+              >
                 <span className="world2d-quiz-opt-key">{i + 1}</span>
                 {opt}
               </button>
             )
           })}
         </div>
-        <p className="world2d-quiz-tip">答对：满威力风暴 · 答错/超时：威力减半（按 1-4 快捷作答）</p>
+        <p className="world2d-quiz-tip">
+          {quiz.kind === 'trial'
+            ? '答对：全部恢复并获得顿悟 · 答错/超时：恢复一半生命'
+            : '答对：满威力风暴 · 答错/超时：威力减半（按 1-4 快捷作答）'}
+        </p>
       </div>
     </div>
   )

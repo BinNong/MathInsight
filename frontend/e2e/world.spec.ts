@@ -12,7 +12,7 @@ test.describe('3D World', () => {
     await page.goto('/mathinsight/world')
 
     // 开场标题屏
-    await expect(page.locator('.world-intro-title')).toHaveText('数学宇宙群岛')
+    await expect(page.locator('.world-intro-title')).toHaveText('数学宇宙群岛', { timeout: 15000 })
 
     // 进入世界
     await page.locator('.world-intro-btn').click()

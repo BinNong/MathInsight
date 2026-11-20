@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Plot from 'react-plotly.js'
+import Plot from '../components/Plot'
 import { calculusApi, DerivativeRequest, SecantRequest } from '../services/api'
 import { debounce } from '../utils/timing'
 import { isValidFunctionExpression } from '../utils/math'
@@ -12,6 +12,7 @@ import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
 import VisualizationWorkspace from '../components/VisualizationWorkspace'
 import CollapsibleSection from '../components/CollapsibleSection'
+import RangeInput from '../components/RangeInput'
 
 interface DerivativeData {
   function_curve: { x: number[]; y: (number | null)[] }
@@ -359,37 +360,24 @@ export default function DerivativeTangent() {
 
   useEffect(() => {
     setLoading(true)
-    fetchTangentData(undefined, true)
-    fetchSecantData(undefined, true)
-    fetchLinearData(undefined, true)
-    fetchHigherData(undefined, true)
-  }, [])
-
-  useEffect(() => {
-    setLoading(true)
-    fetchTangentData(undefined, true)
-    fetchSecantData(undefined, true)
-    fetchLinearData(undefined, true)
-    fetchHigherData(undefined, true)
-  }, [request.function, request.x0])
-
-  useEffect(() => {
-    setLoading(true)
-    switch (activeMode) {
-      case 'tangent':
-        fetchTangentData(undefined, true)
-        break
-      case 'secant':
-        fetchSecantData(undefined, true)
-        break
-      case 'linear':
-        fetchLinearData(undefined, true)
-        break
-      case 'higher':
-        fetchHigherData(undefined, true)
-        break
-    }
-  }, [activeMode])
+    const timer = window.setTimeout(() => {
+      switch (activeMode) {
+        case 'tangent':
+          fetchTangentData(undefined, true)
+          break
+        case 'secant':
+          fetchSecantData(undefined, true)
+          break
+        case 'linear':
+          fetchLinearData(undefined, true)
+          break
+        case 'higher':
+          fetchHigherData(undefined, true)
+          break
+      }
+    }, 200)
+    return () => window.clearTimeout(timer)
+  }, [activeMode, fetchTangentData, fetchSecantData, fetchLinearData, fetchHigherData])
 
   // 割线动画播放
   useEffect(() => {
@@ -511,7 +499,7 @@ export default function DerivativeTangent() {
           type: 'scatter',
           mode: 'lines',
           name: 'f(x)',
-          line: { color: '#4f46e5', width: 2.5 },
+          line: { color: '#9c3b2e', width: 2.5 },
           hovertemplate: 'f(%{x:.3f}) = %{y:.3f}<extra></extra>',
         },
         {
@@ -611,7 +599,7 @@ export default function DerivativeTangent() {
           type: 'scatter',
           mode: 'lines',
           name: 'f(x)',
-          line: { color: '#4f46e5', width: 2.5 },
+          line: { color: '#9c3b2e', width: 2.5 },
           hoverinfo: 'name',
         },
         {
@@ -673,7 +661,7 @@ export default function DerivativeTangent() {
           type: 'scatter',
           mode: 'lines',
           name: 'f(x)',
-          line: { color: '#4f46e5', width: 2.5 },
+          line: { color: '#9c3b2e', width: 2.5 },
           hoverinfo: 'name',
         },
         {
@@ -729,7 +717,7 @@ export default function DerivativeTangent() {
           mode: 'lines',
           name: curve.name,
           line: {
-            color: ['#4f46e5', '#ef4444', '#10b981', '#f59e0b'][curve.order % 4],
+            color: ['#9c3b2e', '#ef4444', '#10b981', '#f59e0b'][curve.order % 4],
             width: curve.order === 0 ? 2.5 : 2,
           },
           hoverinfo: 'name',
@@ -826,7 +814,7 @@ export default function DerivativeTangent() {
         y: data.function_curve.y,
         type: 'scatter',
         mode: 'lines',
-        line: { color: '#4f46e5', width: 2 },
+        line: { color: '#9c3b2e', width: 2 },
       },
     ]
     if (activeMode === 'linear') {
@@ -1081,7 +1069,7 @@ export default function DerivativeTangent() {
         </CollapsibleSection>
         <CollapsibleSection title="图例说明" variant="success">
           <p>
-            <span style={{ color: '#4f46e5' }}>—</span> 原函数 f(x)
+            <span style={{ color: '#9c3b2e' }}>—</span> 原函数 f(x)
             <br />
             <span style={{ color: '#ef4444' }}>- -</span> 线性近似 L(x)
             <br />
@@ -1187,19 +1175,9 @@ export default function DerivativeTangent() {
               </div>
               <div className="form-group">
                 <label>绘图范围</label>
-                <input
-                  type="text"
-                  value={`[${request.domain_range[0]}, ${request.domain_range[1]}]`}
-                  onChange={(e) => {
-                    try {
-                      const range = JSON.parse(e.target.value)
-                      if (Array.isArray(range) && range.length === 2) {
-                        handleInputChange('domain_range', range)
-                      }
-                    } catch {
-                      // 忽略非法区间输入
-                    }
-                  }}
+                <RangeInput
+                  value={request.domain_range}
+                  onCommit={(range) => handleInputChange('domain_range', range)}
                 />
               </div>
             </div>

@@ -1,0 +1,185 @@
+.world2d-home-link {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 30;
+  padding: 0.5rem 0.8rem;
+  border: 1px solid rgba(148, 163, 253, 0.35);
+  border-radius: 0.65rem;
+  background: rgba(12, 7, 28, 0.72);
+  color: #e0e7ff;
+  font-size: 0.78rem;
+  text-decoration: none;
+  pointer-events: auto;
+}
+
+.world2d-load-status,
+.world2d-load-error {
+  position: absolute;
+  z-index: 40;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(90vw, 420px);
+  padding: 1.5rem;
+  border: 1px solid rgba(148, 163, 253, 0.35);
+  border-radius: 1rem;
+  background: rgba(12, 7, 28, 0.94);
+  color: #e2e8f0;
+  text-align: center;
+}
+
+.world2d-load-error p {
+  margin: 0.65rem 0 1rem;
+  color: #cbd5e1;
+}
+
+.world2d-load-error > div {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.world2d-load-error .world-btn {
+  text-decoration: none;
+}
+
+.world2d-codex-btn,
+.world2d-skill,
+.world2d-touch-controls button {
+  pointer-events: auto;
+}
+
+.world2d-skill {
+  padding: 0;
+  color: inherit;
+  font-family: inherit;
+}
+
+.world2d-skill:disabled {
+  cursor: not-allowed;
+}
+
+.world2d-trial-status {
+  position: absolute;
+  top: 9.5rem;
+  left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.8rem;
+  border: 1px solid rgba(252, 211, 77, 0.45);
+  border-radius: 0.65rem;
+  background: rgba(12, 7, 28, 0.72);
+  color: #fcd34d;
+  font-size: 0.75rem;
+}
+
+.world2d-trial-status span,
+.world2d-trial-status small {
+  color: #dbe4f5;
+}
+
+.world2d-touch-controls {
+  display: none;
+}
+
+@media (pointer: coarse), (max-width: 768px) {
+  .world2d-touch-controls {
+    display: block;
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .world2d-touch-dpad {
+    position: absolute;
+    left: 1rem;
+    bottom: 1rem;
+    display: grid;
+    grid-template-columns: repeat(3, 44px);
+    grid-template-rows: repeat(2, 44px);
+    gap: 5px;
+  }
+
+  .world2d-touch-dpad button,
+  .world2d-touch-interact {
+    border: 1px solid rgba(148, 163, 253, 0.5);
+    border-radius: 0.75rem;
+    background: rgba(12, 7, 28, 0.78);
+    color: #e0e7ff;
+    font: 600 1rem inherit;
+    touch-action: none;
+  }
+
+  .world2d-touch-dpad .up {
+    grid-column: 2;
+  }
+
+  .world2d-touch-dpad .left {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .world2d-touch-dpad .down {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .world2d-touch-dpad .right {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  .world2d-touch-interact {
+    position: absolute;
+    right: 1rem;
+    bottom: 1rem;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+  }
+
+  .world2d-skills {
+    bottom: 6.5rem;
+  }
+
+  .world-hint {
+    display: none;
+  }
+
+  .world2d-codex-btn {
+    bottom: 1rem !important;
+  }
+
+  .world2d-home-link {
+    top: auto;
+    right: 1rem;
+    bottom: 5.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .world-objective {
+    top: 0.65rem;
+    max-width: 92vw;
+    font-size: 0.72rem;
+  }
+
+  .world2d-vitals {
+    top: 4rem;
+    left: 0.65rem;
+    min-width: 165px;
+    padding: 0.5rem 0.65rem;
+  }
+
+  .world2d-trial-status {
+    top: 9rem;
+    left: 0.65rem;
+  }
+
+  .world2d-skill {
+    width: 46px;
+    height: 46px;
+  }
+}

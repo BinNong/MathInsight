@@ -11,12 +11,25 @@ probability_bp = Blueprint('probability', __name__, url_prefix='/api/probability
 
 SUPPORTED_DISTRIBUTIONS = {'bernoulli', 'uniform_discrete', 'uniform_continuous',
                            'exponential', 'normal', 'poisson', 'binomial'}
+MAX_TOTAL_SAMPLES = 2_000_000
+
+
+def _validated_seed(value):
+    if value is None:
+        return True, None
+    return safe_int(value, 'seed', 0, 2**32 - 1)
 
 
 def _validate_distribution_params(distribution: str, params: dict) -> tuple[bool, str | None]:
     """校验分布参数合法性"""
     if params is None:
         params = {}
+    if not isinstance(params, dict):
+        return False, '分布参数必须是 JSON 对象'
+    for key, value in params.items():
+        is_valid, _ = safe_float(value, f'params.{key}')
+        if not is_valid:
+            return False, '分布参数必须是有限数字'
     try:
         if distribution == 'bernoulli':
             p = float(params.get('p', 0.5))
@@ -85,30 +98,35 @@ def simulate_lln():
         "seed": 42             # 可选随机种子
     }
     """
+    data = request.get_json(silent=True)
+    is_valid, error = validate_request_data(data)
+    if not is_valid:
+        return error_response(error)
+
+    experiment_type = data.get('experiment_type', 'coin')
+    is_valid, sample_size = safe_int(data.get('sample_size', 1000), 'sample_size', 1, 10000)
+    if not is_valid:
+        return error_response(sample_size)
+    is_valid, seed = _validated_seed(data.get('seed'))
+    if not is_valid:
+        return error_response(seed)
+
     try:
-        data = request.get_json()
-
-        experiment_type = data.get('experiment_type', 'coin')
-        sample_size = int(data.get('sample_size', 1000))
-        seed = data.get('seed')
-
         if experiment_type == 'coin':
-            p = float(data.get('p', 0.5))
-            if not 0 <= p <= 1:
-                return error_response('概率 p 必须在 0 到 1 之间')
-
+            is_valid, p = safe_float(data.get('p', 0.5), 'p')
+            if not is_valid or not 0 <= p <= 1:
+                return error_response('概率 p 必须是 0 到 1 之间的有限数字')
             result = ProbabilityService.simulate_bernoulli(p, sample_size, seed)
-
         elif experiment_type == 'dice':
-            min_val = int(data.get('min_val', 1))
-            max_val = int(data.get('max_val', 6))
+            is_valid, min_val = safe_int(data.get('min_val', 1), 'min_val', -1000000, 1000000)
+            if not is_valid:
+                return error_response(min_val)
+            is_valid, max_val = safe_int(data.get('max_val', 6), 'max_val', -1000000, 1000000)
+            if not is_valid:
+                return error_response(max_val)
             if min_val >= max_val:
                 return error_response('最小值必须小于最大值')
-
-            result = ProbabilityService.simulate_discrete_uniform(
-                min_val, max_val, sample_size, seed
-            )
-
+            result = ProbabilityService.simulate_discrete_uniform(min_val, max_val, sample_size, seed)
         else:
             return error_response(f'不支持的实验类型: {experiment_type}')
 
@@ -120,7 +138,6 @@ def simulate_lln():
             'samples': result.samples,
             'final_mean': result.final_mean
         })
-
     except Exception as e:
         return server_error_response('大数定律模拟失败，请检查输入参数', exc=e)
 
@@ -149,21 +166,24 @@ def simulate_clt():
         "seed": 42
     }
     """
-    data = request.get_json()
+    data = request.get_json(silent=True)
     is_valid, error = validate_request_data(data)
     if not is_valid:
         return error_response(error)
 
     distribution = data.get('distribution', 'bernoulli')
     params = data.get('params', {}) or {}
-    sample_size = int(data.get('sample_size', 30))
-    num_samples = int(data.get('num_samples', 1000))
-    seed = data.get('seed')
-
-    if sample_size <= 0 or sample_size > 10000:
-        return error_response('sample_size 必须在 1-10000 之间')
-    if num_samples <= 0 or num_samples > 50000:
-        return error_response('num_samples 必须在 1-50000 之间')
+    is_valid, sample_size = safe_int(data.get('sample_size', 30), 'sample_size', 1, 10000)
+    if not is_valid:
+        return error_response(sample_size)
+    is_valid, num_samples = safe_int(data.get('num_samples', 1000), 'num_samples', 1, 50000)
+    if not is_valid:
+        return error_response(num_samples)
+    is_valid, seed = _validated_seed(data.get('seed'))
+    if not is_valid:
+        return error_response(seed)
+    if sample_size * num_samples > MAX_TOTAL_SAMPLES:
+        return error_response(f'sample_size × num_samples 不能超过 {MAX_TOTAL_SAMPLES}')
 
     if distribution not in SUPPORTED_DISTRIBUTIONS:
         return error_response(f'不支持的分布类型: {distribution}')
@@ -194,18 +214,19 @@ def simulate_distribution():
         "seed": 42
     }
     """
-    data = request.get_json()
+    data = request.get_json(silent=True)
     is_valid, error = validate_request_data(data)
     if not is_valid:
         return error_response(error)
 
     distribution = data.get('distribution', 'normal')
     params = data.get('params', {}) or {}
-    sample_size = int(data.get('sample_size', 1000))
-    seed = data.get('seed')
-
-    if sample_size <= 0 or sample_size > 50000:
-        return error_response('sample_size 必须在 1-50000 之间')
+    is_valid, sample_size = safe_int(data.get('sample_size', 1000), 'sample_size', 1, 50000)
+    if not is_valid:
+        return error_response(sample_size)
+    is_valid, seed = _validated_seed(data.get('seed'))
+    if not is_valid:
+        return error_response(seed)
 
     if distribution not in SUPPORTED_DISTRIBUTIONS:
         return error_response(f'不支持的分布类型: {distribution}')

@@ -16,6 +16,9 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
 
+_UNSET = object()
+
+
 class TaskStatus(str, Enum):
     PENDING = "PENDING"
     GENERATING = "GENERATING"      # LLM 正在生成或修复代码
@@ -134,9 +137,9 @@ class ManimTaskManager:
         stage_message: Optional[str] = None,
         iterations: Optional[int] = None,
         result: Optional[Dict[str, Any]] = None,
-        error: Optional[str] = None,
-        generated_code: Optional[str] = None,
-        render_log: Optional[str] = None,
+        error: Any = _UNSET,
+        generated_code: Any = _UNSET,
+        render_log: Any = _UNSET,
         progress_percent: Optional[int] = None,
         cache_hit: Optional[bool] = None,
     ) -> Optional[ManimTask]:
@@ -152,11 +155,11 @@ class ManimTaskManager:
                 task.iterations = iterations
             if result is not None:
                 task.result = result
-            if error is not None:
+            if error is not _UNSET:
                 task.error = error
-            if generated_code is not None:
+            if generated_code is not _UNSET:
                 task.generated_code = generated_code
-            if render_log is not None:
+            if render_log is not _UNSET:
                 task.render_log = render_log
             if progress_percent is not None:
                 task.progress_percent = max(0, min(100, progress_percent))

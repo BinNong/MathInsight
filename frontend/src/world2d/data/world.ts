@@ -47,7 +47,8 @@ export interface PortalDef {
 export interface NpcDef {
   id: string
   name: string
-  sprite: 'wizard' | 'knight' | 'peasant' | 'keeper' | 'host' | 'scholar' | 'sage' | 'rogue' | 'barmaid'
+  sprite:
+    'wizard' | 'knight' | 'peasant' | 'keeper' | 'host' | 'scholar' | 'sage' | 'rogue' | 'barmaid'
   tx: number
   ty: number
   interactDist?: number
@@ -145,7 +146,8 @@ export function buildWorld(): WorldData {
   const groundAt = (x: number, y: number) => (inMap(x, y) ? ground[idx(x, y)] : G.WATER)
 
   const fillRect = (x0: number, y0: number, w: number, h: number, v: number) => {
-    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (inMap(x, y)) ground[idx(x, y)] = v
+    for (let y = y0; y < y0 + h; y++)
+      for (let x = x0; x < x0 + w; x++) if (inMap(x, y)) ground[idx(x, y)] = v
   }
   const pathH = (x0: number, x1: number, y: number) => {
     for (let x = Math.min(x0, x1); x <= Math.max(x0, x1); x++) {
@@ -196,11 +198,41 @@ export function buildWorld(): WorldData {
     bx: 8.5,
     by: 23,
     solid: [
-      [5, 18], [6, 18], [7, 18], [8, 18], [9, 18], [10, 18], [11, 18],
-      [5, 19], [6, 19], [7, 19], [8, 19], [9, 19], [10, 19], [11, 19],
-      [5, 20], [6, 20], [7, 20], [8, 20], [9, 20], [10, 20], [11, 20],
-      [5, 21], [6, 21], [7, 21], [8, 21], [9, 21], [10, 21], [11, 21],
-      [5, 22], [6, 22], [7, 22], [8, 22], [9, 22], [10, 22], [11, 22],
+      [5, 18],
+      [6, 18],
+      [7, 18],
+      [8, 18],
+      [9, 18],
+      [10, 18],
+      [11, 18],
+      [5, 19],
+      [6, 19],
+      [7, 19],
+      [8, 19],
+      [9, 19],
+      [10, 19],
+      [11, 19],
+      [5, 20],
+      [6, 20],
+      [7, 20],
+      [8, 20],
+      [9, 20],
+      [10, 20],
+      [11, 20],
+      [5, 21],
+      [6, 21],
+      [7, 21],
+      [8, 21],
+      [9, 21],
+      [10, 21],
+      [11, 21],
+      [5, 22],
+      [6, 22],
+      [7, 22],
+      [8, 22],
+      [9, 22],
+      [10, 22],
+      [11, 22],
     ],
   })
   // 农舍（东侧）
@@ -209,11 +241,41 @@ export function buildWorld(): WorldData {
     bx: 45.5,
     by: 23,
     solid: [
-      [42, 18], [43, 18], [44, 18], [45, 18], [46, 18], [47, 18], [48, 18],
-      [42, 19], [43, 19], [44, 19], [45, 19], [46, 19], [47, 19], [48, 19],
-      [42, 20], [43, 20], [44, 20], [45, 20], [46, 20], [47, 20], [48, 20],
-      [42, 21], [43, 21], [44, 21], [45, 21], [46, 21], [47, 21], [48, 21],
-      [42, 22], [43, 22], [44, 22], [45, 22], [46, 22], [47, 22], [48, 22],
+      [42, 18],
+      [43, 18],
+      [44, 18],
+      [45, 18],
+      [46, 18],
+      [47, 18],
+      [48, 18],
+      [42, 19],
+      [43, 19],
+      [44, 19],
+      [45, 19],
+      [46, 19],
+      [47, 19],
+      [48, 19],
+      [42, 20],
+      [43, 20],
+      [44, 20],
+      [45, 20],
+      [46, 20],
+      [47, 20],
+      [48, 20],
+      [42, 21],
+      [43, 21],
+      [44, 21],
+      [45, 21],
+      [46, 21],
+      [47, 21],
+      [48, 21],
+      [42, 22],
+      [43, 22],
+      [44, 22],
+      [45, 22],
+      [46, 22],
+      [47, 22],
+      [48, 22],
     ],
   })
   // 法师小屋（东南）
@@ -222,11 +284,41 @@ export function buildWorld(): WorldData {
     bx: 54.5,
     by: 35,
     solid: [
-      [51, 30], [52, 30], [53, 30], [54, 30], [55, 30], [56, 30], [57, 30],
-      [51, 31], [52, 31], [53, 31], [54, 31], [55, 31], [56, 31], [57, 31],
-      [51, 32], [52, 32], [53, 32], [54, 32], [55, 32], [56, 32], [57, 32],
-      [51, 33], [52, 33], [53, 33], [54, 33], [55, 33], [56, 33], [57, 33],
-      [51, 34], [52, 34], [53, 34], [54, 34], [55, 34], [56, 34], [57, 34],
+      [51, 30],
+      [52, 30],
+      [53, 30],
+      [54, 30],
+      [55, 30],
+      [56, 30],
+      [57, 30],
+      [51, 31],
+      [52, 31],
+      [53, 31],
+      [54, 31],
+      [55, 31],
+      [56, 31],
+      [57, 31],
+      [51, 32],
+      [52, 32],
+      [53, 32],
+      [54, 32],
+      [55, 32],
+      [56, 32],
+      [57, 32],
+      [51, 33],
+      [52, 33],
+      [53, 33],
+      [54, 33],
+      [55, 33],
+      [56, 33],
+      [57, 33],
+      [51, 34],
+      [52, 34],
+      [53, 34],
+      [54, 34],
+      [55, 34],
+      [56, 34],
+      [57, 34],
     ],
   })
   // 微积分秘境石门（北走廊尽头）：112×96 ≈ 7×6 瓦片，门洞留 2 格可走近
@@ -235,9 +327,25 @@ export function buildWorld(): WorldData {
     bx: 36.5,
     by: 7,
     solid: [
-      [33, 4], [34, 4], [35, 4], [36, 4], [37, 4], [38, 4], [39, 4],
-      [33, 5], [34, 5], [35, 5], [36, 5], [37, 5], [38, 5], [39, 5],
-      [33, 6], [34, 6], [37, 6], [38, 6], [39, 6],
+      [33, 4],
+      [34, 4],
+      [35, 4],
+      [36, 4],
+      [37, 4],
+      [38, 4],
+      [39, 4],
+      [33, 5],
+      [34, 5],
+      [35, 5],
+      [36, 5],
+      [37, 5],
+      [38, 5],
+      [39, 5],
+      [33, 6],
+      [34, 6],
+      [37, 6],
+      [38, 6],
+      [39, 6],
     ],
   })
 
@@ -247,45 +355,161 @@ export function buildWorld(): WorldData {
   const add = (o: WorldObject) => objects.push(o)
 
   // —— 广场：篝火 + 长椅 + 花 ——
-  add({ img: 'bonfire', frames: { w: 32, h: 48, count: 8, fps: 8, axis: 'x' }, bx: 32, by: 26, solid: [[31, 25], [32, 25]] })
-  add({ img: 'bprops', rect: BPROPS.benchLong, bx: 28.5, by: 28, solid: [[27, 27], [28, 27], [29, 27]] })
-  add({ img: 'bprops', rect: BPROPS.benchLong, bx: 36.5, by: 28, solid: [[35, 27], [36, 27], [37, 27]] })
+  add({
+    img: 'bonfire',
+    frames: { w: 32, h: 48, count: 8, fps: 8, axis: 'x' },
+    bx: 32,
+    by: 26,
+    solid: [
+      [31, 25],
+      [32, 25],
+    ],
+  })
+  add({
+    img: 'bprops',
+    rect: BPROPS.benchLong,
+    bx: 28.5,
+    by: 28,
+    solid: [
+      [27, 27],
+      [28, 27],
+      [29, 27],
+    ],
+  })
+  add({
+    img: 'bprops',
+    rect: BPROPS.benchLong,
+    bx: 36.5,
+    by: 28,
+    solid: [
+      [35, 27],
+      [36, 27],
+      [37, 27],
+    ],
+  })
   add({ img: 'furniture', rect: FURN.signpost, bx: 27, by: 21.9, solid: [[26, 21]] })
   add({ img: 'furniture', rect: FURN.signpost, bx: 38, by: 21.9, solid: [[38, 21]], flip: true })
-  for (const [fx, fy] of [[25.4, 20.4], [38.6, 20.4], [25.4, 29.6], [38.6, 29.6]] as const) {
+  for (const [fx, fy] of [
+    [25.4, 20.4],
+    [38.6, 20.4],
+    [25.4, 29.6],
+    [38.6, 29.6],
+  ] as const) {
     add({ img: 'vegetation', rect: VEG.flowerPurple, bx: fx, by: fy })
     add({ img: 'vegetation', rect: VEG.flowerPurple2, bx: fx + 0.7, by: fy + 0.1 })
   }
 
   // —— 酒馆院子 ——
-  add({ img: 'furniture', rect: FURN.table, bx: 7, by: 26.5, solid: [[6, 26], [7, 26]] })
+  add({
+    img: 'furniture',
+    rect: FURN.table,
+    bx: 7,
+    by: 26.5,
+    solid: [
+      [6, 26],
+      [7, 26],
+    ],
+  })
   add({ img: 'bprops', rect: BPROPS.benchSm, bx: 7, by: 25.6 })
   add({ img: 'furniture', rect: FURN.barrel, bx: 12.4, by: 22.7, solid: [[12, 22]] })
   add({ img: 'furniture', rect: FURN.barrelBig, bx: 13.1, by: 22.7, solid: [[13, 22]] })
   add({ img: 'furniture', rect: FURN.barrel, bx: 12.7, by: 21.9 })
-  add({ img: 'bprops', rect: BPROPS.crate, bx: 3.8, by: 22.8, solid: [[3, 22], [4, 22]] })
+  add({
+    img: 'bprops',
+    rect: BPROPS.crate,
+    bx: 3.8,
+    by: 22.8,
+    solid: [
+      [3, 22],
+      [4, 22],
+    ],
+  })
   add({ img: 'furniture', rect: FURN.pot, bx: 4.5, by: 25.7, solid: [[4, 25]] })
   // 酒馆烟囱炊烟（sortBias 让它画在屋顶之上）
-  add({ img: 'smoke', frames: { w: 32, h: 48, count: 4, fps: 3, axis: 'x' }, bx: 10.15, by: 12.9, sortBias: 12 })
+  add({
+    img: 'smoke',
+    frames: { w: 32, h: 48, count: 4, fps: 3, axis: 'x' },
+    bx: 10.15,
+    by: 12.9,
+    sortBias: 12,
+  })
 
   // —— 骑士岗哨（东北）：铁砧 + 篝火 + 岩石 ——
-  add({ img: 'anvil', rect: ANVIL, bx: 54, by: 9, solid: [[53, 8], [54, 8]] })
-  add({ img: 'bonfire', frames: { w: 32, h: 48, count: 8, fps: 8, axis: 'x' }, bx: 50.5, by: 10, solid: [[50, 9]] })
-  add({ img: 'rocks', rect: ROCKS.boulderGray, bx: 58, by: 8, solid: [[57, 7], [58, 7]] })
+  add({
+    img: 'anvil',
+    rect: ANVIL,
+    bx: 54,
+    by: 9,
+    solid: [
+      [53, 8],
+      [54, 8],
+    ],
+  })
+  add({
+    img: 'bonfire',
+    frames: { w: 32, h: 48, count: 8, fps: 8, axis: 'x' },
+    bx: 50.5,
+    by: 10,
+    solid: [[50, 9]],
+  })
+  add({
+    img: 'rocks',
+    rect: ROCKS.boulderGray,
+    bx: 58,
+    by: 8,
+    solid: [
+      [57, 7],
+      [58, 7],
+    ],
+  })
   add({ img: 'rocks', rect: ROCKS.rockMed2, bx: 60, by: 9.5, solid: [[59, 9]] })
-  add({ img: 'rocks', rect: ROCKS.boulderBrown, bx: 47, by: 6.5, solid: [[46, 6], [47, 6]] })
+  add({
+    img: 'rocks',
+    rect: ROCKS.boulderBrown,
+    bx: 47,
+    by: 6.5,
+    solid: [
+      [46, 6],
+      [47, 6],
+    ],
+  })
   add({ img: 'rocks', rect: ROCKS.rockSm2, bx: 48.5, by: 12.6 })
 
   // —— 农田：作物行 + 稻草人 + 干草 ——
-  const cropKeys = ['crop1b', 'crop1c', 'crop2b', 'crop2c', 'crop4a', 'crop4c', 'crop5b', 'crop5c', 'crop6b', 'crop6c', 'crop7b', 'crop7c']
+  const cropKeys = [
+    'crop1b',
+    'crop1c',
+    'crop2b',
+    'crop2c',
+    'crop4a',
+    'crop4c',
+    'crop5b',
+    'crop5c',
+    'crop6b',
+    'crop6c',
+    'crop7b',
+    'crop7c',
+  ]
   for (let y = 26; y <= 30; y++) {
     for (let x = 42; x <= 48; x++) {
-      if (rng() < 0.6) add({ img: 'farm', rect: FARM[cropKeys[Math.floor(rng() * cropKeys.length)]], bx: x + 0.25 + rng() * 0.5, by: y + 0.55 + rng() * 0.35 })
+      if (rng() < 0.6)
+        add({
+          img: 'farm',
+          rect: FARM[cropKeys[Math.floor(rng() * cropKeys.length)]],
+          bx: x + 0.25 + rng() * 0.5,
+          by: y + 0.55 + rng() * 0.35,
+        })
     }
   }
   for (let y = 33; y <= 36; y++) {
     for (let x = 42; x <= 47; x++) {
-      if (rng() < 0.55) add({ img: 'farm', rect: FARM[cropKeys[Math.floor(rng() * cropKeys.length)]], bx: x + 0.25 + rng() * 0.5, by: y + 0.55 + rng() * 0.35 })
+      if (rng() < 0.55)
+        add({
+          img: 'farm',
+          rect: FARM[cropKeys[Math.floor(rng() * cropKeys.length)]],
+          bx: x + 0.25 + rng() * 0.5,
+          by: y + 0.55 + rng() * 0.35,
+        })
     }
   }
   add({ img: 'farm', rect: FARM.scarecrow, bx: 48.6, by: 28.5, solid: [[48, 28]] })
@@ -293,9 +517,25 @@ export function buildWorld(): WorldData {
   add({ img: 'furniture', rect: FURN.barrel, bx: 43.2, by: 24.7 })
 
   // —— 法师区：炼金长台（柜台）+ 水晶 + 红松 ——
-  add({ img: 'alchemy', frames: { w: 192, h: 64, count: 11, fps: 7, axis: 'y' }, bx: 54.5, by: 38, solid: [
-    [49, 37], [50, 37], [51, 37], [52, 37], [53, 37], [54, 37], [55, 37], [56, 37], [57, 37], [58, 37], [59, 37],
-  ] })
+  add({
+    img: 'alchemy',
+    frames: { w: 192, h: 64, count: 11, fps: 7, axis: 'y' },
+    bx: 54.5,
+    by: 38,
+    solid: [
+      [49, 37],
+      [50, 37],
+      [51, 37],
+      [52, 37],
+      [53, 37],
+      [54, 37],
+      [55, 37],
+      [56, 37],
+      [57, 37],
+      [58, 37],
+      [59, 37],
+    ],
+  })
   add({ img: 'rocks', rect: ROCKS.crystalBig, bx: 49, by: 40.6, solid: [[48, 40]] })
   add({ img: 'rocks', rect: ROCKS.crystalMed, bx: 50.2, by: 41.2 })
   add({ img: 'rocks', rect: ROCKS.crystalMed2, bx: 59.5, by: 40.4 })
@@ -308,7 +548,12 @@ export function buildWorld(): WorldData {
     const x = 6 + rng() * 10
     const y = 35 + rng() * 6
     if (groundAt(Math.floor(x), Math.floor(y)) === G.WATER) {
-      add({ img: 'vegetation', rect: [VEG.lily1, VEG.lily2, VEG.lily3][Math.floor(rng() * 3)], bx: x, by: y })
+      add({
+        img: 'vegetation',
+        rect: [VEG.lily1, VEG.lily2, VEG.lily3][Math.floor(rng() * 3)],
+        bx: x,
+        by: y,
+      })
     }
   }
   for (let i = 0; i < 10; i++) {
@@ -319,8 +564,15 @@ export function buildWorld(): WorldData {
     if (groundAt(fx, fy) !== G.WATER) {
       let nearWater = false
       for (let dy = -1; dy <= 1 && !nearWater; dy++)
-        for (let dx = -1; dx <= 1; dx++) if (groundAt(fx + dx, fy + dy) === G.WATER) nearWater = true
-      if (nearWater) add({ img: 'vegetation', rect: [VEG.reed1, VEG.reed2, VEG.reed3][Math.floor(rng() * 3)], bx: x, by: y })
+        for (let dx = -1; dx <= 1; dx++)
+          if (groundAt(fx + dx, fy + dy) === G.WATER) nearWater = true
+      if (nearWater)
+        add({
+          img: 'vegetation',
+          rect: [VEG.reed1, VEG.reed2, VEG.reed3][Math.floor(rng() * 3)],
+          bx: x,
+          by: y,
+        })
     }
   }
 
@@ -366,7 +618,10 @@ export function buildWorld(): WorldData {
   }
 
   const scatterTrees = (
-    x0: number, y0: number, x1: number, y1: number,
+    x0: number,
+    y0: number,
+    x1: number,
+    y1: number,
     density: number,
     pick: (r: number) => { img: AssetKey; rect: Rect }
   ) => {
@@ -380,15 +635,21 @@ export function buildWorld(): WorldData {
   }
 
   const pickPine = (r: number) =>
-    r < 0.36 ? { img: 'trees2' as const, rect: TREES2.teal }
-    : r < 0.66 ? { img: 'trees2' as const, rect: TREES2.green }
-    : r < 0.86 ? { img: 'trees2' as const, rect: TREES2.green2 }
-    : { img: 'trees2' as const, rect: TREES2.teal2 }
+    r < 0.36
+      ? { img: 'trees2' as const, rect: TREES2.teal }
+      : r < 0.66
+        ? { img: 'trees2' as const, rect: TREES2.green }
+        : r < 0.86
+          ? { img: 'trees2' as const, rect: TREES2.green2 }
+          : { img: 'trees2' as const, rect: TREES2.teal2 }
   const pickBroad = (r: number) =>
-    r < 0.4 ? { img: 'trees1' as const, rect: TREES1.green }
-    : r < 0.66 ? { img: 'trees1' as const, rect: TREES1.lime }
-    : r < 0.84 ? { img: 'trees1' as const, rect: TREES1.orange }
-    : { img: 'trees1' as const, rect: TREES1.olive }
+    r < 0.4
+      ? { img: 'trees1' as const, rect: TREES1.green }
+      : r < 0.66
+        ? { img: 'trees1' as const, rect: TREES1.lime }
+        : r < 0.84
+          ? { img: 'trees1' as const, rect: TREES1.orange }
+          : { img: 'trees1' as const, rect: TREES1.olive }
   const pickMixed = (r: number) => (r < 0.45 ? pickPine(r / 0.45) : pickBroad((r - 0.45) / 0.55))
 
   // 边缘密林环带（2 格）
@@ -412,7 +673,10 @@ export function buildWorld(): WorldData {
   }
 
   // 林下灌木 / 岩石 / 蘑菇（不预留太多，点缀即可）
-  const scatterDecor = (count: number, pick: (r: number) => { img: AssetKey; rect: Rect; solid?: boolean }) => {
+  const scatterDecor = (
+    count: number,
+    pick: (r: number) => { img: AssetKey; rect: Rect; solid?: boolean }
+  ) => {
     for (let i = 0; i < count; i++) {
       const x = 3 + rng() * (MAP_W - 6)
       const y = 3 + rng() * (MAP_H - 6)
@@ -429,15 +693,31 @@ export function buildWorld(): WorldData {
     }
   }
   scatterDecor(34, (r) =>
-    r < 0.3 ? { img: 'vegetation', rect: VEG.bushRoundG, solid: true }
-    : r < 0.5 ? { img: 'vegetation', rect: VEG.bushRoundL, solid: true }
-    : r < 0.62 ? { img: 'vegetation', rect: VEG.bushRoundO, solid: true }
-    : r < 0.78 ? { img: 'vegetation', rect: [VEG.mushroom1, VEG.mushroom2, VEG.mushroom3, VEG.mushroom4][Math.floor(rng() * 4)] }
-    : r < 0.9 ? { img: 'rocks', rect: [ROCKS.rockSm1, ROCKS.rockSm3, ROCKS.rockSm4][Math.floor(rng() * 3)] }
-    : { img: 'vegetation', rect: VEG.fern }
+    r < 0.3
+      ? { img: 'vegetation', rect: VEG.bushRoundG, solid: true }
+      : r < 0.5
+        ? { img: 'vegetation', rect: VEG.bushRoundL, solid: true }
+        : r < 0.62
+          ? { img: 'vegetation', rect: VEG.bushRoundO, solid: true }
+          : r < 0.78
+            ? {
+                img: 'vegetation',
+                rect: [VEG.mushroom1, VEG.mushroom2, VEG.mushroom3, VEG.mushroom4][
+                  Math.floor(rng() * 4)
+                ],
+              }
+            : r < 0.9
+              ? {
+                  img: 'rocks',
+                  rect: [ROCKS.rockSm1, ROCKS.rockSm3, ROCKS.rockSm4][Math.floor(rng() * 3)],
+                }
+              : { img: 'vegetation', rect: VEG.fern }
   )
   // 紫色花丛点缀村庄周围
-  scatterDecor(16, () => ({ img: 'vegetation', rect: rng() < 0.5 ? VEG.flowerPurple : VEG.flowerPurple2 }))
+  scatterDecor(16, () => ({
+    img: 'vegetation',
+    rect: rng() < 0.5 ? VEG.flowerPurple : VEG.flowerPurple2,
+  }))
 
   // ================================================================
   // 5) 传送门
@@ -479,10 +759,10 @@ export function buildWorld(): WorldData {
       ty: 38,
       interactDist: 2.4,
       lines: [
-        '欢迎来到数学小镇！我是「数灵」，这里的向导，守着我的炼金长台。',
+        '欢迎来到数学小镇！我是「数灵」，这里的向导，守着我的符文长台。',
         '小镇西边的酒馆住着矩阵术士，东边的农庄是蒲丰的田地，东北山岗上骑士柯西正在打磨他的 ε-δ 盾牌。',
         '地上发光的符文圈都是传送门，走过去按 E，就能进入对应的交互实验室。',
-        '森林里有一种发光的灵草，采三株来我的炼金台（按 E），我帮你炼一瓶灵感药剂——战斗间隙按 Q 饮下能恢复生命。',
+        '三间修炼馆都能答题精进：提升掌握度会增强生命与灵感，打开修炼手札还能复习错题。',
         '北边石路尽头是「微积分秘境」，里面的波次试炼最是磨人，闯关纪录会记进你的手札。先去拜访其他导师吧！',
       ],
       links: [

@@ -40,7 +40,17 @@ function scatter(seed: number, count: number, r: number): ScatterItem[] {
 }
 
 /** 低多边形树木：圆柱树干 + 双层锥形树冠 */
-function Trees({ seed, count, r, leafColor }: { seed: number; count: number; r: number; leafColor: string }) {
+function Trees({
+  seed,
+  count,
+  r,
+  leafColor,
+}: {
+  seed: number
+  count: number
+  r: number
+  leafColor: string
+}) {
   const items = useMemo(() => scatter(seed, count, r), [seed, count, r])
   const dark = useMemo(() => new THREE.Color(leafColor).multiplyScalar(0.82), [leafColor])
   return (
@@ -66,7 +76,17 @@ function Trees({ seed, count, r, leafColor }: { seed: number; count: number; r: 
 }
 
 /** 岩石：随机缩放旋转的十二面体 */
-function Rocks({ seed, count, r, color }: { seed: number; count: number; r: number; color: string }) {
+function Rocks({
+  seed,
+  count,
+  r,
+  color,
+}: {
+  seed: number
+  count: number
+  r: number
+  color: string
+}) {
   const items = useMemo(() => scatter(seed, count, r), [seed, count, r])
   const bright = useMemo(() => new THREE.Color(color).multiplyScalar(1.35), [color])
   return (
@@ -88,7 +108,17 @@ function Rocks({ seed, count, r, color }: { seed: number; count: number; r: numb
 }
 
 /** 草丛：四角小锥簇，两色穿插 */
-function GrassTufts({ seed, count, r, color }: { seed: number; count: number; r: number; color: string }) {
+function GrassTufts({
+  seed,
+  count,
+  r,
+  color,
+}: {
+  seed: number
+  count: number
+  r: number
+  color: string
+}) {
   const items = useMemo(() => scatter(seed, count, r), [seed, count, r])
   const [light, dark] = useMemo(
     () => [new THREE.Color(color).multiplyScalar(1.25), new THREE.Color(color).multiplyScalar(0.8)],
@@ -97,7 +127,12 @@ function GrassTufts({ seed, count, r, color }: { seed: number; count: number; r:
   return (
     <>
       {items.map((t, i) => (
-        <mesh key={i} position={[t.x, 0.22 * t.scale, t.z]} rotation={[0, t.rot, 0]} scale={t.scale}>
+        <mesh
+          key={i}
+          position={[t.x, 0.22 * t.scale, t.z]}
+          rotation={[0, t.rot, 0]}
+          scale={t.scale}
+        >
           <coneGeometry args={[0.16, 0.55, 4]} />
           <meshStandardMaterial color={i % 2 ? light : dark} roughness={1} flatShading />
         </mesh>
@@ -117,7 +152,15 @@ interface IslandProps {
 }
 
 /** 悬浮岛：噪点草地台 + 植被岩石装饰 + 岩石锥底座 + 旋转符文环 */
-function FloatingIsland({ def, grassColor, rockColor, runeColor, leafColor, seed, children }: IslandProps) {
+function FloatingIsland({
+  def,
+  grassColor,
+  rockColor,
+  runeColor,
+  leafColor,
+  seed,
+  children,
+}: IslandProps) {
   const runeRef = useRef<THREE.Mesh>(null)
   const groundTex = useMemo(() => makeGroundTexture(grassColor), [grassColor])
   useFrame(({ clock }) => {
@@ -221,10 +264,7 @@ function Bridge({ rect }: { rect: Rect }) {
       })}
       {/* 两侧发光灯带 */}
       {[-1.7, 1.7].map((side) => (
-        <mesh
-          key={side}
-          position={alongX ? [cx, 0.06, cz + side] : [cx + side, 0.06, cz]}
-        >
+        <mesh key={side} position={alongX ? [cx, 0.06, cz + side] : [cx + side, 0.06, cz]}>
           <boxGeometry args={alongX ? [length, 0.08, 0.1] : [0.1, 0.08, length]} />
           <meshBasicMaterial color="#7dd3fc" transparent opacity={0.9} />
         </mesh>

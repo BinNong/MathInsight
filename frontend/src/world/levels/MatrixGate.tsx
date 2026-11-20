@@ -53,8 +53,10 @@ export default function MatrixGate() {
 
   useEffect(() => {
     // 矩阵之门立柱障碍
-    addObstacle({ x1: M.cx - 11.6, x2: M.cx - 10.4, z1: -4.4, z2: -2.8 })
-    addObstacle({ x1: M.cx - 11.6, x2: M.cx - 10.4, z1: 2.8, z2: 4.4 })
+    const removeObstacles = [
+      addObstacle({ x1: M.cx - 11.6, x2: M.cx - 10.4, z1: -4.4, z2: -2.8 }),
+      addObstacle({ x1: M.cx - 11.6, x2: M.cx - 10.4, z1: 2.8, z2: 4.4 }),
+    ]
 
     const onKey = (e: KeyboardEvent) => {
       if (e.code !== 'KeyE') return
@@ -70,7 +72,10 @@ export default function MatrixGate() {
       animT.current = 0
     }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      removeObstacles.forEach((removeObstacle) => removeObstacle())
+    }
   }, [])
 
   function currentMatrix(): [number, number, number, number] {

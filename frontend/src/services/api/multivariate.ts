@@ -1,5 +1,25 @@
 import { client } from './client'
 
+interface ApiEnvelope<T> {
+  success: boolean
+  data?: T
+  error?: string
+}
+
+function unwrapApiResponse<T>(response: ApiEnvelope<T>): T {
+  if (!response.success) {
+    throw new Error(response.error || '请求失败')
+  }
+  if (response.data == null) {
+    throw new Error('服务器响应缺少数据')
+  }
+  const result = response.data as T & { success?: boolean; error?: string }
+  if (result.success === false) {
+    throw new Error(result.error || '计算失败')
+  }
+  return response.data
+}
+
 // 多元函数可视化 API
 export interface SurfaceRequest {
   function: string
@@ -194,14 +214,14 @@ export const multivariateApi = {
   },
 
   // 综合计算所有数据
-  async compute(data: ComputeSurfaceRequest) {
+  async compute(data: ComputeSurfaceRequest): Promise<ComputeSurfaceData> {
     const response = await client.post('/multivariate/compute', data)
-    return response.data
+    return unwrapApiResponse<ComputeSurfaceData>(response.data)
   },
 
   // 获取预设函数
-  async getPresets() {
+  async getPresets(): Promise<{ presets: Preset[] }> {
     const response = await client.get('/multivariate/presets')
-    return response.data
+    return unwrapApiResponse<{ presets: Preset[] }>(response.data)
   },
 }

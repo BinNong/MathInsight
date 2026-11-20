@@ -26,3 +26,24 @@ export function extendDomain(
   }
   return extended
 }
+
+export function finiteAxisRange(
+  values: unknown,
+  fallback: [number, number] = [-2, 2]
+): [number, number] {
+  let minimum = Number.POSITIVE_INFINITY
+  let maximum = Number.NEGATIVE_INFINITY
+  const visit = (value: unknown) => {
+    if (Array.isArray(value)) {
+      value.forEach(visit)
+    } else if (typeof value === 'number' && Number.isFinite(value)) {
+      minimum = Math.min(minimum, value)
+      maximum = Math.max(maximum, value)
+    }
+  }
+  visit(values)
+
+  if (!Number.isFinite(minimum) || !Number.isFinite(maximum)) return fallback
+  const padding = Math.max((maximum - minimum) * 0.08, Math.abs(maximum) * 0.02, 0.05)
+  return [minimum - padding, maximum + padding]
+}

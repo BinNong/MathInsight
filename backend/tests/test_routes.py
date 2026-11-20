@@ -195,3 +195,70 @@ class TestCORSSecurity:
         assert response.status_code == 200
         # 非允许来源不应返回 Access-Control-Allow-Origin
         assert 'Access-Control-Allow-Origin' not in response.headers
+
+
+class TestProbabilityValidation:
+    def test_clt_rejects_excessive_total_samples(self, client):
+        response = client.post('/api/probability/clt/simulate', json={
+            'distribution': 'bernoulli',
+            'params': {'p': 0.5},
+            'sample_size': 10000,
+            'num_samples': 50000,
+        })
+        assert response.status_code == 400
+        assert '×' in response.get_json()['error']
+
+    def test_lln_rejects_invalid_body_and_zero_samples(self, client):
+        assert client.post('/api/probability/lln/simulate', json=[]).status_code == 400
+        response = client.post('/api/probability/lln/simulate', json={
+            'experiment_type': 'coin',
+            'sample_size': 0,
+        })
+        assert response.status_code == 400
+        assert response.get_json()['success'] is False
+
+    def test_single_sample_statistics_are_finite_zero(self, client):
+        clt = client.post('/api/probability/clt/simulate', json={
+            'distribution': 'bernoulli',
+            'params': {'p': 0},
+            'sample_size': 1,
+            'num_samples': 1,
+            'seed': 1,
+        })
+        assert clt.status_code == 200
+        assert clt.get_json()['data']['sample_std_of_means'] == 0.0
+
+        distribution = client.post('/api/probability/distribution/simulate', json={
+            'distribution': 'normal',
+            'params': {'mu': 0, 'sigma': 1},
+            'sample_size': 1,
+            'seed': 1,
+        })
+        assert distribution.status_code == 200
+        assert distribution.get_json()['data']['statistics']['variance'] == 0.0
+
+    def test_malformed_json_returns_json_error(self, client):
+        response = client.post(
+            '/api/probability/clt/simulate',
+            data='{invalid',
+            content_type='application/json',
+        )
+        assert response.status_code == 400
+        assert response.get_json()['success'] is False
+
+
+class TestApiErrorContract:
+    def test_unknown_api_route_returns_json(self, client):
+        response = client.get('/api/not-a-route')
+        assert response.status_code == 404
+        assert response.get_json()['success'] is False
+
+    def test_request_too_large_returns_json(self, app):
+        app.config['MAX_CONTENT_LENGTH'] = 16
+        response = app.test_client().post(
+            '/api/probability/clt/simulate',
+            data='{"sample_size": 1000}',
+            content_type='application/json',
+        )
+        assert response.status_code == 413
+        assert response.get_json()['success'] is False

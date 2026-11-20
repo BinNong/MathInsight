@@ -36,7 +36,9 @@ export default function Hud() {
         </div>
       )}
       {goalReached && <div className="world-banner">🏆 梯度山脉 · 已通关</div>}
-      <div className="world-hint">WASD 移动 · Shift 冲刺 · 空格跳跃 · ESC 释放鼠标</div>
+      <div className="world-hint">
+        桌面端：WASD 移动 · 鼠标视角 · Shift 冲刺 · 空格跳跃 · E 交互 · Esc 释放 / 点击画面继续
+      </div>
     </div>
   )
 }

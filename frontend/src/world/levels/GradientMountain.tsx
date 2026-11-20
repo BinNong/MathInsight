@@ -2,13 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Line } from '@react-three/drei'
 import * as THREE from 'three'
-import {
-  ISLANDS,
-  GRADIENT_GOAL,
-  gradientAt,
-  gradientHeight,
-  inIsland,
-} from '../lib/terrain'
+import { ISLANDS, GRADIENT_GOAL, gradientAt, gradientHeight, inIsland } from '../lib/terrain'
 import { playerPosition, playerStats, useWorldStore } from '../store'
 
 const G = ISLANDS.gradient
@@ -100,12 +94,7 @@ export default function GradientMountain() {
   const terrainGeo = useMemo(() => buildTerrain(G.r, 56, 128), [])
   const flowLines = useMemo(() => buildFlowLines(), [])
   const goalLocal = useMemo(
-    () =>
-      new THREE.Vector3(
-        GRADIENT_GOAL.x - G.cx,
-        GRADIENT_GOAL.h,
-        GRADIENT_GOAL.z - G.cz
-      ),
+    () => new THREE.Vector3(GRADIENT_GOAL.x - G.cx, GRADIENT_GOAL.h, GRADIENT_GOAL.z - G.cz),
     []
   )
 

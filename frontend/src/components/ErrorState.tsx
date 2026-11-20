@@ -4,8 +4,10 @@ interface ErrorStateProps {
 
 export default function ErrorState({ message }: ErrorStateProps) {
   return (
-    <div className="error-message">
+    <div className="error-message" role="alert">
       <svg
+        aria-hidden="true"
+        focusable="false"
         width="18"
         height="18"
         viewBox="0 0 24 24"

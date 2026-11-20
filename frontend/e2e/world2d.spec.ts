@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import './world2dTypes'
 
 /** 2D 数学小镇冒烟测试：页面加载、开场屏、进入后画布渲染、按键移动、截图审阅 */
 test.describe('2D World', () => {
@@ -17,8 +18,8 @@ test.describe('2D World', () => {
     await page.locator('.world-intro-btn').click()
     await expect(page.locator('.world-objective')).toBeVisible()
 
-    // 等待 tilesheet 加载 + 渲染几帧
-    await page.waitForTimeout(2500)
+    // 等待 tilesheet 与游戏实例就绪
+    await page.waitForFunction(() => window.__world2d, undefined, { timeout: 15000 })
     await page.screenshot({ path: 'test-results/world2d-spawn.png' })
 
     // 向北走，应触发「知识星图」传送门提示或 NPC 提示
@@ -35,8 +36,8 @@ test.describe('2D World', () => {
     await page.screenshot({ path: 'test-results/world2d-npc.png' })
 
     // —— 战斗冒烟：传送到怪物旁，普攻 + 技能 + 技能栏 HUD ——
-    const mob = (await page.evaluate(() => (window as any).__world2d.mobPositions()[0])) as { x: number; y: number }
-    await page.evaluate(([x, y]) => (window as any).__world2d.teleport(x + 1.5, y), [mob.x, mob.y])
+    const mob = (await page.evaluate(() => window.__world2d.mobPositions()[0])) as { x: number; y: number }
+    await page.evaluate(([x, y]) => window.__world2d.teleport(x + 1.5, y), [mob.x, mob.y])
     await page.waitForTimeout(800)
     await page.screenshot({ path: 'test-results/world2d-mob.png' })
     await page.keyboard.press('KeyJ')
@@ -51,7 +52,7 @@ test.describe('2D World', () => {
     await expect(page.locator('.world2d-vitals')).toBeVisible()
 
     // —— 大招答题：拉满灵感 → U → 答题 → 级数风暴 ——
-    await page.evaluate(() => (window as any).__world2d.fillMp())
+    await page.evaluate(() => window.__world2d.fillMp())
     await page.keyboard.press('KeyU')
     await expect(page.locator('.world2d-quiz')).toBeVisible()
     await page.screenshot({ path: 'test-results/world2d-quiz.png' })
@@ -68,20 +69,20 @@ test.describe('2D World', () => {
 
     await page.goto('/mathinsight/world-2d')
     await page.locator('.world-intro-btn').click()
-    await page.waitForTimeout(2200)
+    await page.waitForFunction(() => window.__world2d, undefined, { timeout: 15000 })
 
     // —— 进入极限酒馆（门口按 E）——
-    await page.evaluate(() => (window as any).__world2d.teleport(8.5, 23.6))
+    await page.evaluate(() => window.__world2d.teleport(8.5, 23.6))
     await page.waitForTimeout(300)
     await expect(page.locator('.world-prompt')).toContainText('极限酒馆')
     await page.keyboard.press('KeyE')
     await page.waitForTimeout(600)
-    expect(await page.evaluate(() => (window as any).__world2d.scene())).toBe('limit')
+    expect(await page.evaluate(() => window.__world2d.scene())).toBe('limit')
     await expect(page.locator('.world-objective')).toContainText('极限酒馆')
     await page.screenshot({ path: 'test-results/world2d-room-limit.png' })
 
     // —— 与洛必达对话 → 开始修炼 ——
-    await page.evaluate(() => (window as any).__world2d.teleport(4.5, 6.2))
+    await page.evaluate(() => window.__world2d.teleport(4.5, 6.2))
     await page.waitForTimeout(300)
     await page.keyboard.press('KeyE')
     await expect(page.locator('.world-dialog')).toBeVisible()
@@ -130,11 +131,11 @@ test.describe('2D World', () => {
     expect(mastery).toContain('answered')
 
     // —— 门口返回小镇 ——
-    await page.evaluate(() => (window as any).__world2d.teleport(7.5, 9.4))
+    await page.evaluate(() => window.__world2d.teleport(7.5, 9.4))
     await page.waitForTimeout(300)
     await page.keyboard.press('KeyE')
     await page.waitForTimeout(600)
-    expect(await page.evaluate(() => (window as any).__world2d.scene())).toBe('outdoor')
+    expect(await page.evaluate(() => window.__world2d.scene())).toBe('outdoor')
 
     // —— Tab 打开修炼手札 ——
     await page.keyboard.press('Tab')
@@ -159,7 +160,7 @@ test.describe('2D World', () => {
     })
     await page.goto('/mathinsight/world-2d')
     await page.locator('.world-intro-btn').click()
-    await page.waitForTimeout(2200)
+    await page.waitForFunction(() => window.__world2d, undefined, { timeout: 15000 })
 
     // 灵感条显示提升后的上限
     await expect(page.locator('.world2d-bar-num').nth(1)).toContainText('/120')

@@ -18,6 +18,7 @@ SEARCH_RESOLUTION = 20000
 SEARCH_POINTS = 10000
 MAX_SEARCH_RADIUS = 10
 DEFAULT_DELTA = 0.1
+MAX_EXPRESSION_LENGTH = 500
 
 # 安全的 transformations - 只允许基本数学运算，禁止代码注入
 # convert_xor: 将 ^ 转换为幂运算
@@ -43,8 +44,20 @@ _SAFE_GLOBALS = {
     'ln': sp.log,
     'sqrt': sp.sqrt,
     'abs': sp.Abs,
+    'ceiling': sp.ceiling,
+    'floor': sp.floor,
+    'sign': sp.sign,
     'pi': sp.pi,
     'E': sp.E,
+}
+
+_SAFE_PARSER_GLOBALS = {
+    '__builtins__': {},
+    'Symbol': sp.Symbol,
+    'Integer': sp.Integer,
+    'Float': sp.Float,
+    'Rational': sp.Rational,
+    **_SAFE_GLOBALS,
 }
 
 # 表达式中禁止出现的危险模式（大小写不敏感）
@@ -62,8 +75,8 @@ def _safe_parse(expr: str) -> sp.Basic:
     """
     安全地解析数学表达式，防止代码注入攻击
 
-    使用 parse_expr 代替 sympify，先通过 SymPy 默认全局字典完成解析，
-    再对解析后的表达式树进行白名单检查，限制可使用的函数与常量。
+    使用显式的解析全局环境与解析后表达式树白名单，仅允许预定义的
+    数学函数、常量和变量。
 
     Args:
         expr: 数学表达式字符串
@@ -78,6 +91,10 @@ def _safe_parse(expr: str) -> sp.Basic:
         raise ValueError("表达式必须是非空字符串")
 
     expr = expr.strip()
+    if not expr:
+        raise ValueError("表达式必须是非空字符串")
+    if len(expr) > MAX_EXPRESSION_LENGTH:
+        raise ValueError(f"表达式长度不能超过 {MAX_EXPRESSION_LENGTH} 个字符")
 
     # 检查可疑模式（避免在错误信息中直接回显匹配规则）
     lowered = expr.lower()
@@ -97,12 +114,14 @@ def _safe_parse(expr: str) -> sp.Basic:
             expr,
             transformations=_SAFE_TRANSFORMATIONS,
             local_dict=local_dict,
+            global_dict=_SAFE_PARSER_GLOBALS,
             evaluate=True
         )
-    except ValueError:
-        raise
     except Exception as e:
         raise ValueError("无法解析表达式，请检查输入格式") from e
+
+    if not isinstance(parsed, sp.Basic):
+        raise ValueError("表达式必须是数学表达式")
 
     # 解析后对表达式树做白名单检查
     _validate_expression_tree(parsed)

@@ -19,19 +19,32 @@ const BLOB = {
 
 // 草填充变体（floors.png 瓦片坐标）
 const GRASS_FILLS: [number, number][] = [
-  [1, 10], [2, 10], [3, 10],
-  [1, 11], [2, 11], [3, 11],
+  [1, 10],
+  [2, 10],
+  [3, 10],
+  [1, 11],
+  [2, 11],
+  [3, 11],
 ]
 
 // 各材质实心填充（rows 10-11，相对 blob 列偏移 1..3）
 const BLOB_FILLS: [number, number][] = [
-  [1, 10], [2, 10], [3, 10],
-  [1, 11], [2, 11], [3, 11],
+  [1, 10],
+  [2, 10],
+  [3, 10],
+  [1, 11],
+  [2, 11],
+  [3, 11],
 ]
 
 // water.png：水面填充变体（瓦片坐标，中蓝）
 const WATER_FILLS: [number, number][] = [
-  [1, 6], [2, 6], [1, 7], [2, 7], [3, 6], [3, 7],
+  [1, 6],
+  [2, 6],
+  [1, 7],
+  [2, 7],
+  [3, 6],
+  [3, 7],
 ]
 // water.png：4 个「草岛」blob（含沙岸），列起点（瓦片），每岛 5×5
 const ISLAND_COLS = [0, 6, 12, 18]
@@ -112,9 +125,20 @@ export function prerenderGround(assets: Assets, world: WorldData): HTMLCanvasEle
   const floors = assets.floors
   const water = assets.water
 
-  const at = (x: number, y: number) => (x < 0 || y < 0 || x >= W || y >= H ? G.GRASS : ground[y * W + x])
+  const at = (x: number, y: number) =>
+    x < 0 || y < 0 || x >= W || y >= H ? G.GRASS : ground[y * W + x]
   const tile = (img: HTMLImageElement, tx: number, ty: number, dx: number, dy: number) =>
-    ctx.drawImage(img, tx * TILE_SRC, ty * TILE_SRC, TILE_SRC, TILE_SRC, dx * TILE_SRC, dy * TILE_SRC, TILE_SRC, TILE_SRC)
+    ctx.drawImage(
+      img,
+      tx * TILE_SRC,
+      ty * TILE_SRC,
+      TILE_SRC,
+      TILE_SRC,
+      dx * TILE_SRC,
+      dy * TILE_SRC,
+      TILE_SRC,
+      TILE_SRC
+    )
 
   // 1) 草地基底（2×2 块级哈希取变体，避免逐瓦片棋盘感）
   const grassVar = (x: number, y: number): [number, number] => {
@@ -185,10 +209,14 @@ export function prerenderGround(assets: Assets, world: WorldData): HTMLCanvasEle
     const t = tufts[Math.floor(rng() * tufts.length)]
     ctx.drawImage(
       assets.vegetation,
-      t.x, t.y, t.w, t.h,
+      t.x,
+      t.y,
+      t.w,
+      t.h,
       x * TILE_SRC + Math.floor(rng() * (TILE_SRC - t.w)),
       (y + 1) * TILE_SRC - t.h,
-      t.w, t.h
+      t.w,
+      t.h
     )
   }
   return cv

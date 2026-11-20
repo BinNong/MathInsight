@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import Plot from 'react-plotly.js'
+import Plot from '../components/Plot'
 import type { Data } from 'plotly.js'
 import {
   probabilityApi,

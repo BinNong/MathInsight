@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback, type KeyboardEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { Network } from 'vis-network'
 import { DataSet } from 'vis-data'
@@ -36,8 +36,12 @@ export default function KnowledgeMap() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [conceptDetail, setConceptDetail] = useState<ConceptDetail | null>(null)
   const [detailLoading, setDetailLoading] = useState(false)
+  const [detailError, setDetailError] = useState<string | null>(null)
+  const [detailRetry, setDetailRetry] = useState(0)
   const [activeSubject, setActiveSubject] = useState('all')
   const [searchQuery, setSearchQuery] = useState('')
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false)
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1)
   const [learningPath, setLearningPath] = useState<LearningPath | null>(null)
 
   // 加载完整图谱
@@ -69,20 +73,26 @@ export default function KnowledgeMap() {
   useEffect(() => {
     if (!selectedId) {
       setConceptDetail(null)
+      setDetailError(null)
+      setDetailLoading(false)
       return
     }
     const conceptId = selectedId
     let cancelled = false
     async function loadDetail() {
+      setDetailLoading(true)
+      setConceptDetail(null)
+      setDetailError(null)
       try {
-        setDetailLoading(true)
         const res = await knowledgeGraphApi.getConcept(conceptId)
         if (cancelled) return
-        if (res.success) {
+        if (res.success && res.data) {
           setConceptDetail(res.data)
+        } else {
+          setDetailError(res.error || '概念详情加载失败')
         }
       } catch {
-        // 详情加载失败静默处理
+        if (!cancelled) setDetailError('网络错误，概念详情加载失败')
       } finally {
         if (!cancelled) setDetailLoading(false)
       }
@@ -91,7 +101,7 @@ export default function KnowledgeMap() {
     return () => {
       cancelled = true
     }
-  }, [selectedId])
+  }, [selectedId, detailRetry])
 
   // 构建 vis-network 数据
   const { visNodes, visEdges } = useMemo(() => {
@@ -124,8 +134,8 @@ export default function KnowledgeMap() {
           color: {
             background: subject?.color || '#6b7280',
             border: subject?.color || '#6b7280',
-            highlight: { background: '#4f46e5', border: '#4f46e5' },
-            hover: { background: '#4f46e5', border: '#4f46e5' },
+            highlight: { background: '#9c3b2e', border: '#9c3b2e' },
+            hover: { background: '#9c3b2e', border: '#9c3b2e' },
           },
           font: { color: '#1f2937', size: 14, face: 'system-ui' },
           shape: 'dot',
@@ -142,7 +152,7 @@ export default function KnowledgeMap() {
         to: e.target,
         title: e.reason,
         width: e.strength,
-        color: { color: '#9ca3af', highlight: '#4f46e5', hover: '#4f46e5', opacity: 0.7 },
+        color: { color: '#9ca3af', highlight: '#9c3b2e', hover: '#9c3b2e', opacity: 0.7 },
         arrows: { to: { enabled: true, scaleFactor: 0.6 } },
         smooth: { type: 'continuous' as const },
       }))
@@ -150,23 +160,13 @@ export default function KnowledgeMap() {
     return { visNodes: nodes, visEdges: edges }
   }, [graph, activeSubject, searchQuery])
 
-  // 初始化/更新 vis-network
+  // 初始化 vis-network；筛选和搜索只更新数据，不销毁画布。
   useEffect(() => {
-    if (!containerRef.current || visNodes.length === 0) return
-
-    if (networkRef.current) {
-      networkRef.current.destroy()
-      networkRef.current = null
-    }
+    if (!containerRef.current || !graph) return
 
     const network = new Network(
       containerRef.current,
-      {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        nodes: new DataSet(visNodes as any),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        edges: new DataSet(visEdges as any),
-      } as unknown as never,
+      { nodes: new DataSet(), edges: new DataSet() } as unknown as never,
       {
         nodes: {
           borderWidth: 2,
@@ -208,17 +208,30 @@ export default function KnowledgeMap() {
       }
     })
 
+    let fitTimer: number | null = null
     network.on('stabilizationIterationsDone', () => {
-      // 延迟 fit，确保容器已完成 flex 布局
-      window.setTimeout(() => network.fit(), 100)
+      fitTimer = window.setTimeout(() => {
+        if (networkRef.current === network) network.fit()
+      }, 100)
     })
 
     networkRef.current = network
 
     return () => {
+      if (fitTimer) window.clearTimeout(fitTimer)
       network.destroy()
-      networkRef.current = null
+      if (networkRef.current === network) networkRef.current = null
     }
+  }, [graph])
+
+  useEffect(() => {
+    if (!networkRef.current) return
+    networkRef.current.setData({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      nodes: new DataSet(visNodes as any),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      edges: new DataSet(visEdges as any),
+    } as unknown as never)
   }, [visNodes, visEdges])
 
   // 高亮学习路径
@@ -258,6 +271,46 @@ export default function KnowledgeMap() {
       )
       .slice(0, 8)
   }, [graph, searchQuery])
+
+  const showSuggestions =
+    suggestionsOpen && searchQuery.trim().length > 0 && filteredConcepts.length > 0
+
+  const handleSelectConcept = (conceptId: string) => {
+    setSearchQuery('')
+    setSuggestionsOpen(false)
+    setActiveSuggestionIndex(-1)
+    setSelectedId(conceptId)
+    setLearningPath(null)
+    window.setTimeout(() => {
+      networkRef.current?.focus(conceptId, {
+        scale: 1.2,
+        animation: { duration: 400, easingFunction: 'easeInOutQuad' as const },
+      })
+    }, 0)
+  }
+
+  const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      if (filteredConcepts.length === 0) return
+      event.preventDefault()
+      const direction = event.key === 'ArrowDown' ? 1 : -1
+      setSuggestionsOpen(true)
+      setActiveSuggestionIndex((current) => {
+        if (current < 0) return direction === 1 ? 0 : filteredConcepts.length - 1
+        return (current + direction + filteredConcepts.length) % filteredConcepts.length
+      })
+    } else if (event.key === 'Enter' && showSuggestions) {
+      const concept = filteredConcepts[activeSuggestionIndex]
+      if (concept) {
+        event.preventDefault()
+        handleSelectConcept(concept.id)
+      }
+    } else if (event.key === 'Escape' && suggestionsOpen) {
+      event.preventDefault()
+      setSuggestionsOpen(false)
+      setActiveSuggestionIndex(-1)
+    }
+  }
 
   if (loading) {
     return (
@@ -316,27 +369,40 @@ export default function KnowledgeMap() {
         <div className="search-box">
           <input
             type="text"
+            role="combobox"
+            aria-label="搜索概念或标签"
+            aria-autocomplete="list"
+            aria-expanded={showSuggestions}
+            aria-controls="concept-search-suggestions"
+            aria-activedescendant={
+              activeSuggestionIndex >= 0
+                ? `concept-suggestion-${filteredConcepts[activeSuggestionIndex]?.id}`
+                : undefined
+            }
             placeholder="搜索概念或标签..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onFocus={() => setSuggestionsOpen(true)}
+            onBlur={() => setSuggestionsOpen(false)}
+            onKeyDown={handleSearchKeyDown}
+            onChange={(event) => {
+              setSearchQuery(event.target.value)
+              setSuggestionsOpen(true)
+              setActiveSuggestionIndex(-1)
+            }}
           />
-          {searchQuery && filteredConcepts.length > 0 && (
-            <ul className="search-suggestions">
-              {filteredConcepts.map((c) => (
+          {showSuggestions && (
+            <ul id="concept-search-suggestions" className="search-suggestions" role="listbox">
+              {filteredConcepts.map((concept, index) => (
                 <li
-                  key={c.id}
-                  onClick={() => {
-                    setSearchQuery('')
-                    setSelectedId(c.id)
-                    if (networkRef.current) {
-                      networkRef.current.focus(c.id, {
-                        scale: 1.2,
-                        animation: { duration: 400, easingFunction: 'easeInOutQuad' as const },
-                      })
-                    }
-                  }}
+                  id={`concept-suggestion-${concept.id}`}
+                  key={concept.id}
+                  role="option"
+                  aria-selected={activeSuggestionIndex === index}
+                  className={activeSuggestionIndex === index ? 'active' : ''}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => handleSelectConcept(concept.id)}
                 >
-                  {c.name}
+                  {concept.name}
                 </li>
               ))}
             </ul>
@@ -354,9 +420,31 @@ export default function KnowledgeMap() {
               <p>点击图谱中的节点</p>
               <span>查看概念详情、前置知识与推荐可视化</span>
             </div>
+          ) : detailError ? (
+            <div className="sidebar-empty" role="alert">
+              <p>概念详情加载失败</p>
+              <span>{detailError}</span>
+              <div className="sidebar-actions">
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => setDetailRetry((current) => current + 1)}
+                >
+                  重试
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={() => setSelectedId(null)}
+                >
+                  关闭
+                </button>
+              </div>
+            </div>
           ) : detailLoading || !conceptDetail ? (
-            <div className="sidebar-loading">
-              <div className="spinner" />
+            <div className="sidebar-loading" role="status">
+              <div className="spinner" aria-hidden="true" />
+              <span>正在加载概念详情…</span>
             </div>
           ) : (
             <div className="sidebar-content">
@@ -403,7 +491,11 @@ export default function KnowledgeMap() {
                 </button>
                 <Link
                   to="/solver"
-                  state={{ topic: conceptDetail.id, name: conceptDetail.name }}
+                  state={{
+                    topic: conceptDetail.id,
+                    name: conceptDetail.name,
+                    subject: conceptDetail.subject,
+                  }}
                   className="btn btn-secondary btn-sm"
                 >
                   练习题目

@@ -9,7 +9,7 @@ from scipy.integrate import quad, solve_ivp, dblquad
 from app.utils.math_utils import _safe_parse
 
 # NumPy 2.0 起 np.trapz 更名为 np.trapezoid，此处做双版本兼容
-_trapezoid = getattr(np, 'trapezoid', np.trapz)
+_trapezoid = np.trapezoid if hasattr(np, 'trapezoid') else np.trapz
 
 
 class VectorFieldService:
@@ -294,6 +294,9 @@ class VectorFieldService:
                 except Exception:
                     return [0, 0]
 
+            def backward_vector_field(t, pos):
+                return [-component for component in vector_field(t, pos)]
+
             # 如果没有指定评估点，生成默认点
             if t_eval is None:
                 t_eval = np.linspace(t_span[0], t_span[1], 100)
@@ -325,7 +328,7 @@ class VectorFieldService:
                 if direction in ['backward', 'both']:
                     try:
                         sol_backward = solve_ivp(
-                            vector_field,
+                            backward_vector_field,
                             [0, abs(t_span[0])],
                             [start_x, start_y],
                             t_eval=np.linspace(0, abs(t_span[0]), 50),
@@ -1760,7 +1763,9 @@ class VectorFieldService:
                     normal_y = -normal_y
                     normal_z = -normal_z
 
-                surface_integral = _trapezoid(_trapezoid(np.abs(flux_density) * normal_mag, v_vals, axis=0), u_vals)
+                surface_integral = _trapezoid(
+                    _trapezoid(flux_density, v_vals, axis=1), u_vals, axis=0
+                )
 
                 # 计算实际向量场在曲面上的值
                 P_func = sp.lambdify((x, y, z), P, 'numpy')
@@ -1935,7 +1940,7 @@ class VectorFieldService:
                 div_vals = np.where(np.isnan(div_vals) | np.isinf(div_vals), 0, div_vals)
 
                 volume_integral_val = _trapezoid(
-                    _trapezoid(_trapezoid(np.abs(div_vals) * RHO**2 * np.sin(PHI),
+                    _trapezoid(_trapezoid(div_vals * RHO**2 * np.sin(PHI),
                         rho_vals, axis=0), phi_vals, axis=0), theta_vals
                 )
 
@@ -1971,22 +1976,22 @@ class VectorFieldService:
                 # 定义各面的法向量和参数方程
                 faces = [
                     # x=max 面: x = x_max, y: y_min~y_max, z: z_min~z_max
-                    {'name': 'x=max', 'x_expr': x_max, 'y_expr': y_max, 'z_expr': z_max, 'nx': 1, 'y_range': [y_min, y_max], 'z_range': [z_min, z_max]},
+                    {'name': 'x=max', 'x_expr': x_max, 'nx': 1, 'y_range': [y_min, y_max], 'z_range': [z_min, z_max]},
                     # x=min 面: x = x_min, y: y_min~y_max, z: z_min~z_max
-                    {'name': 'x=min', 'x_expr': x_min, 'y_expr': y_max, 'z_expr': z_max, 'nx': -1, 'y_range': [y_min, y_max], 'z_range': [z_min, z_max]},
+                    {'name': 'x=min', 'x_expr': x_min, 'nx': -1, 'y_range': [y_min, y_max], 'z_range': [z_min, z_max]},
                     # y=max 面: y = y_max, x: x_min~x_max, z: z_min~z_max
-                    {'name': 'y=max', 'x_expr': x_max, 'y_expr': y_max, 'z_expr': z_max, 'ny': 1, 'x_range': [x_min, x_max], 'z_range': [z_min, z_max]},
+                    {'name': 'y=max', 'y_expr': y_max, 'ny': 1, 'x_range': [x_min, x_max], 'z_range': [z_min, z_max]},
                     # y=min 面: y = y_min, x: x_min~x_max, z: z_min~z_max
-                    {'name': 'y=min', 'x_expr': x_min, 'y_expr': y_min, 'z_expr': z_max, 'ny': -1, 'x_range': [x_min, x_max], 'z_range': [z_min, z_max]},
+                    {'name': 'y=min', 'y_expr': y_min, 'ny': -1, 'x_range': [x_min, x_max], 'z_range': [z_min, z_max]},
                     # z=max 面: z = z_max, x: x_min~x_max, y: y_min~y_max
-                    {'name': 'z=max', 'x_expr': x_max, 'y_expr': y_max, 'z_expr': z_max, 'nz': 1, 'x_range': [x_min, x_max], 'y_range': [y_min, y_max]},
+                    {'name': 'z=max', 'z_expr': z_max, 'nz': 1, 'x_range': [x_min, x_max], 'y_range': [y_min, y_max]},
                     # z=min 面: z = z_min, x: x_min~x_max, y: y_min~y_max
-                    {'name': 'z=min', 'x_expr': x_min, 'y_expr': y_max, 'z_expr': z_min, 'nz': -1, 'x_range': [x_min, x_max], 'y_range': [y_min, y_max]}
+                    {'name': 'z=min', 'z_expr': z_min, 'nz': -1, 'x_range': [x_min, x_max], 'y_range': [y_min, y_max]}
                 ]
 
                 from scipy.integrate import tplquad
 
-                def div_func_3d(x_val, y_val, z_val):
+                def div_func_3d(z_val, y_val, x_val):
                     try:
                         return div_func(x_val, y_val, z_val)
                     except:
@@ -2007,48 +2012,40 @@ class VectorFieldService:
                     ny = face.get('ny', 0)
                     nz = face.get('nz', 0)
 
-                    # 对于每个面，计算 ∬ F·n dS
-                    # 使用参数化或直接计算
-                    if 'x_range' in face:
-                        x_pts = np.linspace(face['x_range'][0], face['x_range'][1], resolution)
-                    else:
-                        x_val = face.get('x_expr', 0)
-                        x_pts = np.array([x_val]) if isinstance(x_val, (int, float)) else np.linspace(-1, 1, resolution)
-
-                    if 'y_range' in face:
-                        y_pts = np.linspace(face['y_range'][0], face['y_range'][1], resolution)
-                    else:
-                        y_val = face.get('y_expr', 0)
-                        y_pts = np.array([y_val]) if isinstance(y_val, (int, float)) else np.linspace(-1, 1, resolution)
-
-                    if 'z_range' in face:
-                        z_pts = np.linspace(face['z_range'][0], face['z_range'][1], resolution)
-                    else:
-                        z_val = face.get('z_expr', 0)
-                        z_pts = np.array([z_val]) if isinstance(z_val, (int, float)) else np.linspace(-1, 1, resolution)
-
-                    if len(x_pts) == 1:
-                        X_GRID, Z_GRID = np.meshgrid(y_pts, z_pts)
-                        Y_GRID = np.full_like(X_GRID, face['y_expr'] if isinstance(face['y_expr'], (int, float)) else y_pts[0])
-                        X_GRID = np.full_like(X_GRID, face['x_expr'] if isinstance(face['x_expr'], (int, float)) else x_pts[0])
-                    else:
-                        X_GRID, Y_GRID = np.meshgrid(x_pts, y_pts)
-                        Z_GRID = np.full_like(X_GRID, face['z_expr'] if isinstance(face['z_expr'], (int, float)) else z_pts[0])
+                    free_axes = [axis for axis in ('x', 'y', 'z') if f'{axis}_range' in face]
+                    first_axis, second_axis = free_axes
+                    fixed_axis = next(axis for axis in ('x', 'y', 'z') if axis not in free_axes)
+                    axis_points = {
+                        axis: np.linspace(face[f'{axis}_range'][0], face[f'{axis}_range'][1], resolution)
+                        for axis in free_axes
+                    }
+                    first_grid, second_grid = np.meshgrid(
+                        axis_points[first_axis], axis_points[second_axis], indexing='ij'
+                    )
+                    coordinate_grids = {
+                        first_axis: first_grid,
+                        second_axis: second_grid,
+                        fixed_axis: np.full_like(first_grid, face[f'{fixed_axis}_expr'])
+                    }
+                    X_GRID = coordinate_grids['x']
+                    Y_GRID = coordinate_grids['y']
+                    Z_GRID = coordinate_grids['z']
 
                     # 计算向量场
-                    P_face = np.where(np.isnan(P_func(X_GRID, Y_GRID, Z_GRID)) | np.isinf(P_func(X_GRID, Y_GRID, Z_GRID)), 0, P_func(X_GRID, Y_GRID, Z_GRID))
-                    Q_face = np.where(np.isnan(Q_func(X_GRID, Y_GRID, Z_GRID)) | np.isinf(Q_func(X_GRID, Y_GRID, Z_GRID)), 0, Q_func(X_GRID, Y_GRID, Z_GRID))
-                    R_face = np.where(np.isnan(R_func(X_GRID, Y_GRID, Z_GRID)) | np.isinf(R_func(X_GRID, Y_GRID, Z_GRID)), 0, R_func(X_GRID, Y_GRID, Z_GRID))
+                    P_face = np.broadcast_to(np.asarray(P_func(X_GRID, Y_GRID, Z_GRID)), X_GRID.shape)
+                    Q_face = np.broadcast_to(np.asarray(Q_func(X_GRID, Y_GRID, Z_GRID)), X_GRID.shape)
+                    R_face = np.broadcast_to(np.asarray(R_func(X_GRID, Y_GRID, Z_GRID)), X_GRID.shape)
+                    P_face = np.where(np.isnan(P_face) | np.isinf(P_face), 0, P_face)
+                    Q_face = np.where(np.isnan(Q_face) | np.isinf(Q_face), 0, Q_face)
+                    R_face = np.where(np.isnan(R_face) | np.isinf(R_face), 0, R_face)
 
                     # 通量密度 F·n
                     flux_density = P_face * nx + Q_face * ny + R_face * nz
 
-                    # 面积分
-                    da = (y_pts[-1] - y_pts[0]) / max(len(y_pts) - 1, 1) * (z_pts[-1] - z_pts[0]) / max(len(z_pts) - 1, 1) if 'y_range' in face else \
-                         (x_pts[-1] - x_pts[0]) / max(len(x_pts) - 1, 1) * (z_pts[-1] - z_pts[0]) / max(len(z_pts) - 1, 1) if 'x_range' in face else \
-                         (x_pts[-1] - x_pts[0]) / max(len(x_pts) - 1, 1) * (y_pts[-1] - y_pts[0]) / max(len(y_pts) - 1, 1)
-
-                    face_flux = np.mean(flux_density) * da * len(flux_density.flatten()) if np.isfinite(np.mean(flux_density)) else 0
+                    face_flux = _trapezoid(
+                        _trapezoid(flux_density, axis_points[second_axis], axis=1),
+                        axis_points[first_axis], axis=0
+                    )
                     surface_integral += face_flux
 
                     face_surfaces.append({
@@ -2143,7 +2140,9 @@ class VectorFieldService:
                 # 使用向量化操作代替嵌套列表推导式
                 flux_top_vals = np.vectorize(flux_top_func)(X_top, Y_top)
                 flux_top_vals = np.where(np.isnan(flux_top_vals) | np.isinf(flux_top_vals), 0, flux_top_vals)
-                flux_top = _trapezoid(_trapezoid(flux_top_vals * RHO, r_vals, axis=0), theta_vals)
+                flux_top = _trapezoid(
+                    _trapezoid(flux_top_vals * RHO, r_vals, axis=1), theta_vals, axis=0
+                )
 
                 X_bot = RHO * np.cos(THETA)
                 Y_bot = RHO * np.sin(THETA)
@@ -2152,14 +2151,16 @@ class VectorFieldService:
                 # 使用向量化操作代替嵌套列表推导式
                 flux_bottom_vals = np.vectorize(flux_bottom_func)(X_bot, Y_bot)
                 flux_bottom_vals = np.where(np.isnan(flux_bottom_vals) | np.isinf(flux_bottom_vals), 0, flux_bottom_vals)
-                flux_bottom = _trapezoid(_trapezoid(flux_bottom_vals * RHO, r_vals, axis=0), theta_vals)
+                flux_bottom = _trapezoid(
+                    _trapezoid(flux_bottom_vals * RHO, r_vals, axis=1), theta_vals, axis=0
+                )
 
                 surface_integral = surface_integral_side + flux_top + flux_bottom
 
                 # 体积积分
                 from scipy.integrate import tplquad
 
-                def div_func_3d(x_val, y_val, z_val):
+                def div_func_3d(z_val, y_val, x_val):
                     try:
                         return div_func(x_val, y_val, z_val)
                     except:
@@ -2167,9 +2168,11 @@ class VectorFieldService:
 
                 volume_integral_val, _ = tplquad(
                     div_func_3d,
-                    z_min, z_max,
-                    lambda z: -np.sqrt(max(0, r**2 - z**2)), lambda z: np.sqrt(max(0, r**2 - z**2)),
-                    lambda z, y: -np.sqrt(max(0, r**2 - y**2)), lambda z, y: np.sqrt(max(0, r**2 - y**2))
+                    -r, r,
+                    lambda x_val: -np.sqrt(max(0, r**2 - x_val**2)),
+                    lambda x_val: np.sqrt(max(0, r**2 - x_val**2)),
+                    lambda x_val, y_val: z_min,
+                    lambda x_val, y_val: z_max,
                 )
 
                 # 生成圆柱面数据

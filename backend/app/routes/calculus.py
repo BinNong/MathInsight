@@ -1,7 +1,9 @@
 import sympy as sp
 from flask import Blueprint, request
-from app.services.calculus_service import CalculusService
-from app.utils.validation import validate_request_data, safe_float
+from app.services.calculus_service import (
+    CalculusService, MAX_DERIVATIVE_ORDER, MAX_TAYLOR_ORDER
+)
+from app.utils.validation import validate_request_data, safe_float, safe_int
 from app.utils.response import success_response, error_response, math_error_response
 
 calculus_bp = Blueprint('calculus', __name__)
@@ -205,7 +207,9 @@ def higher_derivatives():
         return error_response(x0)
 
     func_str = data.get('function', 'x**3')
-    order = int(data.get('order', 3))
+    is_valid, order = safe_int(data.get('order', 3), 'order', 0, MAX_DERIVATIVE_ORDER)
+    if not is_valid:
+        return error_response(order)
     domain_range = data.get('domain_range', [x0 - 2, x0 + 2])
 
     try:
@@ -277,11 +281,14 @@ def taylor_visualization():
         return error_response(x0)
 
     func_str = data.get('function', 'sin(x)')
-    max_order = int(data.get('max_order', 5))
+    is_valid, max_order = safe_int(
+        data.get('max_order', 5), 'max_order', 0, MAX_TAYLOR_ORDER
+    )
+    if not is_valid:
+        return error_response(max_order)
     domain_range = data.get('domain_range', [x0 - 2, x0 + 2])
 
     # 限制最大阶数，防止计算过慢
-    max_order = min(max_order, 10)
 
     try:
         result = CalculusService.taylor_visualization(
@@ -322,8 +329,11 @@ def evaluate_taylor_at_point():
         return error_response(x_eval)
 
     func_str = data.get('function', 'sin(x)')
-    max_order = int(data.get('max_order', 5))
-    max_order = min(max_order, 10)
+    is_valid, max_order = safe_int(
+        data.get('max_order', 5), 'max_order', 0, MAX_TAYLOR_ORDER
+    )
+    if not is_valid:
+        return error_response(max_order)
 
     try:
         result = CalculusService.evaluate_taylor_at_point(
@@ -369,9 +379,9 @@ def riemann_sum():
     if a >= b:
         return error_response('积分下限必须小于上限')
 
-    n = int(data.get('n', 10))
-    if n <= 0 or n > 1000:
-        return error_response('分割数量必须在 1-1000 之间')
+    is_valid, n = safe_int(data.get('n', 10), 'n', 1, 1000)
+    if not is_valid:
+        return error_response(n)
 
     func_str = data.get('function', 'x**2')
     method = data.get('method', 'left')

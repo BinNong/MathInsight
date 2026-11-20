@@ -12,7 +12,9 @@ export default function Intro() {
       <div className="world-intro-card">
         <div className="world-intro-badge">MathInsight</div>
         <h1 className="world-intro-title">微积分大陆</h1>
-        <p className="world-intro-sub">俯视角像素漫游 · 走进三间修炼馆答题精进微积分，用数学咒术击退混沌兽</p>
+        <p className="world-intro-sub">
+          俯视角像素漫游 · 走进三间修炼馆答题精进微积分，用数学咒术击退混沌兽
+        </p>
         <div className="world-intro-controls">
           <span>WASD / 方向键 移动</span>
           <span>Shift 奔跑</span>
@@ -26,7 +28,9 @@ export default function Intro() {
         <button className="world-intro-btn" onClick={() => setStarted(true)}>
           进入大陆 →
         </button>
-        <p className="world-intro-tip">酒馆/农舍/法师小屋是三大修炼馆：进屋找导师答题赢灵感 · 森林里击败混沌兽收集知识点</p>
+        <p className="world-intro-tip">
+          酒馆/农舍/法师小屋是三大修炼馆：进屋找导师答题赢灵感 · 森林里击败混沌兽收集知识点
+        </p>
       </div>
     </div>
   )

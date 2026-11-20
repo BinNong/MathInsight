@@ -6,6 +6,21 @@ import numpy as np
 from scipy import stats
 from typing import Dict, List, Any, Optional
 from dataclasses import dataclass
+from app.utils.validation import safe_float, safe_int
+
+
+LLN_MAX_SAMPLE_SIZE = 10000
+CLT_MAX_SAMPLE_SIZE = 10000
+CLT_MAX_NUM_SAMPLES = 50000
+DISTRIBUTION_MAX_SAMPLE_SIZE = 50000
+MAX_TOTAL_SAMPLES = 2_000_000
+
+
+def _validate_sample_count(value: int, maximum: int, field_name: str = 'sample_size') -> int:
+    is_valid, result = safe_int(value, field_name, 1, maximum)
+    if not is_valid:
+        raise ValueError(result)
+    return result
 
 
 @dataclass
@@ -39,6 +54,10 @@ class ProbabilityService:
         Returns:
             LLNResult: 模拟结果
         """
+        is_valid, p = safe_float(p, 'p')
+        if not is_valid or not 0 <= p <= 1:
+            raise ValueError('p 必须在 0 到 1 之间')
+        n = _validate_sample_count(n, LLN_MAX_SAMPLE_SIZE)
         rng = np.random.default_rng(seed)
 
         # 生成伯努利试验结果 (0 或 1)
@@ -80,6 +99,15 @@ class ProbabilityService:
         Returns:
             LLNResult: 模拟结果
         """
+        is_valid, min_val = safe_int(min_val, 'min_val')
+        if not is_valid:
+            raise ValueError(min_val)
+        is_valid, max_val = safe_int(max_val, 'max_val')
+        if not is_valid:
+            raise ValueError(max_val)
+        if min_val >= max_val:
+            raise ValueError('min_val 必须小于 max_val')
+        n = _validate_sample_count(n, LLN_MAX_SAMPLE_SIZE)
         rng = np.random.default_rng(seed)
 
         # 生成离散均匀分布样本
@@ -156,14 +184,11 @@ class ProbabilityService:
         Returns:
             dict: 包含样本均值序列、直方图、理论正态拟合等数据
         """
+        sample_size = _validate_sample_count(sample_size, CLT_MAX_SAMPLE_SIZE)
+        num_samples = _validate_sample_count(num_samples, CLT_MAX_NUM_SAMPLES, 'num_samples')
+        if sample_size * num_samples > MAX_TOTAL_SAMPLES:
+            raise ValueError(f'sample_size × num_samples 不能超过 {MAX_TOTAL_SAMPLES}')
         rng = np.random.default_rng(seed)
-
-        sample_size = max(1, int(sample_size))
-        num_samples = max(1, int(num_samples))
-
-        # 限制规模，防止前端传输数据过大
-        num_samples = min(num_samples, 50000)
-        sample_size = min(sample_size, 10000)
 
         # 生成原始样本矩阵 (num_samples, sample_size)
         samples = ProbabilityService._generate_samples(distribution, params, num_samples, sample_size, rng)
@@ -223,7 +248,7 @@ class ProbabilityService:
             },
             'theoretical': theoretical,
             'sample_mean_of_means': float(np.mean(sample_means)),
-            'sample_std_of_means': float(np.std(sample_means, ddof=1))
+            'sample_std_of_means': float(np.std(sample_means, ddof=1)) if num_samples > 1 else 0.0
         }
 
     @staticmethod
@@ -337,9 +362,8 @@ class ProbabilityService:
         Returns:
             dict: 样本数据、直方图、理论概率密度/质量、统计量
         """
+        sample_size = _validate_sample_count(sample_size, DISTRIBUTION_MAX_SAMPLE_SIZE)
         rng = np.random.default_rng(seed)
-
-        sample_size = max(1, min(int(sample_size), 50000))
 
         samples = ProbabilityService._generate_samples(
             distribution, params, 1, sample_size, rng
@@ -384,7 +408,7 @@ class ProbabilityService:
             'theoretical': theoretical,
             'statistics': {
                 'mean': float(np.mean(samples)),
-                'variance': float(np.var(samples, ddof=1)),
+                'variance': float(np.var(samples, ddof=1)) if sample_size > 1 else 0.0,
                 'median': float(np.median(samples)),
                 'min': float(np.min(samples)),
                 'max': float(np.max(samples))

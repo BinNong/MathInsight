@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import Plot from 'react-plotly.js'
+import Plot from '../components/Plot'
 import { vectorFieldApi, SurfaceType, SurfacePreset, SurfaceIntegralData } from '../services/api'
 import PageHeader from '../components/PageHeader'
 import LoadingState from '../components/LoadingState'
 import ErrorState from '../components/ErrorState'
+import { finiteAxisRange } from '../utils/plot'
 
 // ============ 默认预设 ============
 
@@ -389,24 +390,26 @@ export default function SurfaceIntegrals() {
   }, [surfaceData, state.showNormal, state.showField])
 
   // 图表布局
-  const layout = useMemo(
-    (): any => ({
+  const layout = useMemo((): any => {
+    const xRange = finiteAxisRange(surfaceData?.surface.x)
+    const yRange = finiteAxisRange(surfaceData?.surface.y)
+    const zRange = finiteAxisRange(surfaceData?.surface.z)
+    return {
       title: {
         text: `曲面积分: F·dS, S = ${surfaceData?.surface.name || '曲面'}`,
         font: { size: 14 },
       },
       scene: {
-        xaxis: { title: 'x', range: [-2, 2] },
-        yaxis: { title: 'y', range: [-2, 2] },
-        zaxis: { title: 'z', range: [-2, 2] },
+        xaxis: { title: 'x', range: xRange },
+        yaxis: { title: 'y', range: yRange },
+        zaxis: { title: 'z', range: zRange },
         aspectmode: 'cube',
       },
       margin: { t: 50, r: 50, b: 50, l: 50 },
       showlegend: true,
       legend: { x: 1.02, y: 1 },
-    }),
-    [surfaceData]
-  )
+    }
+  }, [surfaceData])
 
   return (
     <div className="detail-page">
@@ -658,7 +661,7 @@ export default function SurfaceIntegrals() {
         {/* 可视化区域 */}
         {loading && !surfaceData && <LoadingState text="正在计算曲面积分..." />}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1rem' }}>
+        <div className="responsive-two-column">
           {/* Plotly 图表 */}
           <div style={{ background: '#fff', borderRadius: '8px', padding: '0.5rem' }}>
             <Plot
@@ -708,34 +711,13 @@ export default function SurfaceIntegrals() {
               </div>
             )}
 
-            {/* 散度信息 */}
+            {/* 通量与散度的关系 */}
             {surfaceData && surfaceData.success && (
               <div className="info-panel">
-                <h4>散度</h4>
-                <div className="info-item">
-                  <span>div(F)</span>
-                  <span style={{ fontFamily: 'monospace', fontSize: '0.85rem' }}>
-                    {(() => {
-                      const P = state.P
-                      const Q = state.Q
-                      const R = state.R
-                      // 简化的散度表达式
-                      const divParts: string[] = []
-                      if (P.includes('x')) divParts.push('∂P/∂x')
-                      if (Q.includes('y')) divParts.push('∂Q/∂y')
-                      if (R.includes('z')) divParts.push('∂R/∂z')
-                      return divParts.length > 0 ? divParts.join(' + ') : '0'
-                    })()}
-                  </span>
-                </div>
-                <p
-                  style={{
-                    fontSize: '0.75rem',
-                    color: 'var(--text-secondary)',
-                    marginTop: '0.25rem',
-                  }}
-                >
-                  div(F) = ∂P/∂x + ∂Q/∂y + ∂R/∂z
+                <h4>定向通量与散度</h4>
+                <p style={{ color: 'var(--text-secondary)' }}>
+                  本页直接累积 F·n
+                  在曲面上的通量，内外法向会得到相反的符号。对于闭合曲面，可以在高斯定理实验中进一步比较通量与散度体积分。
                 </p>
                 <p
                   style={{

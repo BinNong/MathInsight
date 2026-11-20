@@ -21,10 +21,17 @@ const HERO_FPS: Record<MoveState, number> = { idle: 4, walk: 8, run: 11 }
 export function heroFrame(assets: Assets, dir: Dir, state: MoveState, t: number): FramePick {
   const side = dir === 'left' || dir === 'right'
   const flip = dir === 'left'
-  const key = (`hero${state[0].toUpperCase()}${state.slice(1)}${side ? 'Side' : dir === 'down' ? 'Down' : 'Up'}`) as
-    | 'heroIdleDown' | 'heroIdleSide' | 'heroIdleUp'
-    | 'heroWalkDown' | 'heroWalkSide' | 'heroWalkUp'
-    | 'heroRunDown' | 'heroRunSide' | 'heroRunUp'
+  const key =
+    `hero${state[0].toUpperCase()}${state.slice(1)}${side ? 'Side' : dir === 'down' ? 'Down' : 'Up'}` as
+      | 'heroIdleDown'
+      | 'heroIdleSide'
+      | 'heroIdleUp'
+      | 'heroWalkDown'
+      | 'heroWalkSide'
+      | 'heroWalkUp'
+      | 'heroRunDown'
+      | 'heroRunSide'
+      | 'heroRunUp'
   const img = assets[key]
   const frames = state === 'idle' ? 4 : 6
   const idx = Math.floor(t * HERO_FPS[state]) % frames
@@ -49,14 +56,25 @@ export function actionDuration(action: HeroAction): number {
   return m.frames / m.fps
 }
 
-export function heroActionFrame(assets: Assets, action: HeroAction, dir: Dir, t: number): FramePick {
+export function heroActionFrame(
+  assets: Assets,
+  action: HeroAction,
+  dir: Dir,
+  t: number
+): FramePick {
   const side = dir === 'left' || dir === 'right'
   const flip = dir === 'left'
   const cap = action[0].toUpperCase() + action.slice(1)
-  const key = (`hero${cap}${side ? 'Side' : dir === 'down' ? 'Down' : 'Up'}`) as
-    | 'heroSliceDown' | 'heroSliceSide' | 'heroSliceUp'
-    | 'heroHitDown' | 'heroHitSide' | 'heroHitUp'
-    | 'heroDeathDown' | 'heroDeathSide' | 'heroDeathUp'
+  const key = `hero${cap}${side ? 'Side' : dir === 'down' ? 'Down' : 'Up'}` as
+    | 'heroSliceDown'
+    | 'heroSliceSide'
+    | 'heroSliceUp'
+    | 'heroHitDown'
+    | 'heroHitSide'
+    | 'heroHitUp'
+    | 'heroDeathDown'
+    | 'heroDeathSide'
+    | 'heroDeathUp'
   const m = ACTION_META[action]
   const idx = Math.min(Math.floor(t * m.fps), m.frames - 1)
   return { img: assets[key], sx: idx * 64, sy: 0, sw: 64, sh: 64, flip }
@@ -67,7 +85,16 @@ export function heroActionFrame(assets: Assets, action: HeroAction, dir: Dir, t:
 // ------------------------------------------------------------------
 
 export interface NpcSpriteDef {
-  img: 'npcWizard' | 'npcKnight' | 'npcPeasant' | 'npcKeeper' | 'npcHost' | 'npcScholar' | 'npcSage'
+  img:
+    | 'npcWizard'
+    | 'npcKnight'
+    | 'npcPeasant'
+    | 'npcKeeper'
+    | 'npcHost'
+    | 'npcScholar'
+    | 'npcSage'
+    | 'npcRogue'
+    | 'npcBarmaidIdle'
   fw: number
   fh: number
   count: number
@@ -83,6 +110,8 @@ export const NPC_SPRITES: Record<string, NpcSpriteDef> = {
   host: { img: 'npcHost', fw: 64, fh: 64, count: 4, fps: 4 },
   scholar: { img: 'npcScholar', fw: 64, fh: 64, count: 4, fps: 4 },
   sage: { img: 'npcSage', fw: 32, fh: 32, count: 4, fps: 4 },
+  rogue: { img: 'npcRogue', fw: 32, fh: 32, count: 4, fps: 4 },
+  barmaid: { img: 'npcBarmaidIdle', fw: 64, fh: 64, count: 4, fps: 4 },
 }
 
 export function npcFrame(assets: Assets, sprite: string, t: number): FramePick | null {
@@ -109,7 +138,10 @@ export function npcPortrait(assets: Assets, sprite: string): string {
   const tctx = tmp.getContext('2d')!
   tctx.drawImage(img, 0, 0, def.fw, def.fh, 0, 0, def.fw, def.fh)
   const data = tctx.getImageData(0, 0, def.fw, def.fh).data
-  let minX = def.fw, minY = def.fh, maxX = 0, maxY = 0
+  let minX = def.fw,
+    minY = def.fh,
+    maxX = 0,
+    maxY = 0
   for (let y = 0; y < def.fh; y++) {
     for (let x = 0; x < def.fw; x++) {
       if (data[(y * def.fw + x) * 4 + 3] >= 8) {

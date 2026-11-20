@@ -11,7 +11,7 @@ MathInsight is a web-based 高等数学 (Advanced Mathematics) intelligent teach
 ## Tech Stack
 
 - **Frontend**: React 18 + TypeScript + Vite + Plotly.js + KaTeX + vis-network + react-router-dom
-- **Backend**: Python Flask + SymPy + NumPy + SciPy + Manim + Anthropic/OpenAI SDK
+- **Backend**: Python Flask + SymPy + NumPy + SciPy + Manim + Anthropic SDK (compatible endpoints)
 - **Testing**: pytest (backend) + Playwright (frontend e2e)
 - **Deployment**: Docker + Nginx
 
@@ -22,7 +22,7 @@ MathInsight is a web-based 高等数学 (Advanced Mathematics) intelligent teach
 python run.py
 
 # Run backend tests
-cd backend && python -m pytest -q
+cd backend && .venv/bin/python -m pytest -q
 
 # Run frontend dev server (from frontend directory)
 npm run dev
@@ -30,11 +30,14 @@ npm run dev
 # Build frontend for production
 npm run build
 
-# Run frontend lint
-cd frontend && npm run lint
+# Run frontend lint and formatting checks
+cd frontend && npm run lint && npm run format:check
 
-# Run Playwright e2e tests
+# Run desktop and mobile Playwright e2e tests
 cd frontend && npx playwright test
+
+# Run mobile-only e2e tests
+cd frontend && npx playwright test --project=chromium-mobile
 ```
 
 ## Architecture
@@ -73,8 +76,11 @@ frontend/src/
 │       ├── solver.ts
 │       └── knowledgeGraph.ts
 ├── components/        # Reusable UI components
-├── hooks/             # Custom React hooks
-└── utils/             # Utility functions
+├── data/              # Shared subject and learning-module registry
+├── hooks/             # Custom React hooks (including local learning progress)
+├── utils/             # Utility functions
+├── world/             # React Three Fiber world, terrain, collision and textures
+└── world2d/           # Canvas world, combat, training, dungeon trials and touch HUD
 ```
 
 ### Backend Structure
@@ -126,6 +132,8 @@ backend/app/
 | M10 | AI-Generated Manim Animation | Manim | ✅ Done |
 | M11 | AI Math Problem-Solving Tutor | Solver | ✅ Done |
 | M12 | Knowledge Graph / Learning Map | Knowledge Graph | ✅ Done |
+| M13 | Searchable Learning Hub, Favorites & Recent Progress | Learning Hub | ✅ Done |
+| M14 | 3D Math Islands & 2D Training/Dungeon World | Interactive Worlds | ✅ Done |
 
 ## API Endpoints
 
@@ -217,6 +225,8 @@ backend/app/
 ## Security Notes
 
 - Math expressions are parsed safely via `math_utils._safe_parse()` with AST whitelist checks
-- Manim generated code is checked by `manim_security.ensure_code_safe()` before execution
+- Manim generated code is checked by `manim_security.ensure_code_safe()` before execution; this is not a complete sandbox
+- Manim render subprocesses receive only whitelisted environment variables, never LLM API keys
+- Production Docker uses one non-root worker because Manim task state is local; scale out only after moving to a shared queue
 - API keys must be configured via environment variables; never commit them
 - Production deployment should use CORS origin restrictions and rate limiting on resource-intensive endpoints

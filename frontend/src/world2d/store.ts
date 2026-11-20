@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import type { HudSnapshot, QuizQuestion } from './engine/combat'
+import type { TrialStatus } from './engine/trial'
 import type { HallId } from './data/questions'
 
 export interface OverlayTarget {
@@ -9,6 +10,7 @@ export interface OverlayTarget {
 }
 
 export interface QuizState extends QuizQuestion {
+  kind: 'ult' | 'trial'
   /** 答题回调：correct = 是否答对 */
   resolve: (correct: boolean) => void
 }
@@ -28,6 +30,8 @@ interface World2DState {
   objective: string
   quiz: QuizState | null
   combatHud: HudSnapshot | null
+  trialStatus: TrialStatus | null
+  trialStartRequest: number
   /** 修炼答题（打开时冻结世界） */
   training: { hall: HallId } | null
   /** 修炼奖励待应用（loop 消费后置空） */
@@ -42,6 +46,8 @@ interface World2DState {
   setObjective: (o: string) => void
   setQuiz: (q: QuizState | null) => void
   setCombatHud: (h: HudSnapshot) => void
+  setTrialStatus: (s: TrialStatus | null) => void
+  requestTrialStart: () => void
   setTraining: (t: { hall: HallId } | null) => void
   setTrainingReward: (r: TrainingReward | null) => void
   setCodex: (v: boolean) => void
@@ -55,6 +61,8 @@ export const useWorld2DStore = create<World2DState>((set) => ({
   objective: '探索微积分大陆：拜访导师、进屋答题修炼，当心森林里的混沌兽',
   quiz: null,
   combatHud: null,
+  trialStatus: null,
+  trialStartRequest: 0,
   training: null,
   trainingReward: null,
   codex: false,
@@ -66,6 +74,8 @@ export const useWorld2DStore = create<World2DState>((set) => ({
   setObjective: (o) => set({ objective: o }),
   setQuiz: (q) => set({ quiz: q }),
   setCombatHud: (h) => set({ combatHud: h }),
+  setTrialStatus: (s) => set({ trialStatus: s }),
+  requestTrialStart: () => set((s) => ({ trialStartRequest: s.trialStartRequest + 1 })),
   setTraining: (t) => set({ training: t }),
   setTrainingReward: (r) => set({ trainingReward: r }),
   setCodex: (v) => set({ codex: v }),
@@ -86,6 +96,8 @@ interface MasteryState {
   topics: Record<string, TopicProgress>
   sessions: number
   bestStreak: number
+  /** 秘境已肃清的最高波次 */
+  trialBest: number
   /** 精通（lv3）奖励：每个知识点首次精通 +10 灵感上限 */
   maxMpBonus: number
   /** 熟练（lv2）+10 / 精通（lv3）再 +10：生命上限加成 */
@@ -95,7 +107,14 @@ interface MasteryState {
   /** 已发放过熟练奖励的知识点 */
   adept: string[]
   /** 记录一题作答；返回该知识点是否「首次熟练/首次精通」 */
-  record: (topicId: string, questionId: string, correct: boolean, streak: number) => { newlyAdept: boolean; newlyMastered: boolean }
+  record: (
+    topicId: string,
+    questionId: string,
+    correct: boolean,
+    streak: number
+  ) => { newlyAdept: boolean; newlyMastered: boolean }
+  /** 更新并返回最佳纪录；wave=0 时只读 */
+  recordTrialBest: (wave: number) => number
   finishSession: () => void
   reset: () => void
 }
@@ -106,6 +125,7 @@ export const useMasteryStore = create<MasteryState>()(
       topics: {},
       sessions: 0,
       bestStreak: 0,
+      trialBest: 0,
       maxMpBonus: 0,
       maxHpBonus: 0,
       mastered: [],
@@ -113,7 +133,11 @@ export const useMasteryStore = create<MasteryState>()(
       record: (topicId, questionId, correct, streak) => {
         const s = get()
         const prev = s.topics[topicId] ?? { answered: 0, correct: 0, wrong: [] }
-        const wrong = correct ? prev.wrong.filter((id) => id !== questionId) : prev.wrong.includes(questionId) ? prev.wrong : [...prev.wrong, questionId]
+        const wrong = correct
+          ? prev.wrong.filter((id) => id !== questionId)
+          : prev.wrong.includes(questionId)
+            ? prev.wrong
+            : [...prev.wrong, questionId]
         const next: TopicProgress = {
           answered: prev.answered + 1,
           correct: prev.correct + (correct ? 1 : 0),
@@ -132,8 +156,23 @@ export const useMasteryStore = create<MasteryState>()(
         })
         return { newlyAdept, newlyMastered }
       },
+      recordTrialBest: (wave) => {
+        const best = Math.max(get().trialBest, wave)
+        if (best !== get().trialBest) set({ trialBest: best })
+        return best
+      },
       finishSession: () => set((s) => ({ sessions: s.sessions + 1 })),
-      reset: () => set({ topics: {}, sessions: 0, bestStreak: 0, maxMpBonus: 0, maxHpBonus: 0, mastered: [], adept: [] }),
+      reset: () =>
+        set({
+          topics: {},
+          sessions: 0,
+          bestStreak: 0,
+          trialBest: 0,
+          maxMpBonus: 0,
+          maxHpBonus: 0,
+          mastered: [],
+          adept: [],
+        }),
     }),
     { name: 'mathinsight-calc-mastery' }
   )

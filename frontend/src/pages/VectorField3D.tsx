@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import Plot from 'react-plotly.js'
+import Plot from '../components/Plot'
 import {
   vectorFieldApi,
   VectorField3DData,
@@ -83,17 +83,18 @@ export default function VectorField3D() {
 
   // 获取预设
   useEffect(() => {
-    const fetchPresets = async () => {
-      try {
-        const response = await vectorFieldApi.getPresets3d()
-        if (response.success && response.vector_fields) {
-          setPresets(response.vector_fields)
-        }
-      } catch {
-        // 使用默认预设
-      }
+    let active = true
+    vectorFieldApi
+      .getPresets3d()
+      .then((response) => {
+        if (active) setPresets(response.vector_fields)
+      })
+      .catch(() => {
+        if (active) setPresets([])
+      })
+    return () => {
+      active = false
     }
-    fetchPresets()
   }, [])
 
   // 解析起始点

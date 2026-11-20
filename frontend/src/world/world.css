@@ -1,0 +1,276 @@
+.world-home-link {
+  position: absolute;
+  top: max(1rem, env(safe-area-inset-top));
+  left: max(1rem, env(safe-area-inset-left));
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.25rem;
+  padding: 0.45rem 0.9rem;
+  border: 1px solid rgba(125, 211, 252, 0.4);
+  border-radius: 999px;
+  background: rgba(12, 7, 28, 0.82);
+  color: #dbeafe;
+  font-size: 0.85rem;
+  text-decoration: none;
+  backdrop-filter: blur(8px);
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.world-home-link:hover {
+  border-color: rgba(125, 211, 252, 0.8);
+  background: rgba(30, 41, 59, 0.95);
+}
+
+.world-home-link:focus-visible,
+.world-root button:focus-visible {
+  outline: 2px solid #7dd3fc;
+  outline-offset: 3px;
+}
+
+.world-objective {
+  max-width: min(64vw, 640px);
+}
+
+.world-intro {
+  box-sizing: border-box;
+  align-items: flex-start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4.75rem clamp(1rem, 3vw, 2rem) 1.5rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.world-intro-card {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  width: min(100%, 680px);
+  margin: auto;
+}
+
+.world-intro-tip {
+  margin-bottom: 0;
+  line-height: 1.65;
+}
+
+.world-hint {
+  max-width: calc(100vw - 2.5rem);
+  line-height: 1.5;
+}
+
+.world-overlay-bar {
+  padding-left: 10rem;
+  gap: 1rem;
+}
+
+.world-overlay-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.world-overlay-bar .world-btn {
+  flex-shrink: 0;
+}
+
+.world-dialog {
+  box-sizing: border-box;
+}
+
+.world-error {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  overflow-y: auto;
+  padding: 5rem 1rem 2rem;
+  background: radial-gradient(circle at center, #211438 0%, #090510 75%);
+  color: #e2e8f0;
+}
+
+.world-error-card {
+  box-sizing: border-box;
+  width: min(100%, 600px);
+  padding: clamp(1.5rem, 4vw, 2.75rem);
+  border: 1px solid rgba(252, 165, 165, 0.4);
+  border-radius: 1.25rem;
+  background: rgba(12, 7, 28, 0.88);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.5);
+  text-align: center;
+}
+
+.world-error-card h1 {
+  margin: 0.5rem 0 1rem;
+  color: #fecaca;
+  font-size: clamp(1.5rem, 4vw, 2.25rem);
+}
+
+.world-error-card p {
+  color: #cbd5e1;
+  line-height: 1.7;
+}
+
+.world-error-detail {
+  overflow-wrap: anywhere;
+  color: #fca5a5 !important;
+  font-family: 'SF Mono', Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+}
+
+.world-error-retry {
+  margin-top: 0.5rem;
+}
+
+.world-error-help {
+  margin-bottom: 0;
+  color: #94a3b8 !important;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 600px) {
+  .world-home-link {
+    top: max(0.65rem, env(safe-area-inset-top));
+    left: max(0.65rem, env(safe-area-inset-left));
+    min-height: 2rem;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.78rem;
+  }
+
+  .world-intro {
+    padding: 4.25rem 0.75rem 1rem;
+  }
+
+  .world-intro-card {
+    padding: 1.4rem 1rem;
+    border-radius: 1rem;
+  }
+
+  .world-intro-title {
+    font-size: clamp(2rem, 11vw, 2.65rem);
+    line-height: 1.2;
+  }
+
+  .world-intro-sub {
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    line-height: 1.6;
+  }
+
+  .world-intro-controls {
+    gap: 0.45rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .world-intro-controls span {
+    padding: 0.28rem 0.6rem;
+    font-size: 0.75rem;
+  }
+
+  .world-objective {
+    top: 3.75rem;
+    width: max-content;
+    max-width: calc(100vw - 1.5rem);
+    padding: 0.45rem 0.75rem;
+    border-radius: 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .world-stats,
+  .world-banner {
+    top: 7rem;
+  }
+
+  .world-stats {
+    right: 0.75rem;
+  }
+
+  .world-prompt {
+    width: max-content;
+    max-width: calc(100vw - 2rem);
+    white-space: normal;
+    text-align: center;
+  }
+
+  .world-hint {
+    right: 0.75rem;
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    left: 0.75rem;
+    max-width: none;
+    font-size: 0.68rem;
+  }
+
+  .world-dialog-wrap {
+    padding: 1rem 0.75rem max(1rem, env(safe-area-inset-bottom));
+  }
+
+  .world-dialog {
+    padding: 1.25rem;
+  }
+
+  .world-overlay-bar {
+    padding: 0.5rem 0.65rem 0.5rem 7.5rem;
+    gap: 0.5rem;
+  }
+
+  .world-overlay-title {
+    font-size: 0.78rem;
+  }
+
+  .world-overlay-bar .world-btn {
+    padding: 0.4rem 0.65rem;
+    font-size: 0.72rem;
+  }
+}
+
+@media (max-height: 560px) {
+  .world-intro {
+    padding-top: 3.75rem;
+    padding-bottom: 0.75rem;
+  }
+
+  .world-intro-card {
+    padding: 1.1rem 1.5rem;
+  }
+
+  .world-intro-badge {
+    margin-bottom: 0.4rem;
+  }
+
+  .world-intro-title {
+    margin-top: 0.15rem;
+    font-size: 2rem;
+  }
+
+  .world-intro-sub {
+    margin-bottom: 0.75rem;
+  }
+
+  .world-intro-controls {
+    gap: 0.4rem;
+    margin-bottom: 0.85rem;
+  }
+
+  .world-intro-btn {
+    padding: 0.6rem 2rem;
+  }
+
+  .world-intro-tip {
+    margin-top: 0.55rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world-banner {
+    animation: none;
+  }
+
+  .world-home-link,
+  .world-intro-btn {
+    transition: none;
+  }
+}
