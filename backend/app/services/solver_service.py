@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 import anthropic
 
 from app.config import Config
+from app.utils.math_utils import verify_answer, verify_equation
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +121,7 @@ class MathSolverService:
             difficulty = 3
         result["difficulty"] = difficulty
 
-        # 规范 steps 字段
+        # 规范 steps 字段，并对形如 "lhs = rhs" 的公式做 SymPy 符号验证
         steps = result.get("steps") or []
         if not isinstance(steps, list):
             steps = []
@@ -128,13 +129,23 @@ class MathSolverService:
         for idx, step in enumerate(steps):
             if not isinstance(step, dict):
                 continue
+            formula = str(step.get("formula", "")).strip() or None
+            check = None
+            verification = None
+            if formula and formula.count('=') == 1:
+                lhs, rhs = (part.strip() for part in formula.split('=', 1))
+                if lhs and rhs:
+                    check = {"lhs": lhs, "rhs": rhs}
+                    verification = verify_equation(lhs, rhs)
             normalized_steps.append({
                 "index": idx + 1,
                 "title": str(step.get("title", f"步骤 {idx + 1}")).strip() or f"步骤 {idx + 1}",
                 "explanation": str(step.get("explanation", "")).strip(),
-                "formula": str(step.get("formula", "")).strip() or None,
+                "formula": formula,
                 "insight": str(step.get("insight", "")).strip(),
                 "common_pitfall": str(step.get("common_pitfall", "")).strip() or None,
+                "check": check,
+                "verification": verification,
             })
         result["steps"] = normalized_steps
 
@@ -144,6 +155,27 @@ class MathSolverService:
         result.setdefault("final_answer", "")
         result.setdefault("follow_up_questions", [])
         result.setdefault("visualization_suggestions", [])
+
+        # 最终答案机检：与最后一个"可机检"步骤的公式右端比对
+        last_formula = next(
+            (
+                s["formula"]
+                for s in reversed(normalized_steps)
+                if s["formula"] and s["verification"] in ('verified', 'failed')
+            ),
+            None,
+        )
+        final_answer = str(result.get("final_answer", "")).strip()
+        result["final_answer"] = final_answer
+        if final_answer and '=' not in final_answer and last_formula:
+            result["answer_verification"] = verify_answer(final_answer, last_formula)
+            rhs = last_formula.split('=', 1)[1].strip() if '=' in last_formula else None
+            result["answer_check"] = (
+                {"lhs": final_answer, "rhs": rhs} if rhs else None
+            )
+        else:
+            result["answer_verification"] = 'unchecked'
+            result["answer_check"] = None
 
         if not isinstance(result["prerequisites"], list):
             result["prerequisites"] = []
@@ -205,10 +237,18 @@ class MathSolverService:
         Returns:
             练习题列表，每项包含 problem、topic、difficulty
         """
+        count = max(1, min(5, int(count)))
+
+        # 优先从结构化题库检索：带标准答案与解析，可直接判分
+        from app.services.question_bank_service import SOLVER_TOPIC_TO_QUIZ, get_question_bank
+        bank = get_question_bank()
+        if topic in SOLVER_TOPIC_TO_QUIZ and bank.size > 0:
+            from_bank = bank.similar(topic, count)
+            if from_bank:
+                return from_bank
+
         if not self.api_key:
             raise SolverConfigurationError("未配置 LLM API 密钥")
-
-        count = max(1, min(5, int(count)))
         prompt = self._build_similar_prompt(problem, topic, count)
         content = self._call_llm(
             system=(
@@ -260,8 +300,10 @@ class MathSolverService:
                 content += block.text
         return content or None
 
-    def _parse_json(self, content: Optional[str]) -> Optional[Dict[str, Any]]:
-        """从 LLM 输出中解析 JSON"""
+    def _parse_json(
+        self, content: Optional[str], expected: str = 'object'
+    ) -> Optional[Any]:
+        """从 LLM 输出中解析 JSON；expected='object' 时拒绝数组等异常结构"""
         if not content:
             return None
 
@@ -273,8 +315,12 @@ class MathSolverService:
             # 尝试从整个内容中提取第一个 JSON 对象
             json_str = content
 
+        def acceptable(value: Any) -> bool:
+            return isinstance(value, dict) if expected == 'object' else isinstance(value, list)
+
         try:
-            return json.loads(json_str)
+            parsed = json.loads(json_str)
+            return parsed if acceptable(parsed) else None
         except json.JSONDecodeError:
             pass
 
@@ -283,7 +329,9 @@ class MathSolverService:
             match = re.search(pattern, json_str, re.DOTALL)
             if match:
                 try:
-                    return json.loads(match.group(0))
+                    parsed = json.loads(match.group(0))
+                    if acceptable(parsed):
+                        return parsed
                 except json.JSONDecodeError:
                     continue
         return None

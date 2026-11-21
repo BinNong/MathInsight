@@ -4,6 +4,7 @@ import { calculusApi, DerivativeRequest, SecantRequest } from '../services/api'
 import { debounce } from '../utils/timing'
 import { isValidFunctionExpression } from '../utils/math'
 import { extendDomain } from '../utils/plot'
+import GuessStepper, { type GuessStep } from '../components/GuessStepper'
 import PageHeader from '../components/PageHeader'
 import ControlPanel from '../components/ControlPanel'
 import VisualizationCard from '../components/VisualizationCard'
@@ -175,22 +176,26 @@ const TABS = [
   { key: 'higher', label: '高阶导数' },
 ]
 
-const STEPS = [
+const STEPS: GuessStep[] = [
   {
     title: '割线斜率',
     description: '在 (x₀, f(x₀)) 附近取一点 (x₀+h, f(x₀+h))，连接两点的直线称为割线。',
+    prompt: '如果两点离得越来越近，这条割线会越来越像什么？',
   },
   {
     title: '让 h → 0',
     description: '当 h 越来越小时，割线逐渐贴近曲线在 x₀ 处的局部形状。',
+    prompt: 'h 趋近 0 时，割线斜率的极限有几何意义吗？',
   },
   {
     title: '得到切线',
     description: '割线的极限位置就是切线，其斜率即为函数在 x₀ 处的瞬时变化率。',
+    prompt: '切线和割线最本质的区别是什么？',
   },
   {
     title: '导数的定义',
     description: "f'(x₀) = lim(h→0) [f(x₀+h) - f(x₀)] / h，表示切线的斜率。",
+    prompt: '用自己的话说说：导数衡量的是函数在哪方面的变化？',
   },
 ]
 
@@ -858,21 +863,13 @@ export default function DerivativeTangent() {
   )
 
   const renderStepper = () => (
-    <div className="derivative-stepper">
-      {STEPS.map((step, index) => (
-        <div
-          key={index}
-          className={`derivative-step ${index === activeStep ? 'active' : ''} ${index < activeStep ? 'completed' : ''}`}
-          onClick={() => setActiveStep(index)}
-        >
-          <div className="derivative-step-number">{index + 1}</div>
-          <div className="derivative-step-content">
-            <div className="derivative-step-title">{step.title}</div>
-            <div className="derivative-step-desc">{step.description}</div>
-          </div>
-        </div>
-      ))}
-    </div>
+    <GuessStepper
+      steps={STEPS}
+      activeStep={activeStep}
+      onStepChange={setActiveStep}
+      storageKey="mathinsight-guess-derivative"
+      className="derivative-stepper"
+    />
   )
 
   const renderTangentAnalysis = () => {

@@ -1,0 +1,111 @@
+.similar-q-card {
+  padding: var(--space-4);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-lg);
+  background: var(--surface-elevated);
+}
+
+.similar-q-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  color: var(--ink-faint);
+  font-size: 0.72rem;
+}
+
+.similar-q-id {
+  font-family: 'SFMono-Regular', Consolas, monospace;
+  color: var(--ink-3);
+}
+
+.similar-q-topic,
+.similar-q-diff {
+  padding: 1px 6px;
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-sm);
+}
+
+.similar-q-bank {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--primary-subtle);
+  color: var(--primary);
+}
+
+.similar-q-text {
+  margin-bottom: var(--space-3);
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.similar-q-options {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.similar-q-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-size: 0.84rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.similar-q-option > span {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+}
+
+.similar-q-option.right {
+  border-color: #1d9e75;
+  background: #e1f5ee;
+  color: #085041;
+}
+
+.similar-q-option.wrong {
+  border-color: var(--error);
+  background: var(--error-subtle);
+  color: var(--error);
+}
+
+.similar-q-feedback {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-left: 3px solid #1d9e75;
+  background: #e1f5ee;
+  font-size: 0.82rem;
+}
+
+.similar-q-feedback.bad {
+  border-left-color: var(--error);
+  background: var(--error-subtle);
+}
+
+.similar-q-feedback strong {
+  color: #085041;
+}
+
+.similar-q-feedback.bad strong {
+  color: var(--error);
+}
+
+.similar-q-feedback p {
+  margin: var(--space-2) 0 0;
+  color: var(--ink-2);
+  line-height: 1.7;
+}

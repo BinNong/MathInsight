@@ -4419,3 +4419,35 @@ input[type='range'] {
   color: #fcd34d;
   font-weight: 700;
 }
+
+.solver-followup-suggestions {
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-light);
+}
+
+.followup-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.followup-chip {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--surface-elevated);
+  color: var(--ink-2);
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.followup-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}

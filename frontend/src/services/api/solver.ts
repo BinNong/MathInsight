@@ -57,10 +57,15 @@ export interface HintResponse {
 }
 
 export interface SimilarProblem {
+  id?: string
   problem: string
   topic: string
   difficulty: number
   hint?: string | null
+  options?: string[]
+  answer?: number | null
+  explanation?: string | null
+  source?: 'bank' | 'llm'
 }
 
 export interface SimilarRequest {

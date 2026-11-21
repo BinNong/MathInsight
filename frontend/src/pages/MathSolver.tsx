@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import SimilarQuestionCard from '../components/SimilarQuestionCard'
 import PageHeader from '../components/PageHeader'
 import ControlPanel from '../components/ControlPanel'
 import VisualizationCard from '../components/VisualizationCard'
@@ -643,6 +644,23 @@ export default function MathSolver() {
                 )}
 
                 <VisualizationCard title="继续探索">
+                  {result.follow_up_questions.length > 0 && (
+                    <div className="solver-followup-suggestions">
+                      <div className="solver-section-label">你可能还想问</div>
+                      <div className="followup-chips">
+                        {result.follow_up_questions.map((q, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            className="followup-chip"
+                            onClick={() => setFollowUp(q)}
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   <div className="solver-followup">
                     <div className="form-group">
                       <label>还有疑问？继续追问</label>
@@ -687,23 +705,11 @@ export default function MathSolver() {
                     {similarProblems.length > 0 && (
                       <div className="similar-problems-list">
                         {similarProblems.map((p, index) => (
-                          <div key={index} className="similar-problem-card">
-                            <div className="similar-problem-text">
-                              <LatexBlock latex={p.problem} />
-                            </div>
-                            {p.hint && (
-                              <div className="similar-problem-hint">
-                                <strong>提示：</strong>
-                                {p.hint}
-                              </div>
-                            )}
-                            <button
-                              className="btn btn-ghost btn-sm"
-                              onClick={() => handleSimilarClick(p)}
-                            >
-                              做这道题
-                            </button>
-                          </div>
+                          <SimilarQuestionCard
+                            key={p.id || index}
+                            problem={p}
+                            onAnalyze={(text) => handleSimilarClick({ ...p, problem: text })}
+                          />
                         ))}
                       </div>
                     )}

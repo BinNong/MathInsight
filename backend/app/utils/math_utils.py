@@ -1134,3 +1134,41 @@ def evaluate_taylor_at_point(expr: str, x0: float, evaluate_at: float,
             'approximations': [],
             'best_order': 0
         }
+
+
+def verify_equation(lhs: str, rhs: str) -> str:
+    """
+    用 SymPy 符号化简验证等式 lhs = rhs 是否成立。
+
+    Returns:
+        'verified'  化简后两边等价（差恒为 0）
+        'failed'    可解析但不等价
+        'unchecked' 任一表达式无法安全解析，跳过机检
+    """
+    try:
+        left = _safe_parse(lhs)
+        right = _safe_parse(rhs)
+    except (ValueError, TypeError):
+        return 'unchecked'
+    try:
+        diff = sp.simplify(left - right)
+        if diff == 0:
+            return 'verified'
+        # 数值兜底：少数符号形式 simplify 无法归零，多点采样一致也算通过
+        symbols = list(diff.free_symbols)
+        if symbols:
+            import random
+            samples = [{s: random.uniform(-3, 3) for s in symbols} for _ in range(5)]
+            if all(abs(float(diff.subs(sample))) < 1e-9 for sample in samples):
+                return 'verified'
+        return 'failed'
+    except Exception:
+        return 'unchecked'
+
+
+def verify_answer(final_answer: str, last_formula: str | None) -> str:
+    """验证最终答案是否与最后一步公式的右端一致"""
+    if not final_answer or not last_formula or '=' not in last_formula:
+        return 'unchecked'
+    rhs = last_formula.split('=', 1)[1].strip()
+    return verify_equation(final_answer, rhs)

@@ -6,7 +6,7 @@ from unittest.mock import patch, MagicMock
 
 import pytest
 
-from app.services.solver_service import MathSolverService
+from app.services.solver_service import MathSolverService, SolverConfigurationError, VALID_TOPICS
 from app.config import Config
 
 
@@ -134,6 +134,18 @@ class TestSolverService:
         content = '{"topic": "limit"}'
         assert service._parse_json(content) == {'topic': 'limit'}
 
+    def test_parse_json_rejects_array_for_object(self):
+        """LLM 偶发返回数组时不得污染 analyze 结果"""
+        service = MathSolverService(api_key='test')
+        assert service._parse_json('[{"topic": "limit"}]') is None
+
+    def test_analyze_survives_array_response(self):
+        service = MathSolverService(api_key='test')
+        with patch.object(service, '_call_llm', return_value='[{"topic": "limit"}]'):
+            result = service.analyze_problem('求极限')
+        assert isinstance(result, dict)
+        assert result['topic'] in VALID_TOPICS
+
     def test_parse_json_invalid_returns_none(self):
         service = MathSolverService(api_key='test')
         assert service._parse_json('not json') is None
@@ -151,3 +163,53 @@ class TestSolverService:
         assert service._normalize_difficulty(6) == 5
         assert service._normalize_difficulty('abc') == 3
         assert service._normalize_difficulty(3) == 3
+
+    def test_generate_similar_uses_bank(self):
+        """相似题优先走结构化题库，返回答案与解析且无需 LLM"""
+        service = MathSolverService(api_key=None)
+        problems = service.generate_similar('求极限', 'limit', count=3)
+        assert len(problems) == 3
+        assert all(p.get('source') == 'bank' for p in problems)
+        assert all(p.get('answer') is not None for p in problems)
+        assert all(p.get('explanation') for p in problems)
+
+    def test_generate_similar_unknown_topic_needs_llm(self):
+        """题库未覆盖的主题不会返回题库题（LLM 现编路径由 mock 测试覆盖）"""
+        service = MathSolverService(api_key='test')
+        with patch.object(service, '_call_llm', return_value=json.dumps({'problems': []})):
+            assert service.generate_similar('求特征值', 'eigenvalue', count=2) == []
+
+
+class TestSolutionVerification:
+    def test_verify_equation(self):
+        from app.utils.math_utils import verify_equation
+        assert verify_equation('2*x + 3*x', '5*x') == 'verified'
+        assert verify_equation('(x+1)**2', 'x**2 + 2*x + 1') == 'verified'
+        assert verify_equation('x + 1', 'x + 2') == 'failed'
+        assert verify_equation('who knows', 'x') == 'unchecked'
+
+    def test_verify_answer(self):
+        from app.utils.math_utils import verify_answer
+        assert verify_answer('5*x', 'f(x) = 5*x') == 'verified'
+        assert verify_answer('x + 1', 'f(x) = 5*x') == 'failed'
+        assert verify_answer('', 'f(x) = 5*x') == 'unchecked'
+
+    def test_analyze_fills_verification(self):
+        """analyze 对形如 lhs=rhs 的步骤公式机检并填字段"""
+        from unittest.mock import patch
+        service = MathSolverService(api_key='test')
+        mock_result = {
+            'topic': 'derivative',
+            'steps': [
+                {'title': '化简', 'formula': '2*x + 3*x = 5*x', 'explanation': ''},
+                {'title': '不可机检', 'formula': "f'(x) = 2*x", 'explanation': ''},
+            ],
+            'final_answer': '5*x',
+        }
+        with patch.object(service, '_call_llm', return_value=json.dumps(mock_result)):
+            result = service.analyze_problem('test')
+        steps = result['steps']
+        assert steps[0]['verification'] == 'verified'
+        assert steps[0]['check'] == {'lhs': '2*x + 3*x', 'rhs': '5*x'}
+        assert steps[1]['verification'] == 'unchecked'
+        assert result['answer_verification'] == 'verified'

@@ -4,6 +4,7 @@ import { calculusApi, EpsilonDeltaRequest } from '../services/api'
 import { debounce } from '../utils/timing'
 import { isValidFunctionExpression } from '../utils/math'
 import { extendDomain } from '../utils/plot'
+import GuessStepper, { type GuessStep } from '../components/GuessStepper'
 import PageHeader from '../components/PageHeader'
 import ControlPanel from '../components/ControlPanel'
 import VisualizationCard from '../components/VisualizationCard'
@@ -119,23 +120,27 @@ const defaultRequest: EpsilonDeltaRequest = {
   domain_range: [-1, 5],
 }
 
-const STEPS = [
+const STEPS: GuessStep[] = [
   {
     title: '极限表达式',
     description: 'lim(x→x₀) f(x) = L 表示：当 x 无限接近 x₀ 时，f(x) 无限接近 L。',
+    prompt: '在你看来，"无限接近"和"等于"有什么不同？',
   },
   {
     title: '设定误差 ε',
     description: 'ε 是我们允许的 f(x) 与 L 之间的误差范围。在图上表现为 L 上下方的水平带。',
+    prompt: '如果要把误差限制在 0.1 以内，你觉得图上应该出现什么样的区域？',
   },
   {
     title: '找到 δ',
     description:
       '系统自动寻找一个 δ，使得只要 x 落在 x₀ 两侧宽为 2δ 的区间内，f(x) 就落在 ε 带内。',
+    prompt: 'ε 变小时，x 的允许范围 δ 应该变大还是变小？',
   },
   {
     title: '动画验证',
     description: '播放动画，观察 x 从两侧趋近 x₀ 时，对应的 f(x) 是否始终落在 ε 带内。',
+    prompt: '猜一猜：x 从左侧和右侧接近时，f(x) 会不会以同样方式进入 ε 带？',
   },
 ]
 
@@ -548,21 +553,13 @@ export default function EpsilonDeltaLimit() {
     : {}
 
   const renderStepper = () => (
-    <div className="limit-stepper">
-      {STEPS.map((step, index) => (
-        <div
-          key={index}
-          className={`limit-step ${index === activeStep ? 'active' : ''} ${index < activeStep ? 'completed' : ''}`}
-          onClick={() => setActiveStep(index)}
-        >
-          <div className="limit-step-number">{index + 1}</div>
-          <div className="limit-step-content">
-            <div className="limit-step-title">{step.title}</div>
-            <div className="limit-step-desc">{step.description}</div>
-          </div>
-        </div>
-      ))}
-    </div>
+    <GuessStepper
+      steps={STEPS}
+      activeStep={activeStep}
+      onStepChange={setActiveStep}
+      storageKey="mathinsight-guess-epsilon-delta"
+      className="limit-stepper"
+    />
   )
 
   const renderDefinitionBox = () => (
