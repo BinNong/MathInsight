@@ -2813,3 +2813,133 @@
     display: none;
   }
 }
+
+/* 学习诊断：薄弱知识点 */
+.diagnostic-section {
+  margin-top: var(--space-12);
+}
+
+.diagnostic-link {
+  color: var(--primary);
+  font-family: var(--font-serif);
+  font-size: 0.82rem;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.diagnostic-link:hover {
+  text-decoration: underline;
+}
+
+.diagnostic-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+.diagnostic-card {
+  padding: var(--space-5);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-xl);
+  background: var(--surface);
+}
+
+.diagnostic-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.diagnostic-card-head strong {
+  color: var(--ink);
+  font-family: var(--font-serif);
+  font-size: 0.95rem;
+}
+
+.diagnostic-level {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--ink-3);
+  font-size: 0.7rem;
+}
+
+.diagnostic-rate {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-3);
+  font-size: 0.76rem;
+}
+
+.diagnostic-rate strong {
+  min-width: 34px;
+  color: var(--error);
+  font-weight: 500;
+  text-align: right;
+}
+
+.diagnostic-bar {
+  flex: 1;
+  height: 4px;
+  border-radius: var(--radius-full);
+  background: var(--border-light);
+  overflow: hidden;
+}
+
+.diagnostic-bar span {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+}
+
+.diagnostic-card p {
+  margin: var(--space-3) 0 var(--space-4);
+  color: var(--ink-faint);
+  font-size: 0.74rem;
+}
+
+.diagnostic-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.diagnostic-actions a {
+  flex: 1;
+  padding: var(--space-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--ink-2);
+  font-family: var(--font-serif);
+  font-size: 0.78rem;
+  text-align: center;
+  text-decoration: none;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.diagnostic-actions a:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.diagnostic-empty {
+  padding: var(--space-6);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-xl);
+  color: var(--ink-3);
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  line-height: 1.8;
+}
+
+.diagnostic-empty p {
+  margin: 0 0 var(--space-2);
+}
+
+.diagnostic-empty a {
+  color: var(--primary);
+  text-decoration: none;
+}

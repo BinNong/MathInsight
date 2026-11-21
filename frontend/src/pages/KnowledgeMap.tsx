@@ -9,6 +9,13 @@ import {
   LearningPath,
 } from '../services/api/knowledgeGraph'
 import { renderLatex, createMarkup } from '../utils/latex'
+import {
+  CONCEPT_TOPICS,
+  MASTERY_COLORS,
+  conceptMastery,
+  useMasteryTopics,
+} from '../services/learning'
+import { MASTERY_LABEL } from '../world2d/store'
 
 interface GraphData {
   subjects: Record<string, { name: string; color: string }>
@@ -43,6 +50,8 @@ export default function KnowledgeMap() {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false)
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1)
   const [learningPath, setLearningPath] = useState<LearningPath | null>(null)
+  const [colorByMastery, setColorByMastery] = useState(false)
+  const masteryTopics = useMasteryTopics()
 
   // 加载完整图谱
   useEffect(() => {
@@ -127,19 +136,26 @@ export default function KnowledgeMap() {
       .map((n) => {
         visibleIds.add(n.id)
         const subject = graph.subjects[n.subject]
+        const mastery = conceptMastery(n.id, masteryTopics)
+        const nodeColor = colorByMastery && mastery.level > 0
+          ? MASTERY_COLORS[mastery.level]
+          : subject?.color || '#6b7280'
+        const masteryTip = mastery.answered > 0
+          ? `<br/>掌握度：${MASTERY_LABEL[mastery.level]}（${mastery.correct}/${mastery.answered}）`
+          : ''
         return {
           id: n.id,
           label: n.name,
-          title: `${n.name}<br/>${n.description.slice(0, 60)}${n.description.length > 60 ? '...' : ''}`,
+          title: `${n.name}<br/>${n.description.slice(0, 60)}${n.description.length > 60 ? '...' : ''}${masteryTip}`,
           color: {
-            background: subject?.color || '#6b7280',
-            border: subject?.color || '#6b7280',
+            background: nodeColor,
+            border: nodeColor,
             highlight: { background: '#9c3b2e', border: '#9c3b2e' },
             hover: { background: '#9c3b2e', border: '#9c3b2e' },
           },
           font: { color: '#1f2937', size: 14, face: 'system-ui' },
           shape: 'dot',
-          size: 18 + n.difficulty * 2,
+          size: 18 + n.difficulty * 2 + (colorByMastery ? mastery.level * 2 : 0),
           borderWidth: 2,
           shadow: { enabled: true, color: 'rgba(0,0,0,0.15)', size: 8, x: 0, y: 2 },
         }
@@ -158,7 +174,7 @@ export default function KnowledgeMap() {
       }))
 
     return { visNodes: nodes, visEdges: edges }
-  }, [graph, activeSubject, searchQuery])
+  }, [graph, activeSubject, searchQuery, colorByMastery, masteryTopics])
 
   // 初始化 vis-network；筛选和搜索只更新数据，不销毁画布。
   useEffect(() => {
@@ -463,6 +479,27 @@ export default function KnowledgeMap() {
               <h2>{conceptDetail.name}</h2>
               <p className="concept-description">{conceptDetail.description}</p>
 
+              {(() => {
+                const m = conceptMastery(conceptDetail.id, masteryTopics)
+                return (
+                  <div className="sidebar-section concept-mastery">
+                    <h3>你的掌握度</h3>
+                    <div className="concept-mastery-row">
+                      <span
+                        className="concept-mastery-dot"
+                        style={{ background: MASTERY_COLORS[m.level] }}
+                      />
+                      <strong>{MASTERY_LABEL[m.level]}</strong>
+                      <span className="concept-mastery-stat">
+                        {m.answered > 0
+                          ? `${m.correct}/${m.answered} 正确 · ${Math.round(m.accuracy * 100)}%`
+                          : '尚未练习此概念'}
+                      </span>
+                    </div>
+                  </div>
+                )
+              })()}
+
               {conceptDetail.formula && (
                 <div
                   className="concept-formula"
@@ -490,15 +527,10 @@ export default function KnowledgeMap() {
                   查看学习路径
                 </button>
                 <Link
-                  to="/solver"
-                  state={{
-                    topic: conceptDetail.id,
-                    name: conceptDetail.name,
-                    subject: conceptDetail.subject,
-                  }}
+                  to={`/practice?topic=${CONCEPT_TOPICS[conceptDetail.id]?.[0] || 'limit-calc'}`}
                   className="btn btn-secondary btn-sm"
                 >
-                  练习题目
+                  题库练习
                 </Link>
               </div>
 
@@ -587,12 +619,26 @@ export default function KnowledgeMap() {
       </div>
 
       <div className="knowledge-map-legend">
-        {Object.entries(graph.subjects).map(([key, s]) => (
+        {!colorByMastery && Object.entries(graph.subjects).map(([key, s]) => (
           <div key={key} className="legend-item">
             <span className="legend-dot" style={{ background: s.color }} />
             <span>{s.name}</span>
           </div>
         ))}
+        {colorByMastery && MASTERY_LABEL.slice(1).map((label, i) => (
+          <div key={label} className="legend-item">
+            <span className="legend-dot" style={{ background: MASTERY_COLORS[i + 1] }} />
+            <span>{label}</span>
+          </div>
+        ))}
+        <label className="legend-toggle">
+          <input
+            type="checkbox"
+            checked={colorByMastery}
+            onChange={(e) => setColorByMastery(e.target.checked)}
+          />
+          按掌握度着色
+        </label>
         <div className="legend-hint">拖拽移动 · 滚轮缩放 · 点击节点查看详情</div>
       </div>
     </div>

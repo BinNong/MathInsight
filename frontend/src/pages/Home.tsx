@@ -12,6 +12,8 @@ import {
   type SubjectId,
 } from '../data/subjects'
 import { useLearningProgress } from '../hooks/useLearningProgress'
+import { weakTopics, useMasteryTopics } from '../services/learning'
+import { MASTERY_LABEL } from '../world2d/store'
 import './Home.css'
 
 type ModuleFilter = 'all' | ModuleCategory | SubjectId
@@ -462,6 +464,8 @@ function Home() {
   const [filter, setFilter] = useState<ModuleFilter>('all')
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const { recent, favorites, toggleFavorite, clearProgress } = useLearningProgress()
+  const masteryTopics = useMasteryTopics()
+  const weak = useMemo(() => weakTopics(masteryTopics, 3), [masteryTopics])
 
   const favoriteSet = useMemo(() => new Set(favorites), [favorites])
   const recentModules = useMemo(
@@ -750,9 +754,53 @@ function Home() {
           )}
         </section>
 
+        <section className="diagnostic-section reveal" aria-labelledby="diagnostic-title">
+          <div className="section-heading-row">
+            <SectionHeading
+              eyebrow="§ 03 — 学习诊断"
+              title="薄弱知识点"
+              description="根据 2D 数学小镇的答题记录自动识别，点击即可回到对应实验或进入题库练习。"
+              id="diagnostic-title"
+            />
+            <Link to="/world-2d" className="diagnostic-link">去小镇修炼 →</Link>
+          </div>
+          {weak.length > 0 ? (
+            <div className="diagnostic-grid">
+              {weak.map((item) => (
+                <div key={item.topic.id} className="diagnostic-card">
+                  <div className="diagnostic-card-head">
+                    <strong>{item.topic.name}</strong>
+                    <span className="diagnostic-level">{MASTERY_LABEL[item.mastery.level]}</span>
+                  </div>
+                  <div className="diagnostic-rate">
+                    <span>正确率</span>
+                    <div className="diagnostic-bar">
+                      <span style={{ width: `${Math.round(item.mastery.accuracy * 100)}%` }} />
+                    </div>
+                    <strong>{Math.round(item.mastery.accuracy * 100)}%</strong>
+                  </div>
+                  <p>
+                    已答 {item.mastery.answered} 题 · 错题 {item.mastery.wrong} 道
+                  </p>
+                  <div className="diagnostic-actions">
+                    <Link to={`/practice?topic=${item.topic.id}`}>题库练习</Link>
+                    <Link to={item.route}>看可视化</Link>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="diagnostic-empty">
+              <p>还没有足够的答题数据来判断薄弱点。</p>
+              <p>去 2D 数学小镇修炼几组题，或在题库练习里答几道，诊断会自动出现在这里。</p>
+              <Link to="/practice">去题库练习 →</Link>
+            </div>
+          )}
+        </section>
+
         <section className="modules-explorer reveal" id="learning-modules" aria-labelledby="modules-title">
           <SectionHeading
-            eyebrow="§ 03 — 模块探索"
+            eyebrow="§ 04 — 模块探索"
             title="找到此刻想弄懂的问题"
             description="按名称、概念或关键词搜索全部实验与工具，用收藏搭建自己的学习清单。"
             id="modules-title"
