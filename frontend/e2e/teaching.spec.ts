@@ -29,3 +29,19 @@ test.describe('教学逻辑升级', () => {
     await expect(stepper.getByText('在 (x₀, f(x₀)) 附近取一点', { exact: false })).toBeVisible()
   })
 })
+
+test.describe('ε-δ 图元直接操作（L3）', () => {
+  test('ε 带与 δ 带可拖拽，并给出操作提示', async ({ page }) => {
+    await page.goto('/mathinsight/limit')
+    const plot = page.locator('.plot-figure .js-plotly-plot')
+    await plot.waitFor({ state: 'attached', timeout: 15000 })
+
+    // 可拖拽手柄存在：上下（ε 带）与左右（δ 带）
+    expect(await plot.locator('rect.ndrag').count()).toBeGreaterThan(0)
+    expect(await plot.locator('rect.ewdrag').count()).toBeGreaterThan(0)
+
+    // 两个可编辑色带 shape
+    const shapes = await plot.evaluate((gd: any) => gd._fullLayout.shapes.length)
+    expect(shapes).toBe(2)
+  })
+})

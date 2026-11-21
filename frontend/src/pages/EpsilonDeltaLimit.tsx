@@ -162,6 +162,17 @@ export default function EpsilonDeltaLimit() {
   const [animationSpeed, setAnimationSpeed] = useState(1)
   const animationRef = useRef<NodeJS.Timeout | null>(null)
 
+  // L3 直接操作：学生手动拖选的 δ（null 表示用系统计算值）
+  const [manualDelta, setManualDelta] = useState<number | null>(null)
+  const [deltaCheck, setDeltaCheck] = useState<{
+    valid: boolean
+    samples: number
+    satisfied: number
+    max_deviation: number
+    violations: Array<{ x: number; y: number; deviation: number }>
+  } | null>(null)
+  const [deltaChecking, setDeltaChecking] = useState(false)
+
   const fetchData = useCallback(
     async (range?: [number, number], isManual = false) => {
       if (!isValidFunctionExpression(request.function)) {
@@ -285,13 +296,80 @@ export default function EpsilonDeltaLimit() {
     [currentRange, fetchData]
   )
 
+  // 验证学生手动拖选的 δ
+  const verifyManualDelta = useCallback(
+    async (delta: number) => {
+      if (!data || delta <= 0) return
+      setDeltaChecking(true)
+      try {
+        const response = await calculusApi.verifyDelta({
+          function: request.function,
+          x0: request.x0,
+          L: request.L,
+          epsilon: request.epsilon,
+          domain_range: request.domain_range,
+          delta,
+        })
+        if (response.success) setDeltaCheck(response.data)
+      } catch {
+        setDeltaCheck(null)
+      } finally {
+        setDeltaChecking(false)
+      }
+    },
+    [data, request]
+  )
+
+  // 重置为系统计算的 δ
+  const resetDelta = () => {
+    setManualDelta(null)
+    setDeltaCheck(null)
+  }
+
   const handleRelayout = useCallback(
     debounce((event: any) => {
+      // 图元拖拽：ε 带上/下边界（shape 0）与 δ 带左/右边界（shape 1）
+      const epsY0 = event['shapes[0].y0']
+      const epsY1 = event['shapes[0].y1']
+      if (epsY0 !== undefined || epsY1 !== undefined) {
+        // 取偏离 L 较远的一侧作为新 ε，保持 ε 带关于 L 对称
+        const y0 = epsY0 ?? (data ? data.epsilon_band.y_lower : request.L - request.epsilon)
+        const y1 = epsY1 ?? (data ? data.epsilon_band.y_upper : request.L + request.epsilon)
+        const newEpsilon = Math.max(
+          0.001,
+          Math.abs(y0 - request.L),
+          Math.abs(y1 - request.L)
+        )
+        if (Math.abs(newEpsilon - request.epsilon) > 1e-4) {
+          setManualDelta(null)
+          setDeltaCheck(null)
+          setRequest((prev) => ({ ...prev, epsilon: Number(newEpsilon.toFixed(4)) }))
+        }
+        return
+      }
+
+      const dX0 = event['shapes[1].x0']
+      const dX1 = event['shapes[1].x1']
+      if (dX0 !== undefined || dX1 !== undefined) {
+        const xLeft = dX0 ?? (data ? data.delta_band.x_left : request.x0 - 0.5)
+        const xRight = dX1 ?? (data ? data.delta_band.x_right : request.x0 + 0.5)
+        const delta = Math.max(
+          0.001,
+          Math.abs(xLeft - request.x0),
+          Math.abs(xRight - request.x0)
+        )
+        if (Math.abs(delta - (manualDelta ?? data?.delta_values.delta ?? 0)) > 1e-4) {
+          setManualDelta(Number(delta.toFixed(4)))
+          verifyManualDelta(delta)
+        }
+        return
+      }
+
       if (!event['xaxis.range[0]'] || !event['xaxis.range[1]']) return
       const newXRange: [number, number] = [event['xaxis.range[0]'], event['xaxis.range[1]']]
       handleRelayoutCore(newXRange)
-    }, 300),
-    [handleRelayoutCore]
+    }, 200),
+    [handleRelayoutCore, data, request, manualDelta, verifyManualDelta]
   )
 
   const handleInputChange = (field: keyof EpsilonDeltaRequest, value: any) => {
@@ -496,6 +574,26 @@ export default function EpsilonDeltaLimit() {
               },
             ]
           : []),
+        // 手动 δ 的反例点（Student's δ 不满足 ε 时标红）
+        ...(manualDelta && deltaCheck && deltaCheck.violations.length > 0
+          ? [
+              {
+                x: deltaCheck.violations.map((v) => v.x),
+                y: deltaCheck.violations.map((v) => v.y),
+                type: 'scatter',
+                mode: 'markers',
+                name: '反例点（超出 ε 带）',
+                marker: {
+                  color: '#ef4444',
+                  size: 12,
+                  symbol: 'x',
+                  line: { color: '#ffffff', width: 1 },
+                },
+                showlegend: true,
+                hoverinfo: 'name+x+y',
+              },
+            ]
+          : []),
       ]
     : []
 
@@ -521,9 +619,10 @@ export default function EpsilonDeltaLimit() {
         legend: { x: 0.02, y: 0.98 },
         hovermode: 'closest',
         dragmode: 'pan',
+        editable: true,
         autosize: true,
         shapes: [
-          // ε 带填充
+          // ε 带填充（可上下拖动边界）
           {
             type: 'rect',
             xref: 'paper',
@@ -533,19 +632,23 @@ export default function EpsilonDeltaLimit() {
             x1: 1,
             y1: data.epsilon_band.y_upper,
             fillcolor: 'rgba(245, 158, 11, 0.1)',
-            line: { width: 0 },
+            line: { color: 'rgba(245, 158, 11, 0.6)', width: 1 },
           },
-          // δ 带填充
+          // δ 带填充（可左右拖动边界）
           {
             type: 'rect',
             xref: 'x',
             yref: 'paper',
-            x0: data.delta_band.x_left,
+            x0: request.x0 - (manualDelta ?? data.delta_values.delta),
             y0: 0,
-            x1: data.delta_band.x_right,
+            x1: request.x0 + (manualDelta ?? data.delta_values.delta),
             y1: 1,
-            fillcolor: 'rgba(16, 185, 129, 0.08)',
-            line: { width: 0 },
+            fillcolor: manualDelta
+              ? deltaCheck?.valid
+                ? 'rgba(16, 185, 129, 0.15)'
+                : 'rgba(239, 68, 68, 0.15)'
+              : 'rgba(16, 185, 129, 0.08)',
+            line: { color: manualDelta ? (deltaCheck?.valid ? '#10b981' : '#ef4444') : 'rgba(16, 185, 129, 0.4)', width: 1 },
           },
         ],
         margin: { t: 60, r: 40, b: 60, l: 60 },
@@ -724,15 +827,32 @@ export default function EpsilonDeltaLimit() {
             {data && (
               <VisualizationCard
                 title="ε-δ 极限定义可视化"
-                subtitle="拖动图表可平移，滚轮可缩放；点击播放观察 x→x₀ 时 f(x)→L"
+                subtitle="拖动黄色 ε 带边界改变误差范围（δ 自动重算）；拖动绿色 δ 带边界自己试探 δ 是否可行"
                 loading={isUpdating}
                 rightAction={
                   <div className="limit-status-badge-wrapper">
-                    <span
-                      className={`limit-status-badge ${data.verification.valid ? 'success' : 'warning'}`}
-                    >
-                      {data.verification.valid ? 'δ 验证通过' : 'δ 验证未通过'}
-                    </span>
+                    {manualDelta !== null ? (
+                      <>
+                        <span
+                          className={`limit-status-badge ${deltaCheck?.valid ? 'success' : 'warning'}`}
+                        >
+                          {deltaChecking
+                            ? '验证中…'
+                            : deltaCheck?.valid
+                              ? `你选的 δ=${manualDelta} ✓`
+                              : `你选的 δ=${manualDelta} ✗ 有反例`}
+                        </span>
+                        <button className="limit-reset-delta" onClick={resetDelta}>
+                          用系统 δ
+                        </button>
+                      </>
+                    ) : (
+                      <span
+                        className={`limit-status-badge ${data.verification.valid ? 'success' : 'warning'}`}
+                      >
+                        系统 δ={data.delta_values.delta.toFixed(3)} · 验证通过
+                      </span>
+                    )}
                   </div>
                 }
               >

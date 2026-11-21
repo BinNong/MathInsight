@@ -3,6 +3,7 @@ from flask import Blueprint, request
 from app.services.calculus_service import (
     CalculusService, MAX_DERIVATIVE_ORDER, MAX_TAYLOR_ORDER
 )
+from app.utils.math_utils import verify_delta_for_epsilon
 from app.utils.validation import validate_request_data, safe_float, safe_int
 from app.utils.response import success_response, error_response, math_error_response
 
@@ -50,6 +51,35 @@ def epsilon_delta_limit():
     except (ValueError, sp.SympifyError) as e:
         return math_error_response('parse')
     except Exception as e:
+        return math_error_response('calculation')
+
+
+@calculus_bp.route('/limit/verify-delta', methods=['POST'])
+def verify_delta():
+    """验证学生手动拖选的 δ 是否满足给定 ε（用于图上拖拽试探）"""
+    data = request.json
+    is_valid, error = validate_request_data(data)
+    if not is_valid:
+        return error_response(error)
+
+    is_valid, x0 = safe_float(data.get('x0'), 'x0')
+    if not is_valid:
+        return error_response(x0)
+    is_valid, L = safe_float(data.get('L'), 'L')
+    if not is_valid:
+        return error_response(L)
+    is_valid, epsilon = safe_float(data.get('epsilon'), 'epsilon')
+    if not is_valid or epsilon <= 0:
+        return error_response('epsilon 必须为正数')
+    is_valid, delta = safe_float(data.get('delta'), 'delta')
+    if not is_valid or delta <= 0:
+        return error_response('delta 必须为正数')
+
+    func_str = data.get('function', 'x**2')
+    try:
+        result = verify_delta_for_epsilon(func_str, x0, L, epsilon, delta)
+        return success_response(result)
+    except Exception:
         return math_error_response('calculation')
 
 

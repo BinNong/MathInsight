@@ -36,6 +36,26 @@ class TestCalculusEndpoints:
         assert data['success'] is True
         assert data['data']['delta_values']['delta'] > 0
 
+    def test_verify_delta(self, client):
+        # 足够小的 δ 应验证通过，过大的 δ 应失败并有反例
+        small = client.post('/api/calculus/limit/verify-delta', json={
+            'function': 'x**2', 'x0': 2, 'L': 4, 'epsilon': 0.5, 'delta': 0.1,
+        }).get_json()
+        assert small['success'] is True
+        assert small['data']['valid'] is True
+
+        large = client.post('/api/calculus/limit/verify-delta', json={
+            'function': 'x**2', 'x0': 2, 'L': 4, 'epsilon': 0.5, 'delta': 2.0,
+        }).get_json()
+        assert large['data']['valid'] is False
+        assert len(large['data']['violations']) > 0
+
+    def test_verify_delta_rejects_nonpositive(self, client):
+        resp = client.post('/api/calculus/limit/verify-delta', json={
+            'function': 'x**2', 'x0': 2, 'L': 4, 'epsilon': 0.5, 'delta': 0,
+        })
+        assert resp.status_code == 400
+
     def test_invalid_expression(self, client):
         response = client.post('/api/calculus/derivative/tangent', json={
             'function': '__import__("os")',

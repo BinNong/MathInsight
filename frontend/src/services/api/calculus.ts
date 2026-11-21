@@ -83,6 +83,12 @@ export const calculusApi = {
     return response.data
   },
 
+  // 验证手动拖选的 δ 是否满足 ε
+  async verifyDelta(data: EpsilonDeltaRequest & { delta: number }) {
+    const response = await client.post(`${API_BASE}/limit/verify-delta`, data)
+    return response.data
+  },
+
   // 计算极限值 L = lim(x→x0) f(x)
   async computeLimit(func_str: string, x0: number) {
     const response = await client.post(`${API_BASE}/limit/compute`, {

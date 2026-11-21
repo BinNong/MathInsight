@@ -1692,6 +1692,8 @@ input[type='range'] {
 .limit-status-badge-wrapper {
   display: flex;
   align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
 }
 
 .limit-status-badge {
@@ -1712,6 +1714,22 @@ input[type='range'] {
 .limit-status-badge.warning {
   background: var(--warning-subtle);
   color: var(--warning);
+}
+
+.limit-reset-delta {
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ink-3);
+  font-family: var(--font-serif);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.limit-reset-delta:hover {
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 @media (max-width: 768px) {
