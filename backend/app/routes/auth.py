@@ -70,6 +70,43 @@ def me():
     return success_response(user)
 
 
+@auth_bp.route('/progress', methods=['GET'])
+def get_progress():
+    """获取当前用户的云端学习进度（掌握度 + 最近访问/收藏）"""
+    user = getattr(request, 'current_user', None)
+    if not user:
+        return error_response('未登录或登录已过期', 401)
+    record = auth.get_user_progress(user['id'])
+    if record is None:
+        return success_response(None)
+    return success_response(record)
+
+
+@auth_bp.route('/progress', methods=['PUT'])
+def put_progress():
+    """上报当前用户的学习进度。mastery/progress 为 JSON 字符串，限制大小防滥用。"""
+    import json
+    user = getattr(request, 'current_user', None)
+    if not user:
+        return error_response('未登录或登录已过期', 401)
+
+    data = request.get_json(silent=True) or {}
+    mastery = data.get('mastery')
+    progress = data.get('progress')
+    if not isinstance(mastery, str) or not isinstance(progress, str):
+        return error_response('mastery 与 progress 必须为 JSON 字符串')
+    if len(mastery) > auth.MAX_PROGRESS_JSON_LENGTH or len(progress) > auth.MAX_PROGRESS_JSON_LENGTH:
+        return error_response('进度数据过大')
+    try:
+        json.loads(mastery)
+        json.loads(progress)
+    except (ValueError, TypeError):
+        return error_response('进度数据不是合法 JSON')
+
+    record = auth.save_user_progress(user['id'], mastery, progress)
+    return success_response(record)
+
+
 @auth_bp.route('/logout', methods=['POST'])
 def logout():
     # 令牌为无状态签名，服务端无需额外操作；前端负责清除本地令牌。

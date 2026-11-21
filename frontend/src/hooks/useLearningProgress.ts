@@ -131,6 +131,7 @@ function commitProgress(next: LearningProgress) {
     // In-memory progress still works when storage is unavailable.
   }
   notifyListeners()
+  window.dispatchEvent(new Event('mathinsight:progress-changed'))
 }
 
 function recordRecent(moduleId: string) {
@@ -164,6 +165,26 @@ function clearProgress() {
     // Clearing the in-memory state is still useful without storage access.
   }
   notifyListeners()
+  window.dispatchEvent(new Event('mathinsight:progress-changed'))
+}
+
+/** 读取当前进度快照（供云端同步使用） */
+export function getLearningProgress(): LearningProgress {
+  return getSnapshot()
+}
+
+/** 导入服务端进度（先校验），用于登录后合并。返回是否成功。 */
+export function importLearningProgress(value: unknown): boolean {
+  if (!isRecord(value) || value.version !== LEARNING_PROGRESS_VERSION) return false
+  const parsed = parseProgress(JSON.stringify(value))
+  snapshot = parsed
+  try {
+    window.localStorage.setItem(LEARNING_PROGRESS_STORAGE_KEY, JSON.stringify(parsed))
+  } catch {
+    // 内存态仍可用
+  }
+  notifyListeners()
+  return true
 }
 
 export function useLearningProgress() {

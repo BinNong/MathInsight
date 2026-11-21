@@ -30,6 +30,12 @@ import { client } from './client'
 
 const API_BASE = '/auth'
 
+export interface CloudProgress {
+  mastery: string
+  progress: string
+  updated_at?: string
+}
+
 export interface ChangePasswordRequest {
   old_password: string
   new_password: string
@@ -57,5 +63,15 @@ export const authApi = {
 
   async changePassword(data: ChangePasswordRequest): Promise<void> {
     await client.post(`${API_BASE}/change-password`, data)
+  },
+
+  async getProgress(): Promise<CloudProgress | null> {
+    const response = await client.get(`${API_BASE}/progress`)
+    return response.data.data
+  },
+
+  async saveProgress(mastery: string, progress: string): Promise<CloudProgress> {
+    const response = await client.put(`${API_BASE}/progress`, { mastery, progress })
+    return response.data.data
   },
 }

@@ -110,6 +110,14 @@ def init_db() -> None:
                 used_by_username TEXT,
                 FOREIGN KEY (used_by) REFERENCES users(id)
             );
+
+            CREATE TABLE IF NOT EXISTS user_progress (
+                user_id     INTEGER PRIMARY KEY,
+                mastery     TEXT NOT NULL DEFAULT '{}',
+                progress    TEXT NOT NULL DEFAULT '{}',
+                updated_at  TEXT NOT NULL,
+                FOREIGN KEY (user_id) REFERENCES users(id)
+            );
             """
         )
         _migrate_schema(conn)
@@ -744,3 +752,45 @@ def delete_user_by_username(username: str) -> tuple[bool, str | None]:
         raise
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# 学习进度云端同步（按用户 id 存储掌握度与进度 JSON）
+# ---------------------------------------------------------------------------
+
+MAX_PROGRESS_JSON_LENGTH = 200_000
+
+
+def get_user_progress(user_id: int) -> dict | None:
+    """读取用户云端进度；无记录返回 None"""
+    conn = get_db()
+    row = conn.execute(
+        'SELECT mastery, progress, updated_at FROM user_progress WHERE user_id = ?',
+        (user_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    return {
+        'mastery': row['mastery'],
+        'progress': row['progress'],
+        'updated_at': row['updated_at'],
+    }
+
+
+def save_user_progress(user_id: int, mastery: str, progress: str) -> dict:
+    """写入（upsert）用户云端进度，返回最新记录。mastery/progress 为 JSON 字符串。"""
+    now = datetime.now(timezone.utc).isoformat()
+    conn = get_db()
+    conn.execute(
+        """
+        INSERT INTO user_progress (user_id, mastery, progress, updated_at)
+        VALUES (?, ?, ?, ?)
+        ON CONFLICT(user_id) DO UPDATE SET
+            mastery = excluded.mastery,
+            progress = excluded.progress,
+            updated_at = excluded.updated_at
+        """,
+        (user_id, mastery, progress, now),
+    )
+    conn.commit()
+    return {'mastery': mastery, 'progress': progress, 'updated_at': now}

@@ -7,6 +7,8 @@ import UserBadge from './components/UserBadge'
 import { getModuleByPath, getSubjectById } from './data/subjects'
 import { useLearningProgress } from './hooks/useLearningProgress'
 import { useAuthStore } from './stores/authStore'
+import { pullAndMerge, schedulePush } from './services/progressSync'
+import { useMasteryStore } from './world2d/store'
 import { authApi } from './services/api'
 
 const AuthPage = lazy(() => import('./pages/AuthPage'))
@@ -101,6 +103,19 @@ function AppRoutes() {
       .catch(() => { /* 拦截器已处理失效登录态 */ })
     return () => { cancelled = true }
   }, [token, setUser])
+
+  // 云端进度：有令牌即拉取合并；本地数据变更时防抖上报
+  useEffect(() => {
+    if (!token) return
+    pullAndMerge().catch(() => {})
+    const unsub = useMasteryStore.subscribe(() => schedulePush())
+    const onProgressChanged = () => schedulePush()
+    window.addEventListener('mathinsight:progress-changed', onProgressChanged)
+    return () => {
+      unsub()
+      window.removeEventListener('mathinsight:progress-changed', onProgressChanged)
+    }
+  }, [token])
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register'
 

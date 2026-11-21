@@ -6,6 +6,14 @@ import { test, expect } from '@playwright/test'
  */
 test.describe('题库练习与学生模型', () => {
   test.beforeEach(async ({ page }) => {
+    // 隔离云端同步：这些测试断言绝对计数，需阻止登录后拉取历史掌握度
+    await page.route('**/api/auth/progress', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data: null }) })
+      } else {
+        await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data: {} }) })
+      }
+    })
     // 清空 2D 小镇掌握度，保证每项测试从零开始
     await page.goto('/mathinsight/')
     await page.evaluate(() => localStorage.removeItem('mathinsight-calc-mastery'))

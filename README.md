@@ -119,7 +119,7 @@ cd backend
 - `/practice` 题库练习页：按 7 个知识点练习，答题即时判分并显示解析，结果写入共享掌握度
 - 知识图谱可切换「按掌握度着色」，概念详情显示该概念的掌握度与正确率，并提供「题库练习」直达入口
 - 首页「学习诊断」自动识别正确率低于 70% 的薄弱知识点，一键进入练习或对应可视化实验
-- 掌握度数据以 `mathinsight-calc-mastery` 存于浏览器 localStorage，主站与 2D 小镇共享同一份（跨设备同步尚未实现）
+- 掌握度数据以 `mathinsight-calc-mastery` 存于浏览器 localStorage，主站与 2D 小镇共享同一份；**已实现跨设备云端同步**，见下文「学习进度云端同步」
 
 映射关系定义在 `frontend/src/services/learning.ts`（7 个题库主题 ↔ 48 个图谱概念）。
 
@@ -147,6 +147,17 @@ cd backend
 - **假设检验**（`/hypothesis-test`）：单样本 z / t 检验，可切换双侧/单侧，在抽样分布上显示样本均值、p 值与拒绝域，给出置信区间与结论
 
 三者均已接入知识图谱（新增 4 个概念节点、7 条前置关系）。后端实现在 `backend/app/services/advanced_service.py`，API 前缀 `/api/advanced`。
+
+### 学习进度云端同步
+
+学习数据（掌握度 + 最近访问/收藏）现在**按用户存到服务端 SQLite**，实现跨设备同步；浏览器 localStorage 保留为离线缓存与首屏数据源。
+
+- 表 `user_progress`：`user_id` 主键 + `mastery` JSON + `progress` JSON + `updated_at`，挂在外键 `users(id)` 上
+- 接口：`GET /api/auth/progress` 拉取、`PUT /api/auth/progress` 上报（需登录；JSON 字符串限 200KB 防滥用）
+- 登录后自动拉取并与本地合并（计数取大、列表取并集，避免跨设备丢数据）；本地变更后 1.2 秒防抖上报；离线/失败时静默保留本地，下次登录补传
+- 前端同步逻辑在 `frontend/src/services/progressSync.ts`
+
+注意：**账号在服务端、学习数据曾经只在浏览器**的脱节问题由此解决；密码、令牌机制不变，仍无 Redis / MySQL 依赖（单容器 + 低写入量，SQLite 足够）。
 
 ## 功能模块
 

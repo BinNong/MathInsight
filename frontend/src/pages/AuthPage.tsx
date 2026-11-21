@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { authApi, getApiErrorMessage } from '../services/api'
 import { useAuthStore } from '../stores/authStore'
+import { pullAndMerge } from '../services/progressSync'
 import './AuthPage.css'
 
 type Mode = 'login' | 'register'
@@ -53,6 +54,8 @@ export default function AuthPage({ mode }: { mode: Mode }) {
         ? await authApi.register({ username, password, confirm_password: confirmPassword, invite_code: inviteCode.trim() })
         : await authApi.login({ username, password })
       setAuth(result.token, result.user)
+      // 登录后拉取云端进度并与本地合并（失败不影响进入）
+      pullAndMerge().catch(() => {})
       navigate(next, { replace: true })
     } catch (err) {
       setError(getApiErrorMessage(err, isRegister ? '注册失败，请稍后重试' : '登录失败，请稍后重试'))
