@@ -45,3 +45,27 @@ test.describe('ε-δ 图元直接操作（L3）', () => {
     expect(shapes).toBe(2)
   })
 })
+
+test.describe('L2 新增实验模块', () => {
+  test('方向场页面渲染方向线段与解曲线', async ({ page }) => {
+    await page.goto('/mathinsight/direction-field')
+    await expect(page.getByRole('heading', { name: '微分方程 · 方向场与解曲线' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '指数增长' })).toBeVisible()
+    // 方向场数据加载后，预设名出现在图表标题区
+    await expect(page.getByText('方向场与解曲线').last()).toBeVisible()
+  })
+
+  test('特征值页面展示特征值与向量判定', async ({ page }) => {
+    await page.goto('/mathinsight/eigenvalues')
+    await expect(page.getByText('特征值与特征向量')).toBeVisible()
+    await expect(page.getByText('特征多项式')).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText('是否为特征向量')).toBeVisible()
+  })
+
+  test('假设检验页面展示 p 值与结论', async ({ page }) => {
+    await page.goto('/mathinsight/hypothesis-test')
+    await expect(page.getByRole('heading', { name: '数理统计 · 假设检验' })).toBeVisible()
+    await expect(page.getByText('检验结论')).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText('如何解读 p 值')).toBeVisible()
+  })
+})

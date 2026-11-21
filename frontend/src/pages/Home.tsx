@@ -605,11 +605,11 @@ function Home() {
           </div>
           <div>
             <dt>交互实验</dt>
-            <CountUp value={13} />
+            <CountUp value={LEARNING_MODULES.filter((m) => m.category === 'experiment').length} />
           </div>
           <div>
             <dt>学习模块</dt>
-            <CountUp value={18} />
+            <CountUp value={LEARNING_MODULES.length} />
           </div>
           <div className="home-stats-note">
             <dt>学习方式</dt>

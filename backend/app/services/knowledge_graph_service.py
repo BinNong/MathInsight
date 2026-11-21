@@ -558,6 +558,53 @@ class KnowledgeGraphService:
             "route": "/distributions",
             "formula": r"\hat{\theta} = \arg\max_\theta L(\theta; x_1,\dots,x_n)",
         },
+        # 微分方程
+        {
+            "id": "ode-basics",
+            "name": "微分方程基础",
+            "subject": "calculus",
+            "group": "微分方程",
+            "description": "微分方程的阶、解与通解的概念，一阶方程 dy/dx = f(x,y) 的几何意义。",
+            "difficulty": 3,
+            "tags": ["微分方程", "ODE", "通解"],
+            "route": "/direction-field",
+            "formula": r"\frac{dy}{dx} = f(x, y)",
+        },
+        {
+            "id": "direction-field",
+            "name": "方向场与解曲线",
+            "subject": "calculus",
+            "group": "微分方程",
+            "description": "用方向场表示每一点的斜率，从初值出发积分得到解曲线，理解解的存在与唯一性。",
+            "difficulty": 3,
+            "tags": ["方向场", "解曲线", "初值问题"],
+            "route": "/direction-field",
+            "formula": r"y(x) = y_0 + \int_{x_0}^{x} f(t, y(t))\,dt",
+        },
+        # 特征值
+        {
+            "id": "eigenvectors",
+            "name": "特征值与特征向量",
+            "subject": "linear-algebra",
+            "group": "谱理论",
+            "description": "满足 Av = λv 的特殊方向与伸缩倍数，特征多项式、行列式和迹的关系。",
+            "difficulty": 3,
+            "tags": ["特征值", "特征向量", "对角化"],
+            "route": "/eigenvalues",
+            "formula": r"Av = \lambda v,\quad \det(A - \lambda I) = 0",
+        },
+        # 假设检验
+        {
+            "id": "hypothesis-testing",
+            "name": "假设检验",
+            "subject": "probability",
+            "group": "统计推断",
+            "description": "原假设与备择假设、检验统计量、p 值与显著性水平，单样本均值 z/t 检验。",
+            "difficulty": 3,
+            "tags": ["假设检验", "p 值", "显著性", "拒绝域"],
+            "route": "/hypothesis-test",
+            "formula": r"p = P(|T| \geq |t_{\text{obs}}| \mid H_0)",
+        },
     ]
 
     PREREQUISITES: list[dict[str, Any]] = [
@@ -625,6 +672,14 @@ class KnowledgeGraphService:
         {"source": "random-variables", "target": "central-limit-theorem", "reason": "中心极限定理研究随机变量和的分布", "strength": 2},
         {"source": "law-of-large-numbers", "target": "central-limit-theorem", "reason": "二者都是大量独立随机变量和的极限行为", "strength": 1},
         {"source": "distributions", "target": "parameter-estimation", "reason": "参数估计需要假设总体分布形式", "strength": 2},
+        # 新增主线：微分方程、谱理论、假设检验
+        {"source": "derivative-definition", "target": "ode-basics", "reason": "微分方程是关于未知函数导数的方程", "strength": 3},
+        {"source": "indefinite-integral", "target": "ode-basics", "reason": "求解可分离变量方程需要积分", "strength": 2},
+        {"source": "ode-basics", "target": "direction-field", "reason": "方向场是一阶 ODE 的几何解法", "strength": 3},
+        {"source": "matrices", "target": "eigenvectors", "reason": "特征值是矩阵变换的不变量", "strength": 3},
+        {"source": "determinants", "target": "eigenvectors", "reason": "特征值由特征方程 det(A-λI)=0 给出", "strength": 3},
+        {"source": "parameter-estimation", "target": "hypothesis-testing", "reason": "假设检验与参数估计同属统计推断", "strength": 2},
+        {"source": "central-limit-theorem", "target": "hypothesis-testing", "reason": "大样本检验统计量近似正态依赖中心极限定理", "strength": 3},
     ]
 
     # 概念到已存在可视化页面的补充映射（route 已含主要链接，此处做扩展）
@@ -655,6 +710,18 @@ class KnowledgeGraphService:
         ],
         "numerical-integration": [
             {"label": "黎曼积分", "path": "/integration"},
+        ],
+        "ode-basics": [
+            {"label": "微分方程方向场", "path": "/direction-field"},
+        ],
+        "direction-field": [
+            {"label": "微分方程方向场", "path": "/direction-field"},
+        ],
+        "eigenvectors": [
+            {"label": "特征值可视化", "path": "/eigenvalues"},
+        ],
+        "hypothesis-testing": [
+            {"label": "假设检验可视化", "path": "/hypothesis-test"},
         ],
         "matrices": [
             {"label": "矩阵变换可视化", "path": "/matrix"},

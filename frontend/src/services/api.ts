@@ -145,3 +145,13 @@ export type {
   SimilarResponse,
 } from './api/solver'
 export { solverApi } from './api/solver'
+
+export { advancedApi } from './api/advanced'
+export type {
+  ODEDirectionFieldRequest,
+  ODEFieldData,
+  EigenRequest,
+  EigenData,
+  HypothesisRequest,
+  HypothesisData,
+} from './api/advanced'

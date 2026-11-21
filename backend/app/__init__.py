@@ -7,6 +7,7 @@ from app.config import Config
 from app import auth
 from app.auth_guard import register_auth_guard
 from app.routes.calculus import calculus_bp
+from app.routes.advanced import advanced_bp
 from app.routes.linear_algebra import linear_algebra_bp
 from app.routes.probability import probability_bp
 from app.routes.multivariate import multivariate_bp
@@ -51,6 +52,7 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(calculus_bp, url_prefix='/api/calculus')
+    app.register_blueprint(advanced_bp, url_prefix='/api/advanced')
     app.register_blueprint(linear_algebra_bp, url_prefix='/api/linear-algebra')
     app.register_blueprint(probability_bp, url_prefix='/api/probability')
     app.register_blueprint(multivariate_bp, url_prefix='/api/multivariate')

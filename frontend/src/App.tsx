@@ -28,6 +28,9 @@ const VectorFieldLineIntegrals = lazy(() => import('./pages/VectorFieldLineInteg
 const VectorField3D = lazy(() => import('./pages/VectorField3D'))
 const SurfaceIntegrals = lazy(() => import('./pages/SurfaceIntegrals'))
 const GaussTheorem = lazy(() => import('./pages/GaussTheorem'))
+const DirectionField = lazy(() => import('./pages/DirectionField'))
+const Eigenvalues = lazy(() => import('./pages/Eigenvalues'))
+const HypothesisTesting = lazy(() => import('./pages/HypothesisTesting'))
 const ManimAnimation = lazy(() => import('./pages/ManimAnimation'))
 const MathSolver = lazy(() => import('./pages/MathSolver'))
 const KnowledgeMap = lazy(() => import('./pages/KnowledgeMap'))
@@ -129,6 +132,9 @@ function AppRoutes() {
               <Route path="/vector-field-3d" element={<VectorField3D />} />
               <Route path="/surface-integral" element={<SurfaceIntegrals />} />
               <Route path="/gauss-theorem" element={<GaussTheorem />} />
+              <Route path="/direction-field" element={<DirectionField />} />
+              <Route path="/eigenvalues" element={<Eigenvalues />} />
+              <Route path="/hypothesis-test" element={<HypothesisTesting />} />
               <Route path="/manim" element={<ManimAnimation />} />
               <Route path="/solver" element={<MathSolver />} />
               <Route path="/knowledge-map" element={<KnowledgeMap />} />
