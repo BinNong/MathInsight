@@ -68,6 +68,14 @@ class TestAuth:
         assert r2.status_code == 400
         assert '用户名' in r2.get_json()['error']
 
+    def test_register_password_mismatch_rejected(self, client, fresh_invite):
+        resp = client.post('/api/auth/register', json={
+            'username': 'mismatch', 'password': 'password123',
+            'confirm_password': 'different123', 'invite_code': fresh_invite,
+        })
+        assert resp.status_code == 400
+        assert '不一致' in resp.get_json()['error']
+
     def test_short_password_rejected(self, client, fresh_invite):
         resp = client.post('/api/auth/register', json={
             'username': 'eve', 'password': '123', 'invite_code': fresh_invite,
@@ -101,3 +109,45 @@ class TestAuth:
         # 伪造令牌被拒绝
         bad = client.get('/api/knowledge-graph', headers={'Authorization': 'Bearer fake.token.here'})
         assert bad.status_code == 401
+
+    def test_change_password_flow(self, client, fresh_invite):
+        """修改密码：验证当前密码、强度检查、旧密码失效、令牌仍有效"""
+        reg = client.post('/api/auth/register', json={
+            'username': 'helen', 'password': 'password123', 'invite_code': fresh_invite,
+        })
+        token = reg.get_json()['data']['token']
+        headers = {'Authorization': f'Bearer {token}'}
+
+        # 当前密码错误 -> 拒绝
+        resp = client.post('/api/auth/change-password', json={
+            'old_password': 'wrongpassword', 'new_password': 'newpassword123',
+        }, headers=headers)
+        assert resp.status_code == 400
+        assert '当前密码错误' in resp.get_json()['error']
+
+        # 新密码太短 -> 拒绝
+        resp = client.post('/api/auth/change-password', json={
+            'old_password': 'password123', 'new_password': '123',
+        }, headers=headers)
+        assert resp.status_code == 400
+
+        # 正确修改 -> 成功，令牌仍有效
+        resp = client.post('/api/auth/change-password', json={
+            'old_password': 'password123', 'new_password': 'newpassword123',
+        }, headers=headers)
+        assert resp.status_code == 200
+        assert client.get('/api/auth/me', headers=headers).status_code == 200
+
+        # 旧密码登录失败，新密码登录成功
+        assert client.post('/api/auth/login', json={
+            'username': 'helen', 'password': 'password123',
+        }).status_code == 401
+        assert client.post('/api/auth/login', json={
+            'username': 'helen', 'password': 'newpassword123',
+        }).status_code == 200
+
+    def test_change_password_requires_login(self, client):
+        resp = client.post('/api/auth/change-password', json={
+            'old_password': 'password123', 'new_password': 'newpassword123',
+        })
+        assert resp.status_code == 401

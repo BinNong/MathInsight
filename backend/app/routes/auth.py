@@ -34,6 +34,11 @@ def register():
     username = data.get('username', '')
     password = data.get('password', '')
     invite_code = data.get('invite_code', '')
+    confirm_password = data.get('confirm_password')
+
+    # 前后端双保险：即使绕过页面直接调 API，两次密码不一致也不允许注册
+    if confirm_password is not None and confirm_password != password:
+        return error_response('两次输入的密码不一致', 400)
 
     user, error = auth.create_user(username, password, invite_code)
     if error:
@@ -71,3 +76,22 @@ def logout():
     response, status = success_response({'ok': True})
     response.delete_cookie(TOKEN_COOKIE_NAME, path='/')
     return response, status
+
+
+@auth_bp.route('/change-password', methods=['POST'])
+def change_password():
+    """修改当前用户密码：需提供正确的当前密码与新密码"""
+    user = getattr(request, 'current_user', None)
+    if not user:
+        return error_response('未登录或登录已过期', 401)
+
+    data = request.get_json(silent=True) or {}
+    ok, error = auth.change_password(
+        int(user['id']),
+        data.get('old_password', ''),
+        data.get('new_password', ''),
+    )
+    if error:
+        return error_response(error, 400)
+    # 令牌仍然有效（签名只依赖 uid/u），前端无需重新登录
+    return success_response({'ok': True})

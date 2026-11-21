@@ -5,6 +5,8 @@ export interface AuthUser {
   id: number
   username: string
   created_at?: string
+  is_active?: boolean
+  is_admin?: boolean
 }
 
 export interface AuthResult {
@@ -15,6 +17,7 @@ export interface AuthResult {
 export interface RegisterRequest {
   username: string
   password: string
+  confirm_password: string
   invite_code: string
 }
 
@@ -26,6 +29,11 @@ export interface LoginRequest {
 import { client } from './client'
 
 const API_BASE = '/auth'
+
+export interface ChangePasswordRequest {
+  old_password: string
+  new_password: string
+}
 
 export const authApi = {
   async register(data: RegisterRequest): Promise<AuthResult> {
@@ -45,5 +53,9 @@ export const authApi = {
 
   async logout(): Promise<void> {
     await client.post(`${API_BASE}/logout`)
+  },
+
+  async changePassword(data: ChangePasswordRequest): Promise<void> {
+    await client.post(`${API_BASE}/change-password`, data)
   },
 }

@@ -15,6 +15,7 @@ from app.routes.manim import manim_bp
 from app.routes.solver import solver_bp
 from app.routes.knowledge_graph import knowledge_graph_bp
 from app.routes.auth import auth_bp
+from app.routes.admin import admin_bp
 from app.utils.cleanup import cleanup_manim_temp_files, schedule_periodic_cleanup
 from app.utils.response import error_response
 
@@ -48,6 +49,7 @@ def create_app():
 
     # Register blueprints
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(calculus_bp, url_prefix='/api/calculus')
     app.register_blueprint(linear_algebra_bp, url_prefix='/api/linear-algebra')
     app.register_blueprint(probability_bp, url_prefix='/api/probability')

@@ -30,6 +30,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [inviteCode, setInviteCode] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -41,10 +42,15 @@ export default function AuthPage({ mode }: { mode: Mode }) {
     event.preventDefault()
     if (submitting) return
     setError('')
+    if (isRegister && password !== confirmPassword) {
+      setError('两次输入的密码不一致，请检查后重试')
+      setSubmitting(false)
+      return
+    }
     setSubmitting(true)
     try {
       const result = isRegister
-        ? await authApi.register({ username, password, invite_code: inviteCode.trim() })
+        ? await authApi.register({ username, password, confirm_password: confirmPassword, invite_code: inviteCode.trim() })
         : await authApi.login({ username, password })
       setAuth(result.token, result.user)
       navigate(next, { replace: true })
@@ -107,6 +113,21 @@ export default function AuthPage({ mode }: { mode: Mode }) {
                 disabled={submitting}
               />
             </label>
+
+            {isRegister && (
+              <label className="auth-field">
+                <span>确认密码</span>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="再输入一次密码"
+                  autoComplete="new-password"
+                  required
+                  disabled={submitting}
+                />
+              </label>
+            )}
 
             {isRegister && (
               <label className="auth-field">

@@ -89,6 +89,27 @@ cd /home/ubuntu/mathinsight
 
 每个邀请码仅能注册一个账号。账号数据保存在 SQLite 数据库，位于持久化卷 `/var/www/mathinsight/data/mathinsight.db`（**请务必保留并备份此目录**，删除会导致全部账号失效）。
 
+### 管理员账号与后台管理
+
+注册接口永远无法提权，首个管理员由服务器运维指定。用户先正常注册一个账号（例如 `adminuser`），然后在服务器上执行：
+
+```bash
+./backend/.venv/bin/python backend/manage_users.py list
+./backend/.venv/bin/python backend/manage_users.py promote adminuser
+# 如果忘记该账号密码：
+./backend/.venv/bin/python backend/manage_users.py reset-password adminuser
+```
+
+也可在 `backend/.env` 中配置 `ADMIN_USERNAMES=adminuser,anotheradmin`；服务启动时会将这些**已存在**的用户提升为管理员（只提升、不降级）。容器内对应命令为 `docker exec -w /app mathinsight-backend python manage_users.py promote <用户名>`。
+
+管理员登录后，右上角会出现「管理」入口（路径 `/mathinsight/admin`），可以：
+
+- 查看/搜索全部用户（含已停用账号），按角色与状态筛选展示
+- 启用或停用账号、设置或取消管理员、删除用户
+- 查看邀请码使用情况、生成新邀请码、作废未使用的邀请码
+
+安全规则：不能停用、降级或删除自己的账号；系统会拒绝移除最后一名启用中的管理员。删除用户时，其使用过的邀请码会保留“已使用”痕迹，不会被重新利用。已有数据库在下次启动或执行管理脚本时会自动补齐新字段，无需手工改表。
+
 ## 第三步：执行部署脚本
 
 ```bash

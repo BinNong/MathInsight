@@ -51,6 +51,41 @@
   transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
 }
 
+.user-badge-password {
+  padding: 4px 9px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-3);
+  font-family: var(--font-serif);
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease, background 150ms ease;
+}
+
+.user-badge-password:hover {
+  border-color: var(--primary);
+  background: var(--primary-subtle);
+  color: var(--primary);
+}
+
+.user-badge-admin {
+  padding: 4px 9px;
+  border: 1px solid var(--primary);
+  border-radius: 3px;
+  background: var(--primary-subtle);
+  color: var(--primary);
+  font-family: var(--font-serif);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 150ms ease;
+}
+
+.user-badge-admin:hover {
+  background: var(--primary-light);
+}
+
 .user-badge-logout:hover:not(:disabled) {
   border-color: var(--primary);
   background: var(--primary-light);

@@ -77,6 +77,41 @@ npm run dev
 
 前端服务运行在 http://localhost:5173
 
+### 5. 账号与首个管理员
+
+站点启用全站鉴权：**未登录无法使用任何功能**，注册必须提供有效邀请码。
+
+```bash
+# 生成邀请码（本地或服务器，进入项目根目录）
+cd backend
+.venv/bin/python manage_invites.py create 5 --note "第一批用户"
+.venv/bin/python manage_invites.py list
+
+# 用户拿邀请码访问 /register 自助填写用户名、密码、确认密码完成注册
+# 将某个已注册用户设为管理员（首个管理员只能由运维指定，注册接口无法提权）
+.venv/bin/python manage_users.py promote <用户名>
+.venv/bin/python manage_users.py list
+.venv/bin/python manage_users.py reset-password <用户名>   # 交互式输入新密码
+```
+
+也可在 `.env` 中配置 `ADMIN_USERNAMES=用户名1,用户名2`，服务启动时将这些**已存在**的用户提升为管理员（只提升、不降级）。
+
+账号数据保存在 SQLite 单文件 `backend/data/mathinsight.db`，密钥在 `backend/data/secret_key`（或由 `SECRET_KEY` 环境变量覆盖）。生产环境部署时这两个文件位于持久化卷中，**务必备份，删除会导致全部账号失效**。
+
+## 账号体系与后台管理
+
+| 能力 | 说明 |
+|------|------|
+| 邀请码注册 | 用户自助设置用户名/密码，需一次性有效邀请码；确认密码两次一致才允许注册 |
+| 登录鉴权 | 签名令牌（httpOnly Cookie + Bearer），默认有效期 30 天；除健康检查和登录/注册外所有 API 均需登录 |
+| 自助改密码 | 右上角「改密」，需验证当前密码，新密码两次一致 |
+| 管理员后台 | 右上角「管理」→ `/admin`：查看/搜索用户、启停账号、升降角色、重置密码、删除用户、生成/作废邀请码 |
+| 忘记密码 | 用户找管理员在后台「重置密码」，或运维用 `manage_users.py reset-password` |
+
+安全约束：不能停用/降级/删除自己的账号；系统拒绝移除最后一名启用中的管理员；删除用户时其邀请码保留「已使用」痕迹、不会被重新利用；所有管理接口均在服务端二次校验管理员权限，隐藏前端入口不等于放弃鉴权。
+
+已有数据库在启动时自动补齐新增字段（`is_admin`、`used_by_username`），无需手工改表。
+
 ## 功能模块
 
 | 模块 | 功能 | 状态 |
@@ -96,6 +131,8 @@ npm run dev
 | **学习工作台** | 全模块搜索、分类筛选、收藏、最近学习与继续学习，本机保存记录 | ✅ 已完成 |
 | **3D 数学世界** | 第一人称探索数学群岛、梯度地形与矩阵装置，联通交互实验 | ✅ 已完成 |
 | **2D 数学小镇** | 导师修炼、战斗答题、掌握度手札、秘境波次试炼与触控操作 | ✅ 已完成 |
+| **账号与邀请码注册** | 全站登录鉴权、一次性邀请码、自助改密、用户名/密码校验 | ✅ 已完成 |
+| **管理员后台** | 用户搜索/启停/升降角色/重置密码/删除、邀请码生成与作废、概览统计 | ✅ 已完成 |
 
 ## 技术栈
 
@@ -121,6 +158,11 @@ npm run build
 # 桌面端与移动端端到端测试（首次需安装 Chromium）
 npx playwright install chromium
 npm run e2e
+
+# E2E 全局登录态使用 demo_user / Testpass123（本地开发库）
+# 若你的环境账号不同，可用环境变量覆盖：
+E2E_USERNAME=myuser E2E_PASSWORD=mypass npm run e2e
+# 注意：e2e 依赖本地后端已启动且该账号已注册（见「账号与首个管理员」）
 
 # 仅运行移动端
 npx playwright test --project=chromium-mobile

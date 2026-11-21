@@ -7,8 +7,10 @@ import UserBadge from './components/UserBadge'
 import { getModuleByPath, getSubjectById } from './data/subjects'
 import { useLearningProgress } from './hooks/useLearningProgress'
 import { useAuthStore } from './stores/authStore'
+import { authApi } from './services/api'
 
 const AuthPage = lazy(() => import('./pages/AuthPage'))
+const AdminPage = lazy(() => import('./pages/AdminPage'))
 
 const Home = lazy(() => import('./pages/Home'))
 const SubjectPage = lazy(() => import('./pages/SubjectPage'))
@@ -48,7 +50,9 @@ function RouteEffects() {
           ? '登录'
           : pathname === '/register'
             ? '注册'
-            : (learningModule?.topicName ?? learningModule?.name ?? subject?.name ?? '页面未找到')
+            : pathname === '/admin'
+              ? '管理后台'
+              : (learningModule?.topicName ?? learningModule?.name ?? subject?.name ?? '页面未找到')
     document.title = `${title} | MathInsight`
   }, [pathname, learningModule])
 
@@ -68,8 +72,29 @@ function RequireAuth({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
+function RequireAdmin({ children }: { children: ReactNode }) {
+  const user = useAuthStore((s) => s.user)
+  const location = useLocation()
+  if (!user?.is_admin) {
+    return <Navigate to={`/?next=${encodeURIComponent(location.pathname)}`} replace />
+  }
+  return <>{children}</>
+}
+
 function AppRoutes() {
   const location = useLocation()
+  const token = useAuthStore((s) => s.token)
+  const setUser = useAuthStore((s) => s.setUser)
+
+  // 以服务端为准刷新登录态，避免本地缓存的角色信息过期
+  useEffect(() => {
+    if (!token) return
+    let cancelled = false
+    authApi.me()
+      .then((user) => { if (!cancelled) setUser(user) })
+      .catch(() => { /* 拦截器已处理失效登录态 */ })
+    return () => { cancelled = true }
+  }, [token, setUser])
 
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register'
 
@@ -104,6 +129,7 @@ function AppRoutes() {
               <Route path="/manim" element={<ManimAnimation />} />
               <Route path="/solver" element={<MathSolver />} />
               <Route path="/knowledge-map" element={<KnowledgeMap />} />
+              <Route path="/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
               <Route path="/world" element={<WorldPage />} />
               <Route path="/world-2d" element={<World2DPage />} />
               <Route
