@@ -749,6 +749,7 @@ function Home() {
           <div className="home-nav-links">
             <a href="#subjects">学科路径</a>
             <a href="#learning-modules">全部模块</a>
+            <Link to="/hotspots">数说热点</Link>
           </div>
           <span className="home-local-label">
             <span aria-hidden="true" /> 学习进度已云端同步
@@ -784,6 +785,9 @@ function Home() {
                   从微积分开始
                 </Link>
               )}
+              <Link to="/hotspots" className="home-secondary-action">
+                数说热点 · 新闻里的数学 <span aria-hidden="true">↗</span>
+              </Link>
             </div>
             <div className="home-hero-note">
               <span>{experimentCount} 个交互实验</span>

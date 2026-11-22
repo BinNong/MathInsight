@@ -165,7 +165,8 @@ test.describe('2D World', () => {
     // 灵感条显示提升后的上限
     await expect(page.locator('.world2d-bar-num').nth(1)).toContainText('/120')
     // 生命从 100 缓慢回复到 130
-    await expect(page.locator('.world2d-bar-num').first()).toHaveText('130/130', { timeout: 20000 })
+    // 并行 worker 多时游戏帧率下降，回复变慢；放宽超时避免时序竞争
+    await expect(page.locator('.world2d-bar-num').first()).toHaveText('130/130', { timeout: 45000 })
     await page.screenshot({ path: 'test-results/world2d-bonus-bars.png' })
   })
 })

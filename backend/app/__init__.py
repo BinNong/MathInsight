@@ -15,6 +15,7 @@ from app.routes.vector_field import vector_field_bp
 from app.routes.manim import manim_bp
 from app.routes.solver import solver_bp
 from app.routes.knowledge_graph import knowledge_graph_bp
+from app.routes.hotspots import hotspots_bp
 from app.routes.auth import auth_bp
 from app.routes.admin import admin_bp
 from app.utils.cleanup import cleanup_manim_temp_files, schedule_periodic_cleanup
@@ -60,6 +61,7 @@ def create_app():
     app.register_blueprint(manim_bp, url_prefix='/api/manim')
     app.register_blueprint(solver_bp, url_prefix='/api/solver')
     app.register_blueprint(knowledge_graph_bp, url_prefix='/api/knowledge-graph')
+    app.register_blueprint(hotspots_bp, url_prefix='/api/hotspots')
 
     # 提供视频与字幕文件下载服务
     @app.route('/downloads/<path:filename>')

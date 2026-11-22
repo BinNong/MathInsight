@@ -38,6 +38,8 @@ const HypothesisTesting = lazy(() => import('./pages/HypothesisTesting'))
 const ManimAnimation = lazy(() => import('./pages/ManimAnimation'))
 const MathSolver = lazy(() => import('./pages/MathSolver'))
 const KnowledgeMap = lazy(() => import('./pages/KnowledgeMap'))
+const Hotspots = lazy(() => import('./pages/Hotspots'))
+const HotspotDetail = lazy(() => import('./pages/HotspotDetail'))
 const WorldPage = lazy(() => import('./world/WorldPage'))
 const World2DPage = lazy(() => import('./world2d/World2DPage'))
 
@@ -159,6 +161,8 @@ function AppRoutes() {
               <Route path="/manim" element={<ManimAnimation />} />
               <Route path="/solver" element={<MathSolver />} />
               <Route path="/knowledge-map" element={<KnowledgeMap />} />
+              <Route path="/hotspots" element={<Hotspots />} />
+              <Route path="/hotspots/:id" element={<HotspotDetail />} />
               <Route path="/practice" element={<PracticePage />} />
               <Route path="/admin" element={<RequireAdmin><AdminPage /></RequireAdmin>} />
               <Route path="/world" element={<WorldPage />} />
