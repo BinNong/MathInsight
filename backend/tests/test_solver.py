@@ -177,7 +177,8 @@ class TestSolverService:
         """题库未覆盖的主题不会返回题库题（LLM 现编路径由 mock 测试覆盖）"""
         service = MathSolverService(api_key='test')
         with patch.object(service, '_call_llm', return_value=json.dumps({'problems': []})):
-            assert service.generate_similar('求特征值', 'eigenvalue', count=2) == []
+            # differential-equation 不在题库映射内，走 LLM 路径
+            assert service.generate_similar('解微分方程', 'differential-equation', count=2) == []
 
 
 class TestSolutionVerification:

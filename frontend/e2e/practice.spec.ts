@@ -14,9 +14,12 @@ test.describe('题库练习与学生模型', () => {
         await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, data: {} }) })
       }
     })
-    // 清空 2D 小镇掌握度，保证每项测试从零开始
+    // 清空掌握度与复习计划，保证每项测试从零开始
     await page.goto('/mathinsight/')
-    await page.evaluate(() => localStorage.removeItem('mathinsight-calc-mastery'))
+    await page.evaluate(() => {
+      localStorage.removeItem('mathinsight-calc-mastery')
+      localStorage.removeItem('mathinsight-review')
+    })
     await page.reload()
   })
 

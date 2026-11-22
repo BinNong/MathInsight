@@ -33,6 +33,7 @@ const API_BASE = '/auth'
 export interface CloudProgress {
   mastery: string
   progress: string
+  review?: string
   updated_at?: string
 }
 
@@ -70,8 +71,8 @@ export const authApi = {
     return response.data.data
   },
 
-  async saveProgress(mastery: string, progress: string): Promise<CloudProgress> {
-    const response = await client.put(`${API_BASE}/progress`, { mastery, progress })
+  async saveProgress(mastery: string, progress: string, review = '{}'): Promise<CloudProgress> {
+    const response = await client.put(`${API_BASE}/progress`, { mastery, progress, review })
     return response.data.data
   },
 }

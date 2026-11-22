@@ -115,6 +115,7 @@ def init_db() -> None:
                 user_id     INTEGER PRIMARY KEY,
                 mastery     TEXT NOT NULL DEFAULT '{}',
                 progress    TEXT NOT NULL DEFAULT '{}',
+                review      TEXT NOT NULL DEFAULT '{}',
                 updated_at  TEXT NOT NULL,
                 FOREIGN KEY (user_id) REFERENCES users(id)
             );
@@ -135,6 +136,9 @@ def _migrate_schema(conn: sqlite3.Connection) -> None:
     """为旧版本数据库补齐新增字段，不破坏既有账号与邀请码"""
     if not _column_exists(conn, 'users', 'is_admin'):
         conn.execute('ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0')
+
+    if not _column_exists(conn, 'user_progress', 'review'):
+        conn.execute("ALTER TABLE user_progress ADD COLUMN review TEXT NOT NULL DEFAULT '{}'")
 
     if not _column_exists(conn, 'invite_codes', 'used_by_username'):
         conn.execute('ALTER TABLE invite_codes ADD COLUMN used_by_username TEXT')
@@ -765,7 +769,7 @@ def get_user_progress(user_id: int) -> dict | None:
     """读取用户云端进度；无记录返回 None"""
     conn = get_db()
     row = conn.execute(
-        'SELECT mastery, progress, updated_at FROM user_progress WHERE user_id = ?',
+        'SELECT mastery, progress, review, updated_at FROM user_progress WHERE user_id = ?',
         (user_id,),
     ).fetchone()
     if row is None:
@@ -773,24 +777,26 @@ def get_user_progress(user_id: int) -> dict | None:
     return {
         'mastery': row['mastery'],
         'progress': row['progress'],
+        'review': row['review'] if 'review' in row.keys() else '{}',
         'updated_at': row['updated_at'],
     }
 
 
-def save_user_progress(user_id: int, mastery: str, progress: str) -> dict:
+def save_user_progress(user_id: int, mastery: str, progress: str, review: str = '{}') -> dict:
     """写入（upsert）用户云端进度，返回最新记录。mastery/progress 为 JSON 字符串。"""
     now = datetime.now(timezone.utc).isoformat()
     conn = get_db()
     conn.execute(
         """
-        INSERT INTO user_progress (user_id, mastery, progress, updated_at)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO user_progress (user_id, mastery, progress, review, updated_at)
+        VALUES (?, ?, ?, ?, ?)
         ON CONFLICT(user_id) DO UPDATE SET
             mastery = excluded.mastery,
             progress = excluded.progress,
+            review = excluded.review,
             updated_at = excluded.updated_at
         """,
-        (user_id, mastery, progress, now),
+        (user_id, mastery, progress, review, now),
     )
     conn.commit()
-    return {'mastery': mastery, 'progress': progress, 'updated_at': now}
+    return {'mastery': mastery, 'progress': progress, 'review': review, 'updated_at': now}

@@ -7,6 +7,7 @@
  */
 import { useAuthStore } from '../stores/authStore'
 import { useMasteryStore } from '../world2d/store'
+import { useReviewStore, type ReviewEntry } from '../stores/reviewStore'
 import { authApi, CloudProgress } from './api/auth'
 import {
   getLearningProgress,
@@ -79,13 +80,14 @@ function safeParse<T>(raw: string | undefined | null): T | null {
   }
 }
 
-function snapshotPayload(): { mastery: string; progress: string } | null {
+function snapshotPayload(): { mastery: string; progress: string; review: string } | null {
   const localMastery = readLocalMastery()
   if (!localMastery) return null
   // Zustand persist 把 state 包在 {state, version} 里
   const mastery = JSON.stringify({ state: localMastery, version: 0 })
   const progress = JSON.stringify(getLearningProgress())
-  return { mastery, progress }
+  const review = JSON.stringify(useReviewStore.getState().entries)
+  return { mastery, progress, review }
 }
 
 /** 防抖上报当前本地数据；force 用于拉取合并后跳过 pulling 守卫 */
@@ -97,7 +99,7 @@ export function schedulePush(force = false) {
     const payload = snapshotPayload()
     if (!payload || !useAuthStore.getState().token) return
     try {
-      await authApi.saveProgress(payload.mastery, payload.progress)
+      await authApi.saveProgress(payload.mastery, payload.progress, payload.review)
     } catch {
       // 离线/失败：保留本地，下次登录或变更会重试
     }
@@ -133,6 +135,19 @@ export async function pullAndMerge(): Promise<void> {
           .slice(0, 6),
       }
       importLearningProgress(mergedProgress)
+    }
+    // 复习计划合并：同一题取复习次数更多、到期更晚的（保留更落后的计划不丢）
+    const remoteReview = safeParse<Record<string, ReviewEntry>>(cloud.review ?? null)
+    if (remoteReview) {
+      const localReview = useReviewStore.getState().entries
+      const mergedReview: Record<string, ReviewEntry> = { ...localReview }
+      Object.entries(remoteReview).forEach(([id, remote]) => {
+        const local = mergedReview[id]
+        if (!local || remote.correct + remote.wrong > local.correct + local.wrong) {
+          mergedReview[id] = remote
+        }
+      })
+      useReviewStore.setState({ entries: mergedReview })
     }
     // 合并结果再次上报，保证服务端拿到最新全量
     schedulePush(true)

@@ -93,17 +93,21 @@ def put_progress():
     data = request.get_json(silent=True) or {}
     mastery = data.get('mastery')
     progress = data.get('progress')
-    if not isinstance(mastery, str) or not isinstance(progress, str):
+    review = data.get('review', '{}')
+    if not isinstance(mastery, str) or not isinstance(progress, str) or not isinstance(review, str):
         return error_response('mastery 与 progress 必须为 JSON 字符串')
-    if len(mastery) > auth.MAX_PROGRESS_JSON_LENGTH or len(progress) > auth.MAX_PROGRESS_JSON_LENGTH:
+    if (len(mastery) > auth.MAX_PROGRESS_JSON_LENGTH or
+            len(progress) > auth.MAX_PROGRESS_JSON_LENGTH or
+            len(review) > auth.MAX_PROGRESS_JSON_LENGTH):
         return error_response('进度数据过大')
     try:
         json.loads(mastery)
         json.loads(progress)
+        json.loads(review)
     except (ValueError, TypeError):
         return error_response('进度数据不是合法 JSON')
 
-    record = auth.save_user_progress(user['id'], mastery, progress)
+    record = auth.save_user_progress(user['id'], mastery, progress, review)
     return success_response(record)
 
 

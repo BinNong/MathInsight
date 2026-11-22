@@ -9,6 +9,7 @@ import { useLearningProgress } from './hooks/useLearningProgress'
 import { useAuthStore } from './stores/authStore'
 import { pullAndMerge, schedulePush } from './services/progressSync'
 import { useMasteryStore } from './world2d/store'
+import { useReviewStore } from './stores/reviewStore'
 import { authApi } from './services/api'
 
 const AuthPage = lazy(() => import('./pages/AuthPage'))
@@ -109,10 +110,12 @@ function AppRoutes() {
     if (!token) return
     pullAndMerge().catch(() => {})
     const unsub = useMasteryStore.subscribe(() => schedulePush())
+    const unsubReview = useReviewStore.subscribe(() => schedulePush())
     const onProgressChanged = () => schedulePush()
     window.addEventListener('mathinsight:progress-changed', onProgressChanged)
     return () => {
       unsub()
+      unsubReview()
       window.removeEventListener('mathinsight:progress-changed', onProgressChanged)
     }
   }, [token])

@@ -17,6 +17,13 @@ export const TOPIC_CONCEPTS: Record<string, string[]> = {
   'integral-indef': ['indefinite-integral', 'integration-techniques'],
   'integral-def': ['definite-integral', 'fundamental-theorem', 'riemann-sum', 'numerical-integration', 'improper-integral'],
   series: ['series', 'power-series', 'taylor'],
+  'matrix-basics': ['matrices', 'determinants', 'linear-systems'],
+  'linear-systems': ['linear-systems', 'vector-spaces', 'matrices'],
+  eigenvalues: ['eigenvalues', 'eigenvectors', 'quadratic-forms'],
+  'probability-basics': ['probability-basics', 'random-variables'],
+  distributions: ['distributions', 'expectation-variance'],
+  'central-limit': ['central-limit-theorem', 'law-of-large-numbers'],
+  'hypothesis-testing': ['hypothesis-testing', 'parameter-estimation'],
 }
 
 /** 知识图谱概念 id → 题库主题（反向索引，自动构建） */
@@ -40,6 +47,13 @@ export const TOPIC_ROUTES: Record<string, string> = {
   'integral-indef': '/integration',
   'integral-def': '/integration',
   series: '/taylor',
+  'matrix-basics': '/matrix',
+  'linear-systems': '/matrix',
+  eigenvalues: '/eigenvalues',
+  'probability-basics': '/probability',
+  distributions: '/distributions',
+  'central-limit': '/clt',
+  'hypothesis-testing': '/hypothesis-test',
 }
 
 export interface ConceptMastery {

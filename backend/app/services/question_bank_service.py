@@ -15,6 +15,12 @@ SOLVER_TOPIC_TO_QUIZ = {
     'integral': ['integral-indef', 'integral-def'],
     'taylor': ['series'],
     'series': ['series'],
+    'matrix': ['matrix-basics'],
+    'linear-system': ['linear-systems'],
+    'eigenvalue': ['eigenvalues'],
+    'probability': ['probability-basics'],
+    'distribution': ['distributions'],
+    'hypothesis-test': ['hypothesis-testing'],
 }
 
 

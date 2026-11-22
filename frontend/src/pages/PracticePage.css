@@ -352,3 +352,61 @@
   .practice-layout { grid-template-columns: 1fr; }
   .practice-page { padding: var(--space-8) var(--space-4); }
 }
+
+/* 练习 / 复习模式切换 */
+.practice-mode-switch {
+  display: inline-flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-5);
+  padding: var(--space-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.practice-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--ink-3);
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.practice-mode-btn.active {
+  background: var(--primary);
+  color: #fffaf0;
+}
+
+.practice-mode-badge {
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--warning, #f59e0b);
+  color: #1a1a1a;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.practice-review-hint {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--primary);
+  background: var(--primary-subtle);
+  color: var(--ink-2);
+  font-family: var(--font-serif);
+  font-size: 0.84rem;
+  line-height: 1.7;
+}
+
+.practice-next-due {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-faint);
+  font-size: 0.78rem;
+}
