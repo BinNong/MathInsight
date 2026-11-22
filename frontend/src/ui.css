@@ -317,3 +317,29 @@
     transform: none;
   }
 }
+
+/* =====================================================
+   固定用户徽标与页面头部共存
+   ===================================================== */
+
+/* 桌面端为右上角固定徽标预留空间，避免遮挡标题和快捷入口 */
+@media (min-width: 961px) {
+  .detail-header,
+  .knowledge-map-header {
+    padding-right: 300px;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 960px) {
+  .detail-header,
+  .knowledge-map-header {
+    padding-right: 160px;
+  }
+}
+
+/* 小屏页头只保留返回与标题，面包屑让位给固定徽标 */
+@media (max-width: 640px) {
+  .detail-header .breadcrumb {
+    display: none;
+  }
+}

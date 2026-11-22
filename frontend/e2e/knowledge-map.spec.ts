@@ -114,7 +114,7 @@ test.describe('知识学习地图', () => {
   test('从首页导航到知识地图', async ({ page }) => {
     await page.goto('/mathinsight/')
 
-    const mapLink = page.locator('a[href="/mathinsight/knowledge-map"]')
+    const mapLink = page.locator('a.knowledge-map-cta')
     await expect(mapLink).toContainText('知识学习地图')
     await mapLink.click()
 

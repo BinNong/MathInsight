@@ -5,8 +5,9 @@
  * 知识图谱与主站页面完全看不到。这里定义主题↔概念映射与聚合查询，
  * 让同一份掌握度数据驱动知识图谱着色、首页诊断与题库练习。
  */
-import { TOPICS, type TopicDef } from '../world2d/data/questions'
+import { QUESTION_BANK, TOPICS, type BankQuestion, type TopicDef } from '../world2d/data/questions'
 import { masteryLevel, useMasteryStore, type TopicProgress } from '../world2d/store'
+import type { ReviewEntry } from '../stores/reviewStore'
 
 /** 题库主题 → 知识图谱概念 id */
 export const TOPIC_CONCEPTS: Record<string, string[]> = {
@@ -130,6 +131,28 @@ export function weakTopics(topics: Record<string, TopicProgress>, limit = 3): We
 
 /** 掌握度等级对应的展示色（纸墨风格：暖灰→赭→青→深绿） */
 export const MASTERY_COLORS = ['#b4b2a9', '#ba7517', '#1d9e75', '#0f6e56'] as const
+
+export interface ReviewItem {
+  q: BankQuestion
+  topicId: string
+}
+
+/**
+ * 今日复习队列：错题 + 已作答且到期的题。
+ *
+ * 未作答过的新题不算复习，避免新用户一进复习模式就看到整套题库。
+ */
+export function dueReviewItems(
+  topics: Record<string, TopicProgress>,
+  entries: Record<string, ReviewEntry>,
+  now = Date.now()
+): ReviewItem[] {
+  return QUESTION_BANK.map((q) => ({ q, topicId: q.topic })).filter(({ q, topicId }) => {
+    if ((topics[topicId]?.wrong ?? []).includes(q.id)) return true
+    const entry = entries[q.id]
+    return Boolean(entry) && (entry.streak === 0 || entry.dueAt <= now)
+  })
+}
 
 /** 订阅掌握度 topics（供主站组件使用） */
 export function useMasteryTopics(): Record<string, TopicProgress> {

@@ -177,7 +177,7 @@ export default function AuthPage({ mode }: { mode: Mode }) {
         <p className="auth-footer-note">
           <em>Mathematics, the queen of the sciences.</em>
           <br />
-          本站点仅限受邀用户使用 · 学习进度保存在本机
+          本站点仅限受邀用户使用 · 学习进度随账号云端同步
         </p>
       </main>
     </div>

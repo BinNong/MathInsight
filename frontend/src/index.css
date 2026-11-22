@@ -2286,7 +2286,7 @@ input[type='range'] {
 
 @media (max-width: 960px) {
   .visualization-workspace {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto auto auto;
     height: auto;
     overflow: visible;
@@ -2299,8 +2299,38 @@ input[type='range'] {
     max-height: none;
   }
 
+  /* 单列布局下重置 1280px 断点的跨行/跨列占位，
+     否则控制面板会占满所有行并把图表挤到隐式列里（宽度塌缩为 0） */
+  .workspace-controls {
+    grid-row: auto;
+  }
+
+  .workspace-info {
+    grid-column: auto;
+  }
+
+  /* 移动端先看到图表，再向下调整参数，避免进入页面先面对一长列输入框 */
+  .workspace-visualization {
+    order: -1;
+  }
+
+  .workspace-controls {
+    order: 1;
+  }
+
+  .workspace-info {
+    order: 2;
+  }
+
   .workspace-visualization {
     height: 520px;
+  }
+}
+
+/* 小屏隐藏 Plotly 悬浮工具栏，避免压住图表标题；导出按钮仍保留 */
+@media (max-width: 760px) {
+  .js-plotly-plot .modebar-container {
+    display: none !important;
   }
 }
 

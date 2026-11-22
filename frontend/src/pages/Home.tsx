@@ -12,8 +12,17 @@ import {
   type SubjectId,
 } from '../data/subjects'
 import { useLearningProgress } from '../hooks/useLearningProgress'
-import { weakTopics, useMasteryTopics } from '../services/learning'
+import { dueReviewItems, weakTopics, useMasteryTopics, type WeakTopic } from '../services/learning'
 import { MASTERY_LABEL } from '../world2d/store'
+import { useAuthStore } from '../stores/authStore'
+import { useReviewStore } from '../stores/reviewStore'
+import {
+  studyStreak,
+  todayAnswered,
+  useStudyLogStore,
+  weekAnswered,
+  WEEKLY_GOAL,
+} from '../stores/studyLogStore'
 import './Home.css'
 
 type ModuleFilter = 'all' | ModuleCategory | SubjectId
@@ -458,6 +467,198 @@ function useScrollReveal() {
   return rootRef
 }
 
+function greetingForHour(hour: number): string {
+  if (hour < 6) return '夜深了'
+  if (hour < 12) return '早上好'
+  if (hour < 18) return '下午好'
+  return '晚上好'
+}
+
+interface TodayAction {
+  index: string
+  label: string
+  value: string
+  detail: string
+  to: string
+  cta: string
+}
+
+interface TodaySectionProps {
+  weak: WeakTopic[]
+  latestModule?: LearningModule
+  dueCount: number
+  hasAnswered: boolean
+}
+
+/** 今日学习：把复习、薄弱点、上次进度与本周目标收拢成一条可执行路径 */
+function TodaySection({ weak, latestModule, dueCount, hasAnswered }: TodaySectionProps) {
+  const user = useAuthStore((s) => s.user)
+  const days = useStudyLogStore((s) => s.days)
+
+  const today = todayAnswered(days)
+  const week = weekAnswered(days)
+  const streak = studyStreak(days)
+  const weekPct = Math.min(100, Math.round((week / WEEKLY_GOAL) * 100))
+
+  const now = new Date()
+  const greeting = greetingForHour(now.getHours())
+  const dateLabel = now.toLocaleDateString('zh-CN', {
+    month: 'long',
+    day: 'numeric',
+    weekday: 'long',
+  })
+
+  let status = '从一次拖动开始，建立你的第一个数学直觉。'
+  if (dueCount > 0) {
+    status = `有 ${dueCount} 道题到了复习时间，先花几分钟把它们捡回来。`
+  } else if (weak.length > 0) {
+    status = `复习已清空，接下来补一补「${weak[0].topic.name}」。`
+  } else if (today > 0) {
+    status = `今天已经练了 ${today} 题，保持这个节奏。`
+  } else if (latestModule) {
+    status = `上次停在「${latestModule.name}」，今天接着往下看。`
+  }
+
+  const actions: TodayAction[] =
+    dueCount > 0
+      ? [
+          {
+            index: '01',
+            label: '到期复习',
+            value: `${dueCount} 道`,
+            detail: '按遗忘曲线，今天该回看这些题',
+            to: '/practice?mode=review',
+            cta: '开始复习',
+          },
+        ]
+      : hasAnswered
+        ? [
+            {
+              index: '01',
+              label: '今日练习',
+              value: '已清空',
+              detail: '没有到期题，做几道新题保持手感',
+              to: '/practice',
+              cta: '做几道新题',
+            },
+          ]
+        : [
+            {
+              index: '01',
+              label: '第一题',
+              value: '5 分钟',
+              detail: '用一道极限题，建立你的学习起点',
+              to: '/practice?topic=limit-calc',
+              cta: '开始练习',
+            },
+          ]
+
+  actions.push(
+    weak.length > 0
+      ? {
+          index: '02',
+          label: '薄弱知识点',
+          value: `${weak.length} 个`,
+          detail: `${weak[0].topic.name} · 正确率 ${Math.round(weak[0].mastery.accuracy * 100)}%`,
+          to: `/practice?topic=${weak[0].topic.id}`,
+          cta: '针对性练习',
+        }
+      : {
+          index: '02',
+          label: '核心实验',
+          value: 'ε-δ',
+          detail: '拖动 ε 与 δ，看见极限如何被夹住',
+          to: '/limit',
+          cta: '打开实验',
+        }
+  )
+
+  actions.push(
+    latestModule
+      ? {
+          index: '03',
+          label: '继续上次',
+          value: latestModule.name,
+          detail: latestModule.description,
+          to: latestModule.path,
+          cta: '接着探索',
+        }
+      : {
+          index: '03',
+          label: '知识地图',
+          value: '全部概念',
+          detail: '看清概念之间的前置关系与掌握度',
+          to: '/knowledge-map',
+          cta: '查看图谱',
+        }
+  )
+
+  return (
+    <section className="today-section reveal" aria-labelledby="today-title">
+      <div className="today-head">
+        <div>
+          <p className="today-eyebrow">
+            § 00 — 今日学习 <span aria-hidden="true">/</span> {dateLabel}
+          </p>
+          <h2 className="today-title" id="today-title">
+            {greeting}，{user?.username ?? '同学'}
+          </h2>
+          <p className="today-status">{status}</p>
+        </div>
+        <div className="today-streak" title="连续学习天数">
+          <span className="today-streak-num">{streak > 0 ? streak : '新'}</span>
+          <span className="today-streak-label">
+            {streak > 0 ? '天' : '今天'}
+            <br />
+            {streak > 0 ? '连续学习' : '开始记录'}
+          </span>
+        </div>
+      </div>
+
+      <div className="today-actions">
+        {actions.map((action, i) => (
+          <Link
+            key={action.index}
+            to={action.to}
+            className={`today-card${i === 0 ? ' today-card--primary' : ''}`}
+          >
+            <span className="today-card-index">{action.index}</span>
+            <span className="today-card-label">{action.label}</span>
+            <strong className="today-card-value">{action.value}</strong>
+            <p className="today-card-detail">{action.detail}</p>
+            <span className="today-card-cta">
+              {action.cta} <span aria-hidden="true">→</span>
+            </span>
+          </Link>
+        ))}
+      </div>
+
+      <div className="today-goal">
+        <div className="today-goal-head">
+          <span>本周目标</span>
+          <strong>
+            {week}
+            <small> / {WEEKLY_GOAL} 题</small>
+          </strong>
+        </div>
+        <div
+          className="today-goal-bar"
+          role="progressbar"
+          aria-valuemin={0}
+          aria-valuemax={WEEKLY_GOAL}
+          aria-valuenow={Math.min(week, WEEKLY_GOAL)}
+          aria-label="本周练习进度"
+        >
+          <span style={{ width: `${weekPct}%` }} />
+        </div>
+        <p className="today-goal-note">
+          今天已练 {today} 题{week >= WEEKLY_GOAL ? ' · 本周目标已达成' : ''}
+        </p>
+      </div>
+    </section>
+  )
+}
+
 function Home() {
   const rootRef = useScrollReveal()
   const [query, setQuery] = useState('')
@@ -465,7 +666,17 @@ function Home() {
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const { recent, favorites, toggleFavorite, clearProgress } = useLearningProgress()
   const masteryTopics = useMasteryTopics()
+  const reviewEntries = useReviewStore((s) => s.entries)
   const weak = useMemo(() => weakTopics(masteryTopics, 3), [masteryTopics])
+  const dueCount = useMemo(
+    () => dueReviewItems(masteryTopics, reviewEntries).length,
+    [masteryTopics, reviewEntries]
+  )
+  const hasAnswered = useMemo(
+    () => Object.values(masteryTopics).some((topic) => topic.answered > 0),
+    [masteryTopics]
+  )
+  const experimentCount = LEARNING_MODULES.filter((m) => m.category === 'experiment').length
 
   const favoriteSet = useMemo(() => new Set(favorites), [favorites])
   const recentModules = useMemo(
@@ -540,7 +751,7 @@ function Home() {
             <a href="#learning-modules">全部模块</a>
           </div>
           <span className="home-local-label">
-            <span aria-hidden="true" /> 学习记录保存在本机
+            <span aria-hidden="true" /> 学习进度已云端同步
           </span>
         </nav>
 
@@ -555,9 +766,15 @@ function Home() {
               从一次拖动、一个参数开始，让抽象的公式成为眼前可探索的数学世界。
             </p>
             <div className="home-hero-actions">
-              <a href="#learning-modules" className="home-primary-action">
-                开始探索 <span aria-hidden="true">→</span>
-              </a>
+              {dueCount > 0 ? (
+                <Link to="/practice?mode=review" className="home-primary-action">
+                  开始今日复习（{dueCount}） <span aria-hidden="true">→</span>
+                </Link>
+              ) : (
+                <a href="#learning-modules" className="home-primary-action">
+                  开始探索 <span aria-hidden="true">→</span>
+                </a>
+              )}
               {latestModule ? (
                 <a href="#continue-learning" className="home-secondary-action">
                   继续最近学习
@@ -569,9 +786,9 @@ function Home() {
               )}
             </div>
             <div className="home-hero-note">
-              <span>13 个交互实验</span>
+              <span>{experimentCount} 个交互实验</span>
               <span aria-hidden="true">·</span>
-              <span>学习进度本机留存，随时继续</span>
+              <span>云端同步学习进度，随时继续</span>
             </div>
           </div>
 
@@ -598,14 +815,21 @@ function Home() {
           </figure>
         </header>
 
+        <TodaySection
+          weak={weak}
+          latestModule={latestModule}
+          dueCount={dueCount}
+          hasAnswered={hasAnswered}
+        />
+
         <dl className="home-stats reveal" aria-label="学习内容概览">
           <div>
             <dt>学科方向</dt>
-            <CountUp value={3} />
+            <CountUp value={SUBJECTS.length} />
           </div>
           <div>
             <dt>交互实验</dt>
-            <CountUp value={LEARNING_MODULES.filter((m) => m.category === 'experiment').length} />
+            <CountUp value={experimentCount} />
           </div>
           <div>
             <dt>学习模块</dt>
@@ -690,7 +914,7 @@ function Home() {
             <SectionHeading
               eyebrow="§ 02 — 学习连续性"
               title="继续学习"
-              description="最近打开与收藏的模块会保存在当前浏览器，下次可以接着探索。"
+              description="最近打开与收藏的模块会自动同步到账号，换设备也能接着探索。"
               id="continue-title"
             />
             {hasProgress && (

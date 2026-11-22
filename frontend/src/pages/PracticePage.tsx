@@ -4,7 +4,9 @@ import PageHeader from '../components/PageHeader'
 import { MASTERY_LABEL, useMasteryStore } from '../world2d/store'
 import { QUESTION_BANK, TOPICS, type BankQuestion } from '../world2d/data/questions'
 import { formatDueAt, useReviewStore } from '../stores/reviewStore'
+import { useStudyLogStore } from '../stores/studyLogStore'
 import {
+  dueReviewItems,
   topicMastery,
   useMasteryTopics,
   type ConceptMastery,
@@ -27,6 +29,7 @@ export default function PracticePage() {
   const record = useMasteryStore((s) => s.record)
   const reviewEntries = useReviewStore((s) => s.entries)
   const reviewRecord = useReviewStore((s) => s.record)
+  const logAnswer = useStudyLogStore((s) => s.record)
 
   const [currentId, setCurrentId] = useState<string | null>(null)
   const [picked, setPicked] = useState<number | null>(null)
@@ -36,16 +39,11 @@ export default function PracticePage() {
 
   const topic = TOPICS.find((t) => t.id === topicId) || TOPICS[0]
 
-  // 复习模式：错题 + 到期题，跨全部知识点
-  const reviewQueue = useMemo(() => {
-    const withTopic = QUESTION_BANK.map((q) => ({ q, topicId: q.topic }))
-    return withTopic.filter(({ q, topicId: tid }) => {
-      const inWrong = (topics[tid]?.wrong ?? []).includes(q.id)
-      const entry = reviewEntries[q.id]
-      const due = !entry || entry.streak === 0 || entry.dueAt <= Date.now()
-      return inWrong || due
-    })
-  }, [topics, reviewEntries])
+  // 复习模式：错题 + 已作答且到期题，跨全部知识点
+  const reviewQueue = useMemo(
+    () => dueReviewItems(topics, reviewEntries),
+    [topics, reviewEntries]
+  )
 
   const questions: Array<{ q: BankQuestion; topicId: string }> = useMemo(
     () => (mode === 'review'
@@ -86,6 +84,7 @@ export default function PracticePage() {
     const correct = index === current.q.answer
     record(current.topicId, current.q.id, correct, 0)
     reviewRecord(current.q.id, correct)
+    logAnswer(correct)
     setAnswered(current)
     setPicked(index)
     setSession((s) => ({ answered: s.answered + 1, correct: s.correct + (correct ? 1 : 0) }))

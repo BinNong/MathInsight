@@ -8,6 +8,12 @@
 import { useAuthStore } from '../stores/authStore'
 import { useMasteryStore } from '../world2d/store'
 import { useReviewStore, type ReviewEntry } from '../stores/reviewStore'
+import {
+  mergeStudyDays,
+  studyDaysFromReview,
+  useStudyLogStore,
+  type DayStat,
+} from '../stores/studyLogStore'
 import { authApi, CloudProgress } from './api/auth'
 import {
   getLearningProgress,
@@ -86,7 +92,10 @@ function snapshotPayload(): { mastery: string; progress: string; review: string 
   // Zustand persist 把 state 包在 {state, version} 里
   const mastery = JSON.stringify({ state: localMastery, version: 0 })
   const progress = JSON.stringify(getLearningProgress())
-  const review = JSON.stringify(useReviewStore.getState().entries)
+  const review = JSON.stringify({
+    entries: useReviewStore.getState().entries,
+    log: useStudyLogStore.getState().days,
+  })
   return { mastery, progress, review }
 }
 
@@ -106,6 +115,15 @@ export function schedulePush(force = false) {
   }, PUSH_DEBOUNCE_MS)
 }
 
+/** 学习日志首次启用时，用已有复习记录补一份历史练习量 */
+function seedStudyLogIfEmpty() {
+  if (Object.keys(useStudyLogStore.getState().days).length > 0) return
+  const seeded = studyDaysFromReview(useReviewStore.getState().entries)
+  if (Object.keys(seeded).length > 0) {
+    useStudyLogStore.setState({ days: seeded })
+  }
+}
+
 /** 拉取并与本地合并；应在登录后调用 */
 export async function pullAndMerge(): Promise<void> {
   if (!useAuthStore.getState().token || pulling) return
@@ -114,6 +132,7 @@ export async function pullAndMerge(): Promise<void> {
     const cloud: CloudProgress | null = await authApi.getProgress()
     if (!cloud) {
       // 首次使用：把本地已有数据作为初始版本推上去
+      seedStudyLogIfEmpty()
       schedulePush(true)
       return
     }
@@ -137,8 +156,11 @@ export async function pullAndMerge(): Promise<void> {
       importLearningProgress(mergedProgress)
     }
     // 复习计划合并：同一题取复习次数更多、到期更晚的（保留更落后的计划不丢）
-    const remoteReview = safeParse<Record<string, ReviewEntry>>(cloud.review ?? null)
-    if (remoteReview) {
+    // review 现在存 { entries, log }；旧版本是直接的 entries 映射，两种都要兼容
+    const remoteReviewRaw = safeParse<Record<string, unknown>>(cloud.review ?? null)
+    if (remoteReviewRaw) {
+      const wrapped = typeof remoteReviewRaw.entries === 'object' && remoteReviewRaw.entries !== null
+      const remoteReview = (wrapped ? remoteReviewRaw.entries : remoteReviewRaw) as Record<string, ReviewEntry>
       const localReview = useReviewStore.getState().entries
       const mergedReview: Record<string, ReviewEntry> = { ...localReview }
       Object.entries(remoteReview).forEach(([id, remote]) => {
@@ -148,7 +170,17 @@ export async function pullAndMerge(): Promise<void> {
         }
       })
       useReviewStore.setState({ entries: mergedReview })
+
+      const remoteLog = wrapped
+        ? (remoteReviewRaw.log as Record<string, DayStat> | undefined)
+        : undefined
+      if (remoteLog && typeof remoteLog === 'object') {
+        useStudyLogStore.setState({
+          days: mergeStudyDays(useStudyLogStore.getState().days, remoteLog),
+        })
+      }
     }
+    seedStudyLogIfEmpty()
     // 合并结果再次上报，保证服务端拿到最新全量
     schedulePush(true)
   } catch {

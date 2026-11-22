@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useWorld2DStore, useMasteryStore, masteryLevel, MASTERY_LABEL } from '../store'
+import { useStudyLogStore } from '../../stores/studyLogStore'
 import {
   HALLS,
   TOPICS,
@@ -46,6 +47,7 @@ export default function Training() {
   const topics = useMasteryStore((s) => s.topics)
   const record = useMasteryStore((s) => s.record)
   const finishSession = useMasteryStore((s) => s.finishSession)
+  const logAnswer = useStudyLogStore((s) => s.record)
 
   const [phase, setPhase] = useState<'menu' | 'session' | 'result'>('menu')
   const [sess, setSess] = useState<SessionState | null>(null)
@@ -114,6 +116,7 @@ export default function Training() {
     const streak = correct ? s.streak + 1 : 0
     const bestStreak = Math.max(s.bestStreak, streak)
     const grants = record(cur.topic, cur.id, correct, streak)
+    logAnswer(correct)
     setSess({
       ...s,
       correct: s.correct + (correct ? 1 : 0),

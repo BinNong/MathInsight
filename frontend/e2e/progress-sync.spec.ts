@@ -44,6 +44,17 @@ test.describe('学习进度云端同步', () => {
       // 等待防抖上报（1.2s）+ 网络
       await a.waitForTimeout(2200)
 
+      // 云端 review 字段应包含复习计划与每日学习记录
+      const progressResp = await a.request.get(`${root}/mathinsight/api/auth/progress`)
+      const progressBody = await progressResp.json()
+      const review = JSON.parse(progressBody.data.review)
+      expect(typeof review.entries).toBe('object')
+      const logged = Object.values(review.log as Record<string, { answered: number }>).reduce(
+        (sum, day) => sum + day.answered,
+        0
+      )
+      expect(logged).toBeGreaterThanOrEqual(1)
+
       // B：重新加载触发 pullAndMerge，然后读掌握度
       await b.goto(`${root}/mathinsight/`)
       await b.waitForTimeout(2000)
@@ -51,6 +62,16 @@ test.describe('学习进度云端同步', () => {
         JSON.parse(localStorage.getItem('mathinsight-calc-mastery') || '{}').state?.topics?.['limit-calc']?.answered ?? 0
       )
       expect(answeredB).toBeGreaterThanOrEqual(1)
+
+      const loggedB = await b.evaluate(() => {
+        const parsed = JSON.parse(localStorage.getItem('mathinsight-study-log') || '{}')
+        const days = parsed.state?.days ?? {}
+        return Object.values(days as Record<string, { answered: number }>).reduce(
+          (sum, day) => sum + day.answered,
+          0
+        )
+      })
+      expect(loggedB).toBeGreaterThanOrEqual(1)
     } finally {
       await ctxA.close()
       await ctxB.close()

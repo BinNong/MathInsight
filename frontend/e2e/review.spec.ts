@@ -32,6 +32,12 @@ test.describe('题库扩充与间隔复习', () => {
     expect(count).toBe(8)
   })
 
+  test('未作答的新题不会进入复习队列', async ({ page }) => {
+    await page.goto('/mathinsight/practice?mode=review')
+    await expect(page.getByText('太棒了，当前没有需要复习的题目！')).toBeVisible()
+    await expect(page.locator('.practice-mode-badge')).toHaveCount(0)
+  })
+
   test('答错后进入复习队列，答对后安排下次复习', async ({ page }) => {
     await page.goto('/mathinsight/practice?topic=limit-calc')
     // lc-2 正确答案是「1」(index 2)，先答错选 index 0

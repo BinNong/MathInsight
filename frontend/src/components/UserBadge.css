@@ -1,6 +1,7 @@
 /* 右上角用户标识：纸墨风格的小印章 */
 .user-badge {
-  position: fixed;
+  /* 随页面滚动，避免固定悬浮层遮挡滚动中的正文 */
+  position: absolute;
   top: 14px;
   right: 18px;
   z-index: 200;
@@ -37,6 +38,37 @@
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.user-badge-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.user-badge-menu-toggle {
+  display: none;
+  width: 26px;
+  height: 26px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-3);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.user-badge-menu-toggle:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.user-badge-menu {
+  display: none;
 }
 
 .user-badge-logout {
@@ -97,7 +129,55 @@
   cursor: wait;
 }
 
-@media (max-width: 640px) {
-  .user-badge { top: 10px; right: 12px; }
-  .user-badge-name { max-width: 76px; }
+/* 平板与手机使用紧凑菜单，避免固定徽标占满页头 */
+@media (max-width: 960px) {
+  .user-badge {
+    top: 10px;
+    right: 12px;
+    gap: 6px;
+  }
+
+  .user-badge-name {
+    display: none;
+  }
+
+  .user-badge-actions {
+    display: none;
+  }
+
+  .user-badge-menu-toggle {
+    display: inline-flex;
+  }
+
+  .user-badge.is-open .user-badge-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    display: flex;
+    flex-direction: column;
+    min-width: 132px;
+    padding: 4px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--surface-elevated);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .user-badge-menu > * {
+    padding: 7px 10px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--ink-2);
+    font-family: inherit;
+    font-size: 0.8rem;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .user-badge-menu > *:hover {
+    background: var(--primary-subtle);
+    color: var(--primary);
+  }
 }

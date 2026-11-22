@@ -28,4 +28,16 @@ test.describe('首页', () => {
 
     await expect(page).toHaveURL(/\/manim$/)
   })
+
+  test('今日学习汇总复习、薄弱点与本周目标', async ({ page }) => {
+    await page.goto('/mathinsight/')
+
+    const today = page.locator('.today-section')
+    await expect(today).toBeVisible()
+    await expect(today).toContainText('今日学习')
+    await expect(today).toContainText('本周目标')
+    await expect(today).toContainText('连续学习')
+    await expect(today.locator('.today-card')).toHaveCount(3)
+    await expect(today.locator('.today-card').first()).toHaveAttribute('href', /\/practice/)
+  })
 })
