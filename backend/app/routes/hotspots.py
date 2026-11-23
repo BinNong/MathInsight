@@ -68,6 +68,47 @@ def auto_run():
     return success_response(result)
 
 
+# -------- 视频生产任务接口（供外部渲染通道调用） --------
+
+@hotspots_bp.route('/admin/pending-video', methods=['GET'])
+@admin_required
+def pending_video():
+    """GET /api/hotspots/admin/pending-video?limit=3 — 待生产视频的热点列表。
+
+    外部渲染通道（本机，有 Node/Chrome）按此队列逐条生产。
+    返回摘要（id/headline/date/category），不含大对象。
+    """
+    service = get_hotspot_service()
+    try:
+        limit = min(max(int(request.args.get('limit', 3)), 1), 10)
+    except ValueError:
+        limit = 3
+    items = service.items_missing_video(limit)
+    return success_response({
+        'items': [
+            {'id': it['id'], 'headline': it.get('headline', ''),
+             'date': it.get('date', ''), 'category': it.get('category', '')}
+            for it in items
+        ],
+        'total': len(items),
+    })
+
+
+@hotspots_bp.route('/admin/video', methods=['POST'])
+@admin_required
+def register_video():
+    """POST /api/hotspots/admin/video — 登记视频（原子回写，防覆盖并发更新）。
+
+    body: {"id": "<hotspot_id>", "video": {"url": "...", "duration": 90.6, "caption": "..."}}
+    """
+    data = request.get_json(silent=True) or {}
+    try:
+        item = get_hotspot_service().mark_video(str(data.get('id', '')), data.get('video') or {})
+    except ValueError as exc:
+        return error_response(str(exc), 400)
+    return success_response({'id': item['id'], 'video': item['video']})
+
+
 @hotspots_bp.route('/<item_id>', methods=['GET'])
 def get_hotspot(item_id: str):
     """GET /api/hotspots/<id> — 返回单篇完整内容（含可视化配置）。"""

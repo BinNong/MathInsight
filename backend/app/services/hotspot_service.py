@@ -175,6 +175,65 @@ class HotspotService:
         missing.sort(key=lambda it: it.get('date', ''), reverse=True)
         return missing[:limit]
 
+    def mark_video(self, hotspot_id: str, video: dict[str, Any]) -> dict[str, Any]:
+        """原子登记某条热点视频；基于当前磁盘最新内容读-改-写，避免覆盖并发更新。
+
+        video 形如 {"url", "duration", "caption"}。缺 id 或字段非法时抛 ValueError。
+        返回更新后的完整条目。
+        """
+        if not hotspot_id:
+            raise ValueError('缺少 hotspot_id')
+        if not isinstance(video, dict) or not video.get('url'):
+            raise ValueError('video 必须包含 url')
+        allowed = {'url', 'duration', 'caption'}
+        clean = {k: v for k, v in video.items() if k in allowed}
+        try:
+            if 'duration' in clean:
+                clean['duration'] = float(clean['duration'])
+        except (TypeError, ValueError):
+            raise ValueError('duration 必须是数字')
+
+        with self._lock:
+            # 与 append_item 同样：锁内直接读盘，不调 _load（非可重入锁）
+            if self._path.exists():
+                with open(self._path, encoding='utf-8') as f:
+                    disk_items = json.load(f)
+                if not isinstance(disk_items, list):
+                    raise ValueError('hotspots.json 顶层必须是数组')
+            else:
+                disk_items = []
+
+            target = next((it for it in disk_items if it.get('id') == hotspot_id), None)
+            if target is None:
+                raise ValueError(f'未找到热点: {hotspot_id}')
+
+            # 幂等：同 URL 且时长一致时直接返回，不产生无谓写入
+            old = target.get('video') or {}
+            if old.get('url') == clean.get('url') and old.get('duration') == clean.get('duration'):
+                return target
+
+            target['video'] = clean
+            path = self._path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fd, tmp_name = tempfile.mkstemp(prefix='.hotspots-', suffix='.json', dir=str(path.parent))
+            try:
+                with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                    json.dump(disk_items, f, ensure_ascii=False, indent=2)
+                    f.write('\n')
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp_name, path)
+            except Exception:
+                try:
+                    os.unlink(tmp_name)
+                except OSError:
+                    pass
+                raise
+
+            self._items = disk_items
+            self._mtime = path.stat().st_mtime
+            return target
+
     @staticmethod
     def validate_item(item: dict[str, Any]) -> list[str]:
         """校验单条内容的必填字段与取值（供内容生成流程与测试使用）。"""

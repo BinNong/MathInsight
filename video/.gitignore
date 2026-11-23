@@ -8,9 +8,9 @@ out/
 # 静帧检查图
 *.png
 
-# 旁白音频：可由 build_video.py 重新生成，不入 git
-public/audio/*.mp3
-public/audio/*.vtt
+# 音频产物：全部可由 build_video.py / build_audio.sh 重新生成，不入 git
+# （分段 PCM 缓存、BGM wav、混音 m4a、旁白 mp3、字幕 vtt）
+public/audio/
 
 # 系统
 .DS_Store

@@ -1,0 +1,46 @@
+{
+  "DUR": 128.528,
+  "BPM": 92,
+  "cues": [
+    {
+      "t": 0.0,
+      "kind": "hook"
+    },
+    {
+      "t": 11.313,
+      "kind": "story"
+    },
+    {
+      "t": 30.3,
+      "kind": "formula"
+    },
+    {
+      "t": 37.293,
+      "kind": "steps"
+    },
+    {
+      "t": 73.129,
+      "kind": "cosmic-intro"
+    },
+    {
+      "t": 78.09,
+      "kind": "orbit"
+    },
+    {
+      "t": 89.427,
+      "kind": "wavefit"
+    },
+    {
+      "t": 98.509,
+      "kind": "insight"
+    },
+    {
+      "t": 111.382,
+      "kind": "question"
+    },
+    {
+      "t": 125.559,
+      "kind": "end"
+    }
+  ]
+}

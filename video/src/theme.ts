@@ -14,3 +14,23 @@ export const theme = {
   width: 1280,
   height: 720,
 }
+
+/** 深空主题：天文题材用，冲击力更强 */
+export const spaceTheme = {
+  ...theme,
+  paper: '#0B1020',
+  paperAlt: '#141C33',
+  ink: '#F2F5FA',
+  inkSoft: '#A9B6CC',
+  accent: '#E0764A',
+  accentSoft: '#F09A6A',
+  blue: '#5AA7D6',
+  line: '#2A3550',
+  gold: '#E9C46A',
+}
+
+export function themeFor(kind: string) {
+  return kind === 'space' ? spaceTheme : theme
+}
+
+export type Theme = typeof theme
