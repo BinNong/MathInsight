@@ -113,6 +113,7 @@ export default function Hotspots() {
               <div className="hotspot-card-top">
                 <span className="hotspot-card-index">{String(idx + 1).padStart(2, '0')}</span>
                 <span className="hotspot-card-category">{it.category}</span>
+                {it.video && <span className="hotspot-card-video">▶ 视频</span>}
                 <span className="hotspot-card-date">{formatDate(it.date)}</span>
               </div>
               <h2>{it.headline}</h2>

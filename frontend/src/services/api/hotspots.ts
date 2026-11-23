@@ -1,7 +1,14 @@
 import { client } from './client'
 
+export interface HotspotVideo {
+  url: string
+  duration: number
+  caption?: string
+}
+
 export interface HotspotSummary {
   id: string
+  video?: HotspotVideo
   date: string
   category: string
   branch: string

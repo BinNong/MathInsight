@@ -95,4 +95,12 @@ def create_app():
     # 全站鉴权守卫（公开接口除外）
     register_auth_guard(app)
 
+    # 「数说热点」后台自动生成调度器（开关由 HOTSPOT_AUTO_ENABLED 控制）
+    try:
+        from app.services.hotspot_scheduler import get_hotspot_scheduler
+        get_hotspot_scheduler().start()
+    except Exception:
+        # 自动生成的任何初始化失败都不应阻止主服务启动
+        app.logger.exception('数说热点调度器启动失败，已降级为只读展示')
+
     return app

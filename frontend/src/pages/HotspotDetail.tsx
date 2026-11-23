@@ -83,6 +83,24 @@ export default function HotspotDetail() {
         </div>
       </section>
 
+      {item.video && (
+        <section className="hotspot-section" aria-labelledby="video-title">
+          <h2 id="video-title">看一段 90 秒讲解</h2>
+          <div className="hotspot-video">
+            <video controls preload="metadata" playsInline>
+              <source src={item.video.url} type="video/mp4" />
+              {item.video.caption && (
+                <track kind="subtitles" src={item.video.caption} srcLang="zh" label="中文" default />
+              )}
+              您的浏览器不支持视频播放。
+            </video>
+          </div>
+          <p className="hotspot-figure-caption">
+            有中文旁白与字幕；静音也可观看。约 {Math.round(item.video.duration)} 秒。
+          </p>
+        </section>
+      )}
+
       <section className="hotspot-section" aria-labelledby="figure-title">
         <h2 id="figure-title">亲眼看一下</h2>
         <div className="hotspot-figure">

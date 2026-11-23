@@ -1,12 +1,16 @@
 """
 数说热点：实时热点 × 数学解读内容服务。
 
-内容存放在 backend/app/resources/hotspots.json，每周由 AI 生成流程追加。
-本服务只做读取、筛选与校验，不修改内容文件（内容生产走独立流程，避免
-运行期写文件带来的并发与权限问题）。
+内容初次来自 backend/app/resources/hotspots.json（种子），运行时落在挂载卷
+/app/data/hotspots.json。本服务提供读取、筛选、校验，以及供自动生成流水线
+使用的原子追加写入（临时文件 + os.replace，避免半写状态）。
+
+部署形态为 gunicorn 单 worker（见 Dockerfile），写入仅在该进程内发生，
+_lock 已覆盖读-改-写临界区；若未来改为多 worker，需要改用文件锁或外部存储。
 """
 import json
 import os
+import tempfile
 from pathlib import Path
 from threading import Lock
 from typing import Any
@@ -93,7 +97,13 @@ class HotspotService:
             'concepts': item.get('concepts', []),
             'modules': item.get('modules', []),
             'tags': item.get('tags', []),
+            'video': item.get('video'),
         }
+
+    def get_all_items(self) -> list[dict[str, Any]]:
+        """返回完整条目列表（含 auto_generated 等内部字段），供调度器判重。"""
+        self._load()
+        return list(self._items)
 
     def get_item(self, item_id: str) -> dict[str, Any] | None:
         """返回完整内容（含可视化配置与思考题）。"""
@@ -111,6 +121,59 @@ class HotspotService:
             'categories': categories,
             'latest_date': max((it.get('date', '') for it in self._items), default=''),
         }
+
+    def append_item(self, item: dict[str, Any], max_items: int = 0) -> None:
+        """原子追加一条内容到运行时数据卷，并同步内存缓存与 mtime。
+
+        先校验必填字段、id 唯一，再读-改-写、落临时文件、os.replace 原子替换。
+        写入失败抛异常，调用方据此记为失败并跳过，不影响已有内容。
+        """
+        errors = self.validate_item(item)
+        if errors:
+            raise ValueError('内容校验失败: ' + '; '.join(errors))
+
+        with self._lock:
+            # 注意：_load 内部也会获取 _lock（非可重入锁），这里直接读盘避免死锁
+            if self._path.exists():
+                with open(self._path, encoding='utf-8') as f:
+                    disk_items = json.load(f)
+                if not isinstance(disk_items, list):
+                    raise ValueError('hotspots.json 顶层必须是数组')
+            else:
+                disk_items = []
+            items = list(disk_items)
+            if any(it.get('id') == item.get('id') for it in items):
+                raise ValueError(f'id 已存在: {item.get("id")}')
+            items.append(item)
+            if max_items and max_items > 0 and len(items) > max_items:
+                items = sorted(items, key=lambda it: it.get('date', ''), reverse=True)[:max_items]
+
+            path = self._path
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fd, tmp_name = tempfile.mkstemp(prefix='.hotspots-', suffix='.json', dir=str(path.parent))
+            try:
+                with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                    json.dump(items, f, ensure_ascii=False, indent=2)
+                    f.write('\n')
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp_name, path)
+            except Exception:
+                try:
+                    os.unlink(tmp_name)
+                except OSError:
+                    pass
+                raise
+
+            self._items = items
+            self._mtime = path.stat().st_mtime
+
+    def items_missing_video(self, limit: int = 3) -> list[dict[str, Any]]:
+        """返回最近缺少 video 字段的条目（供外部视频生产通道挑选）。"""
+        self._load()
+        missing = [it for it in self._items if not it.get('video')]
+        missing.sort(key=lambda it: it.get('date', ''), reverse=True)
+        return missing[:limit]
 
     @staticmethod
     def validate_item(item: dict[str, Any]) -> list[str]:

@@ -486,3 +486,28 @@
   .hotspots-search { min-width: 0; width: 100%; }
   .hotspots-grid { grid-template-columns: 1fr; }
 }
+
+/* 视频标记与播放器 */
+.hotspot-card-video {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fffaf0;
+  font-family: var(--font-sans);
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.hotspot-video {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: #1a1614;
+}
+
+.hotspot-video video {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 560px;
+}

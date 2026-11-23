@@ -4,15 +4,18 @@ test.describe('数说热点栏目', () => {
   test('列表页展示解读卡片并可按分支筛选', async ({ page }) => {
     await page.goto('/mathinsight/hotspots')
     await expect(page.getByRole('heading', { name: '新闻里藏着数学题' })).toBeVisible()
-    await expect(page.locator('.hotspot-card')).toHaveCount(4, { timeout: 15000 })
-    await expect(page.getByText('4 篇解读')).toBeVisible()
+    // 内容每周会自动增长，不断言精确总数
+    await expect(page.locator('.hotspot-card').first()).toBeVisible({ timeout: 15000 })
+    const total = await page.locator('.hotspot-card').count()
+    expect(total).toBeGreaterThanOrEqual(4)
 
     await page.getByRole('button', { name: '线性代数' }).click()
-    await expect(page.locator('.hotspot-card')).toHaveCount(1)
     await expect(page.locator('.hotspot-card').first()).toContainText('机器人')
+    const laCount = await page.locator('.hotspot-card').count()
+    expect(laCount).toBeLessThan(total)
 
     await page.getByRole('button', { name: '全部' }).click()
-    await expect(page.locator('.hotspot-card')).toHaveCount(4)
+    await expect(page.locator('.hotspot-card')).toHaveCount(total)
   })
 
   test('搜索可定位到具体解读', async ({ page }) => {
@@ -38,6 +41,15 @@ test.describe('数说热点栏目', () => {
     await expect(page.getByRole('button', { name: '收起参考答案' })).toBeVisible()
     await expect(page.locator('.hotspot-answer')).toContainText('59%')
     await expect(page.getByRole('link', { name: /打开对应实验/ }).first()).toBeVisible()
+  })
+
+  test('有视频的解读显示播放器与字幕轨', async ({ page }) => {
+    await page.goto('/mathinsight/hotspots/hot-20261117-robot-sync')
+    await expect(page.getByRole('heading', { name: /看一段/ })).toBeVisible({ timeout: 15000 })
+    const video = page.locator('.hotspot-video video')
+    await expect(video).toBeVisible()
+    await expect(page.locator('.hotspot-video source')).toHaveAttribute('src', /hot-robot-sync\.mp4/)
+    await expect(page.locator('.hotspot-video track')).toHaveAttribute('src', /\.vtt/)
   })
 
   test('不存在的解读显示友好错误', async ({ page }) => {

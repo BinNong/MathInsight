@@ -1,0 +1,20 @@
+# 依赖与构建缓存
+node_modules/
+.cache/
+webpack-cache/
+
+# 渲染产物：视频文件大，不入 git（生产时由自动化生成并上传服务器）
+out/
+# 静帧检查图
+*.png
+
+# 旁白音频：可由 build_video.py 重新生成，不入 git
+public/audio/*.mp3
+public/audio/*.vtt
+
+# 系统
+.DS_Store
+*.log
+
+# 测试临时目录
+.test/

@@ -1,0 +1,19 @@
+{
+  "name": "mathinsight-hotspot-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "数说热点科普视频渲染器（Remotion）",
+  "scripts": {
+    "still": "remotion still HotspotExplainer",
+    "render": "remotion render HotspotExplainer",
+    "compositions": "remotion compositions"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.290",
+    "@types/katex": "^0.16.8",
+    "katex": "^0.19.1",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "remotion": "4.0.290"
+  }
+}
