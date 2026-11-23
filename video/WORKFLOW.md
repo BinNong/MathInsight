@@ -49,8 +49,12 @@ cd video && npx remotion still HotspotExplainer out/check-hook.png --frame=<hook
 npx remotion render HotspotExplainer out/<hotspot_id>.mp4 --concurrency=2 \
   --browser-executable="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --codec=h264
 
-# ⑤ 产物校验（见第 5 节）
-ffprobe ... ; ffmpeg -af volumedetect ...
+# ⑤ 产物校验 + Evaluator 自动层（见第 5、5.5 节）
+python3 video/scripts/evaluate_video.py out/<hotspot_id>.mp4 \
+  --script video/src/script.json --stills-dir video/out/check-<id> --out video/out/eval-<id>.json
+
+# ⑤.5 【质量门禁】Evaluator AI 层看静帧按 EVALUATION.md 打分
+#      FAIL → 出返修单回到 ① 重做（最多 3 轮）；PASS 才能继续
 
 # ⑥ 上传视频 + 字幕到数据卷
 SSHPASS='<密码>' sshpass -e scp video/out/<id>.mp4 ubuntu@nongbin.site:/tmp/<id>.mp4
@@ -115,6 +119,31 @@ SSHPASS='<密码>' sshpass -e scp video/public/audio/<id>.vtt ubuntu@nongbin.sit
 
 ---
 
+## 5.5 Evaluator 质量门禁（上线前必过）
+
+**未经 Evaluator PASS 的视频禁止上线。** 完整规范见 `video/EVALUATION.md`。
+
+```
+渲染完成
+   ↓
+自动层 evaluate_video.py ── FAIL ──→ 返修单 → 回①重做
+   ↓ PASS
+AI 层（Evaluator 角色看静帧打分，满分100）
+   ↓ <80 或违反红线项
+   返修单（具体到文件+改法）→ 回①重做（最多3轮）
+   ↓ >=80 且无红线
+   允许上传 + 登记 video 字段
+```
+
+- **自动层**：脚本客观判定，18 项（时长/流/编码/分辨率/帧率/音量/削波/黑帧/静帧像素安全区）。FAIL 直接拦截，AI 层都不用做。
+- **AI 层**：Evaluator 按内容忠实度 25 + 排版可读性 25 + 视觉呈现 25 + 音画同步 25 打分。红线项一票否决：编造事实、公式溢出被裁、**画面没有具象物体**、正文与字幕重复同一句。
+- **返修闭环**：FAIL 必须输出结构化返修单（`issues[].fix` 具体到文件和改法），生成模块据此精确修复后重渲染静帧复核，不推倒重来。
+- **3 轮仍 FAIL**：停线，汇报管理员，绝不带病上线。
+
+命令：`python3 video/scripts/evaluate_video.py <mp4> --script video/src/script.json --stills-dir video/out/check-<id> --out video/out/eval-<id>.json`
+
+---
+
 ## 6. 视觉规范（v5 张扬原则）
 
 **主体要大、光效要张扬、镜头要动、文字要让位**——用户明确反馈过"太藏着掖着"。
@@ -144,16 +173,25 @@ SSHPASS='<密码>' sshpass -e scp video/public/audio/<id>.vtt ubuntu@nongbin.sit
 
 ## 7. 平台集成（自动化调用契约）
 
-平台的外部值守任务（每周一三五 09:30）按此执行：
+平台的外部值守任务（每周一三五 09:30）按此执行，包含两个角色：
 
+**Producer（生产）**：
 1. 巡检容器内调度器日志，判断文章自动化是否正常
 2. 异常则先兜底发文（遵守 `scripts/HOTSPOT_GUIDE.md` 合规边界）
 3. 调 `GET /api/hotspots/admin/pending-video` 拿待生产列表（最多 3 条，最新优先）
-4. 对每条执行本工作流第 1–5 步；静帧检查通过后上传
-5. 调 `POST /api/hotspots/admin/video` 登记 video 字段（原子写入，基于最新库）
-6. 汇报：巡检结论、是否生产视频、验收结果、告警
+4. 对每条执行本工作流第 1–5 步，产出成片 + 全场景静帧
 
-**绝不在平台正常时重复发文**；**绝不把带病静帧渲染成片上线**。
+**Evaluator（质检，独立于 Producer）**：
+5. 跑自动层 `evaluate_video.py`；FAIL 直接出返修单给 Producer
+6. 按 `EVALUATION.md` 逐张看静帧打分；总分 <80、任项 <15 或违反红线 → 出返修单
+7. 返修单必须含 `issues[].fix`（具体文件+改法）；Producer 据此重做，最多 3 轮
+8. 两层都 PASS 才允许上传与登记
+
+**上线（仅 Evaluator PASS 后）**：
+9. 上传视频+VTT 到数据卷；调 `POST /api/hotspots/admin/video` 登记（原子写入）
+10. 汇报：巡检结论、Evaluator 评分与验收结果、返修轮次、告警
+
+**绝不在平台正常时重复发文**；**绝不让未经 Evaluator PASS 的视频上线**。
 
 ---
 

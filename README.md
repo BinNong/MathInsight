@@ -165,7 +165,8 @@ cd backend
 - **接口**：`GET /api/hotspots`（列表/筛选/搜索）、`/api/hotspots/meta`、`/api/hotspots/<id>`（详情）
 - **内容规范与白名单**：见 `scripts/HOTSPOT_GUIDE.md`；`python3 scripts/validate_hotspots.py` 校验内容合法性
 - **合规边界**：只做可数学化的中性题材，明确排除政治、社会争议、宗教、色情暴力等；文中数值一律脚本实算，示意数据显式标注
-- **科普视频**：有 `video` 字段的解读在详情页显示 90 秒带中文旁白与字幕的讲解视频。视频由离线流水线生产（Remotion + Edge TTS + KaTeX），见 `video/README.md`；先渲染静帧检查再编码，上传数据卷即可播放
+- **科普视频**：有 `video` 字段的解读在详情页显示带中文旁白与字幕的讲解视频。视频由离线流水线生产（Remotion + Edge TTS + KaTeX + 程序化 BGM + 题材专属具象动画），见 `video/README.md`；完整 SOP 见 `video/WORKFLOW.md`
+- **视频质量门禁**：由独立 Evaluator 角色把关（自动层 `video/scripts/evaluate_video.py` 查技术与静帧像素，AI 层按 `video/EVALUATION.md` 评分），**未经 PASS 禁止上线**；不通过则出结构化返修单回到生成模块重做，形成闭环
 - **双通道生产**：容器内调度器（`hotspot_scheduler.py`，每周一三五 09:00）自动写文章；外部值守任务（09:30）巡检兜底并为新文章生成视频——线上容器无 Node/Chrome，视频只能本地渲染
 
 ### 学习进度云端同步

@@ -6,6 +6,8 @@
 #
 #   --stills-only  只生成旁白/BGM/混音 + 静帧检查图，不渲染全片（先检查用）
 #   --render-only  跳过旁白/BGM，直接渲染全片（静帧已检查通过后用）
+#   --evaluate     渲染后自动运行 Evaluator 自动层（默认开启，--no-evaluate 关闭）
+#   --no-evaluate  跳过自动评估（不推荐；上线前必须评估）
 #   --out <file>   指定输出 MP4 路径
 #
 # 流程: 旁白+词级时间轴 → BGM+混音 → 静帧检查 → 全片渲染 → 产物校验
@@ -19,16 +21,23 @@ shift
 
 STILLS_ONLY=0
 RENDER_ONLY=0
+DO_EVAL=1
 OUT=""
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --stills-only) STILLS_ONLY=1; shift ;;
     --render-only) RENDER_ONLY=1; shift ;;
+    --evaluate) DO_EVAL=1; shift ;;
+    --no-evaluate) DO_EVAL=0; shift ;;
     --out) OUT="$2"; shift 2 ;;
     *) echo "未知参数: $1" >&2; exit 2 ;;
   esac
 done
 
+# --out 相对路径要基于调用时的工作目录解析，不能等 cd 到 video/ 后再拼接
+if [[ -n "$OUT" && "$OUT" != /* ]]; then
+  OUT="$(cd "$(dirname "$OUT")" && pwd)/$(basename "$OUT")"
+fi
 OUT="${OUT:-$VIDEO/out/${AID}.mp4}"
 CHROME="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 CHECK_DIR="$VIDEO/out/check-$AID"
@@ -115,5 +124,21 @@ echo "  流: ${STREAMS}"
 echo "  音量: ${VOL}"
 echo "  大小: ${SIZE}"
 echo ''
+
+if [[ $DO_EVAL -eq 1 ]]; then
+  echo '════ 6/6 Evaluator 自动层评估 ════'
+  STILLS_ARG=()
+  [[ -d "$CHECK_DIR" ]] && STILLS_ARG=(--stills-dir "$CHECK_DIR")
+  python3 "$ROOT/video/scripts/evaluate_video.py" "$OUT" \
+    --script "$VIDEO/src/script.json" "${STILLS_ARG[@]}" \
+    --out "$VIDEO/out/eval-${AID}.json"
+  echo ''
+  echo '  ⚠️  自动层 PASS 后，仍须 Evaluator AI 层按 EVALUATION.md 看静帧打分。'
+  echo '  两层都 PASS 才允许上线（上传 + 登记 video 字段）。'
+else
+  echo '  ⚠️  已跳过自动评估（--no-evaluate）；上线前必须补跑评估！'
+fi
+
+echo ''
 echo "✓ 成片: $OUT"
-echo "  下一步（平台自动化）: 上传数据卷 + 回写 video 字段，见 WORKFLOW.md 第 7 节"
+echo "  下一步（平台自动化）: Evaluator AI 层评估 → 通过后上传 + 登记，见 WORKFLOW.md / EVALUATION.md"

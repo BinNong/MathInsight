@@ -556,9 +556,6 @@ export function SceneView({ scene, branch, category, liveLines, activeWords, vis
               {scene.title}
             </div>
             <OscillatorSync frame={frame} accent={accent} />
-            {(liveLines || []).map((line, i) => (
-              <RichText key={i} text={line} frame={frame - i * 8} size={25} activeWords={activeWords} T={T} />
-            ))}
           </>
         )}
 
@@ -569,9 +566,6 @@ export function SceneView({ scene, branch, category, liveLines, activeWords, vis
               {scene.title}
             </div>
             <LifterScene frame={frame} accent={T.accent} ink={T.ink} soft={T.inkSoft} />
-            {(liveLines || []).map((line, i) => (
-              <RichText key={i} text={line} frame={frame - i * 8} size={25} activeWords={activeWords} T={T} />
-            ))}
           </>
         )}
 
@@ -628,9 +622,6 @@ export function SceneView({ scene, branch, category, liveLines, activeWords, vis
               color: T.ink, textAlign: 'center', letterSpacing: 1 }}>
               {scene.title}
             </div>
-            {(liveLines || []).map((line, i) => (
-              <RichText key={i} text={line} frame={frame - i * 8} size={24} activeWords={activeWords} T={T} />
-            ))}
           </>
         )}
 
@@ -641,9 +632,6 @@ export function SceneView({ scene, branch, category, liveLines, activeWords, vis
               {scene.title}
             </div>
             <OrbitScene frame={frame} T={T} />
-            {(liveLines || []).map((line, i) => (
-              <RichText key={i} text={line} frame={frame - i * 8} size={23} activeWords={activeWords} T={T} />
-            ))}
           </>
         )}
 
@@ -654,9 +642,6 @@ export function SceneView({ scene, branch, category, liveLines, activeWords, vis
               {scene.title}
             </div>
             <WaveFitScene frame={frame} T={T} />
-            {(liveLines || []).map((line, i) => (
-              <RichText key={i} text={line} frame={frame - i * 8} size={23} activeWords={activeWords} T={T} />
-            ))}
           </>
         )}
 
