@@ -10,8 +10,10 @@
 
 | 通道 | 运行环境 | 职责 |
 |---|---|---|
-| 容器内调度器 `hotspot_scheduler.py` | 线上 Docker（Python slim） | 每周一三五 09:00 抓新闻 → LLM 写骨架 → 配方实算 → 写文章到数据卷 |
-| 外部视频通道（WorkBuddy automation + 本机） | 本机（有 Node/Chrome/ffmpeg） | 09:30 巡检文章 → 为缺视频的文章渲染 MP4 → 上传数据卷 → 回写 video 字段 |
+| 容器内调度器 `hotspot_scheduler.py` | 线上 Docker（Python slim） | 每周一三五 09:00 抓新闻 → LLM 写骨架 → 配方实算 → 写文章到数据卷。**注：其 LLM 中转 key 积分已耗尽（2026-11-24），暂不修复** |
+| 外部值守任务（WorkBuddy automation + 本机） | 本机（有 Node/Chrome/ffmpeg） | **现行主通道**：每周一三五 09:30 本地生成文章→推送平台，并为缺视频的文章渲染 MP4→Evaluator 质检→上传数据卷→回写 video 字段 |
+
+**现行模式（2026-11-24 用户决定）**：服务器 API key 用不了时，内容生成改由本机值守任务完成（用自动化自身能力搜新闻+写作，不依赖服务器 LLM key），再定时推送到平台。这是既定方案，不是临时兜底。
 
 **视频只能在本机渲染**：线上容器是 Python slim 镜像，没有 Node 与 Chrome，跑不了 Remotion。
 不要尝试把渲染塞进容器（镜像会膨胀数百 MB 且吃内存）。
